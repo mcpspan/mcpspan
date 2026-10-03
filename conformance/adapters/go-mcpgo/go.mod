@@ -3,9 +3,9 @@ module github.com/mcpspan/mcpspan/conformance/adapters/go-mcpgo
 go 1.25.5
 
 require (
+	github.com/mark3labs/mcp-go v1.1.1
 	github.com/mcpspan/mcpspan/packages/mcpspan-go v0.1.0
 	github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpgo v0.1.0
-	github.com/mark3labs/mcp-go v1.1.1
 )
 
 require (
