@@ -1,0 +1,12 @@
+# Keeps the actions the workflows pin to commits up to date: a pull request a
+# week when any has a newer release. Security updates for the packages' own
+# dependencies are switched on in the repository settings.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

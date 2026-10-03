@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 # A second push to the same branch makes the first one's result irrelevant.
 concurrency:
   group: sdk-rust-${{ github.ref }}
@@ -37,11 +40,11 @@ jobs:
         working-directory: packages/mcpspan-rust
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - run: rustup toolchain install ${{ matrix.rust }} --profile minimal --component clippy,rustfmt && rustup default ${{ matrix.rust }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: packages/mcpspan-rust
 
@@ -74,18 +77,18 @@ jobs:
         protocol: ['2025', '2026']
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: conformance/adapters/rust
 
