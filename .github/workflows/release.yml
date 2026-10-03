@@ -1,0 +1,248 @@
+name: Release
+
+# One SDK at a time, from a GitHub release whose tag names the package and its
+# version:
+#
+#   mcpspan/v0.1.0                npm
+#   mcpspan-python/v0.1.0         PyPI
+#   packages/mcpspan-go/v0.1.0    Go (the tag Go itself reads; the mcpsdk and mcpgo modules are tagged with it)
+#   mcpspan-dotnet/v0.1.0         NuGet
+#   mcpspan-jvm/v0.1.0            Maven Central
+#   mcpspan-rust/v0.1.0           crates.io
+#   mcpspan-ruby/v0.1.0           RubyGems
+#
+# PHP is released from github.com/mcpspan/mcpspan-php, which Packagist reads.
+#
+# Every job runs in the `release` environment, so nothing is published until it
+# is approved there. The version in the tag must be the version in the code.
+# Actions are pinned to commits: this workflow can publish.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.release.tag_name }}
+
+jobs:
+  npm:
+    if: startsWith(github.event.release.tag_name, 'mcpspan/v')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/mcpspan
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - name: Version matches the tag
+        run: test "$(node -p "require('./package.json').version")" = "${TAG#mcpspan/v}"
+      # npm runs the package's prepublishOnly before publishing: build, types, tests, README samples.
+      - run: pnpm install --frozen-lockfile
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install --global npm@11
+      # The first version is published with a token, since npm only trusts a
+      # repository for a package that exists; after it, by the repository's
+      # identity, with no token at all.
+      - name: Publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "$HOME/.npmrc"
+          fi
+          npm publish --provenance --access public
+
+  pypi:
+    if: startsWith(github.event.release.tag_name, 'mcpspan-python/v')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/mcpspan-python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Version matches the tag
+        run: grep -qx "SDK_VERSION = \"${TAG#mcpspan-python/v}\"" src/mcpspan/_version.py
+      - run: uv sync --locked --group mcp2 && uv run --group mcp2 pytest -q
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: packages/mcpspan-python/dist
+
+  go:
+    if: startsWith(github.event.release.tag_name, 'packages/mcpspan-go/v')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      # To tag the two integration modules alongside the core.
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Version matches the tag
+        run: |
+          version="${TAG#packages/mcpspan-go/}"
+          grep -qx "const Version = \"${version#v}\"" packages/mcpspan-go/internal/core/event.go
+          # The integrations must ask for the core being released, since their
+          # local replace means nothing to anybody who installs them.
+          for module in mcpsdk mcpgo; do
+            grep -q "github.com/mcpspan/mcpspan/packages/mcpspan-go ${version}$" "packages/mcpspan-go/$module/go.mod"
+          done
+      - name: Tag the integrations
+        run: |
+          version="${TAG#packages/mcpspan-go/}"
+          for module in mcpsdk mcpgo; do
+            git tag "packages/mcpspan-go/$module/$version" "$GITHUB_SHA"
+            git push origin "packages/mcpspan-go/$module/$version"
+          done
+      # Asks the public Go proxy for each module, so the first person to install
+      # it is not the one who waits.
+      - name: Announce to the Go proxy
+        run: |
+          version="${TAG#packages/mcpspan-go/}"
+          for module in "" /mcpsdk /mcpgo; do
+            path="github.com/mcpspan/mcpspan/packages/mcpspan-go${module}"
+            curl --fail --silent --show-error --retry 5 --retry-delay 10 \
+              "https://proxy.golang.org/${path}/@v/${version}.info"
+            echo
+          done
+
+  nuget:
+    if: startsWith(github.event.release.tag_name, 'mcpspan-dotnet/v')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/mcpspan-dotnet
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+      - name: Version matches the tag
+        run: grep -q "<Version>${TAG#mcpspan-dotnet/v}</Version>" src/McpSpan/McpSpan.csproj
+      - run: dotnet test -c Release
+      - run: dotnet pack src/McpSpan -c Release -o out
+      - uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        id: login
+        with:
+          # The nuget.org account, kept in the environment rather than in the code.
+          user: ${{ vars.NUGET_USER }}
+      - run: dotnet nuget push "out/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
+
+  maven:
+    if: startsWith(github.event.release.tag_name, 'mcpspan-jvm/v')
+    runs-on: ubuntu-latest
+    environment: release
+    defaults:
+      run:
+        working-directory: packages/mcpspan-jvm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - name: Version matches the tag
+        run: grep -q "version = \"${TAG#mcpspan-jvm/v}\"" build.gradle.kts
+      - name: Build, test, sign
+        env:
+          MAVEN_SIGNING_KEY: ${{ secrets.MAVEN_SIGNING_KEY }}
+          MAVEN_SIGNING_PASSWORD: ${{ secrets.MAVEN_SIGNING_PASSWORD }}
+        run: ./gradlew build publishAllPublicationsToStagingRepository
+      # One bundle for both artifacts, uploaded to the Central Portal and
+      # released once it validates. Maven Central keeps no metadata files of a
+      # publisher's own.
+      - name: Upload to Maven Central
+        env:
+          USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        run: |
+          cd build/staging
+          find . -name 'maven-metadata*' -delete
+          zip -qr ../bundle.zip com
+          token=$(printf '%s:%s' "$USERNAME" "$PASSWORD" | base64 -w0)
+          id=$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $token" \
+            -F "bundle=@../bundle.zip" \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=${TAG}&publishingType=AUTOMATIC")
+          echo "deployment $id"
+          for _ in $(seq 1 60); do
+            state=$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer $token" \
+              "https://central.sonatype.com/api/v1/publisher/status?id=$id" | jq -r .deploymentState)
+            echo "$state"
+            case "$state" in
+              PUBLISHING|PUBLISHED) exit 0 ;;
+              FAILED)
+                curl --silent -X POST -H "Authorization: Bearer $token" \
+                  "https://central.sonatype.com/api/v1/publisher/status?id=$id" | jq .
+                exit 1 ;;
+            esac
+            sleep 20
+          done
+          echo "still not validated after 20 minutes; see the Central Portal"
+          exit 1
+
+  crates:
+    if: startsWith(github.event.release.tag_name, 'mcpspan-rust/v')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/mcpspan-rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - name: Version matches the tag
+        run: grep -qx "version = \"${TAG#mcpspan-rust/v}\"" Cargo.toml
+      - run: cargo test
+      - run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  rubygems:
+    if: startsWith(github.event.release.tag_name, 'mcpspan-ruby/v')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/mcpspan-ruby
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+          working-directory: packages/mcpspan-ruby
+      - name: Version matches the tag
+        run: grep -q "VERSION = \"${TAG#mcpspan-ruby/v}\"" lib/mcpspan/version.rb
+      - run: bundle exec rake
+      - uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
+      - run: gem build mcpspan.gemspec && gem push mcpspan-*.gem
