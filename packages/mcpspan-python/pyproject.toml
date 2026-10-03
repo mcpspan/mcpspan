@@ -1,0 +1,94 @@
+[project]
+name = "mcpspan"
+dynamic = ["version"]
+description = "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kacper Zatoń" }]
+requires-python = ">=3.10"
+keywords = [
+  "mcp",
+  "model-context-protocol",
+  "analytics",
+  "telemetry",
+  "observability",
+  "monitoring",
+  "metrics",
+  "mcp-server",
+  "tool-calls",
+  "ai-agents",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: System :: Monitoring",
+  "Typing :: Typed",
+]
+# None on purpose. The SDK runs inside somebody else's server, and anything it
+# pulls in is a version conflict waiting for them. It talks to the MCP SDK it
+# instruments through the objects it is handed, never by importing it.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/mcpspan/mcpspan"
+Documentation = "https://github.com/mcpspan/mcpspan/tree/main/packages/mcpspan-python#readme"
+Repository = "https://github.com/mcpspan/mcpspan"
+Issues = "https://github.com/mcpspan/mcpspan/issues"
+[dependency-groups]
+dev = ["pytest>=9.1.1", "mypy>=2.3.1", "ruff>=0.16.9"]
+# The MCP SDKs the integration tests run against, one at a time: the official
+# SDK's two major versions, and FastMCP, which builds on the second.
+mcp1 = ["mcp>=1.30.0,<2"]
+mcp2 = ["mcp>=2.2.0,<3"]
+fastmcp = ["fastmcp>=4.0.10,<5"]
+
+[tool.uv]
+default-groups = ["dev"]
+conflicts = [
+  [{ group = "mcp1" }, { group = "mcp2" }],
+  [{ group = "mcp1" }, { group = "fastmcp" }],
+]
+
+[build-system]
+requires = ["hatchling>=1.32.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/mcpspan/_version.py"
+pattern = 'SDK_VERSION = "(?P<version>[^"]+)"'
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcpspan"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers"]
+# A warning raised inside the SDK would land in somebody else's logs, so any
+# warning from mcpspan's own code fails the test that caused it.
+filterwarnings = ["error::DeprecationWarning:mcpspan.*", "error::Warning:mcpspan.*"]
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+python_version = "3.10"
+
+[[tool.mypy.overrides]]
+module = ["mcp.*", "mcp_types.*", "fastmcp.*"]
+ignore_missing_imports = true
+
+# The MCP SDK's decorators are typed differently across its versions, and a
+# test registering tools through them is not where their types are checked.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_decorators = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- The oldest .NET still supported, which every later one runs. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>McpSpan</RootNamespace>
+    <PackageId>McpSpan</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Kacper Zatoń</Authors>
+    <Description>Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.</Description>
+    <PackageTags>mcp;model-context-protocol;analytics;telemetry;observability;monitoring;metrics;mcp-server;tool-calls;ai-agents</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/mcpspan/mcpspan</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mcpspan/mcpspan</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The MCP SDK it instruments, and nothing else. -->
+    <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <InternalsVisibleTo Include="McpSpan.Tests" />
+  </ItemGroup>
+</Project>

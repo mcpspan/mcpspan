@@ -1,0 +1,98 @@
+name: SDK (PHP)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first one's result irrelevant.
+concurrency:
+  group: sdk-php-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+
+    # The oldest PHP the package declares and the newest. No lockfile is kept,
+    # so each takes the newest MCP SDKs, Laravel and PHPUnit it can run: the
+    # integration reads one private part of the MCP SDK's builder, and a
+    # release that moves it should fail here first.
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.5']
+
+    defaults:
+      run:
+        working-directory: packages/mcpspan-php
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - run: composer update --no-interaction --no-progress
+
+      - run: composer validate --strict --no-check-lock
+
+      - run: vendor/bin/phpunit
+
+      - if: matrix.php == '8.5'
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - if: matrix.php == '8.5'
+        run: vendor/bin/php-cs-fixer check
+
+  conformance:
+    name: Conformance, ${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    # The same suite the other SDKs pass, through a real MCP client over
+    # stdio. The official PHP MCP SDK speaks 2026-07-28 over HTTP only, so it
+    # runs on 2025-11-25; Laravel MCP speaks both over stdio.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: official PHP MCP SDK, protocol 2025-11-25
+            adapter: php-mcpsdk
+            protocol: '2025'
+            command: '["php", "adapters/php-mcpsdk/server.php"]'
+          - name: Laravel MCP, protocol 2025-11-25
+            adapter: php-laravel
+            protocol: '2025'
+            command: '["php", "adapters/php-laravel/artisan", "mcp:start", "conformance"]'
+          - name: Laravel MCP, protocol 2026-07-28
+            adapter: php-laravel
+            protocol: '2026'
+            command: '["php", "adapters/php-laravel/artisan", "mcp:start", "conformance"]'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - run: composer update --no-interaction --no-progress
+        working-directory: conformance/adapters/${{ matrix.adapter }}
+
+      - run: pnpm --filter @mcpspan/conformance test
+        env:
+          CONFORMANCE_ADAPTER: ${{ matrix.command }}
+          CONFORMANCE_PROTOCOL: ${{ matrix.protocol }}

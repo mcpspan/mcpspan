@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Every supported runtime in CI; the newest alone where only that one is installed. -->
+    <TargetFramework Condition="'$(TestAllFrameworks)' != 'true'">net10.0</TargetFramework>
+    <TargetFrameworks Condition="'$(TestAllFrameworks)' == 'true'">net8.0;net9.0;net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Test names read as sentences. -->
+    <NoWarn>$(NoWarn);CA1707;CA2007;CA1515;CA1861</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <ProjectReference Include="../../src/McpSpan/McpSpan.csproj" />
+    <Using Include="Xunit" />
+    <!-- One at a time: the SDK keeps its configuration process-wide, as a server does. -->
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

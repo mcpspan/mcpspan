@@ -1,0 +1,6 @@
+parameters:
+    level: 8
+    paths:
+        - src
+    # The integrations are checked against the MCP SDKs they serve, which are installed for development.
+    treatPhpDocTypesAsCertain: false

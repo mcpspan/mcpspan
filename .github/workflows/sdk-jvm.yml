@@ -1,0 +1,75 @@
+name: SDK (JVM)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first one's result irrelevant.
+concurrency:
+  group: sdk-jvm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Java ${{ matrix.java }}
+    runs-on: ubuntu-latest
+
+    # The oldest Java the MCP Java SDK runs on, and the newest long-term release.
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['17', '25']
+
+    defaults:
+      run:
+        working-directory: packages/mcpspan-jvm
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Warnings are errors, javadoc included, so this also holds the linter's verdict.
+      - run: ./gradlew build
+
+  conformance:
+    name: Conformance, MCP Java SDK, protocol 2025-11-25
+    runs-on: ubuntu-latest
+
+    # The MCP Java SDK speaks 2025-11-25 only; the suite runs it there.
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - run: ../../../packages/mcpspan-jvm/gradlew installDist
+        working-directory: conformance/adapters/java
+
+      - run: pnpm --filter @mcpspan/conformance test
+        env:
+          CONFORMANCE_ADAPTER: '["adapters/java/build/install/adapter/bin/adapter"]'
+          CONFORMANCE_PROTOCOL: '2025'
+          # The MCP Java SDK's stdio server can stop answering under load, with no
+          # mcpspan in the process at all (reproduced on 2.0.1 with its own
+          # transport alone). A case that meets it is run again, fresh.
+          CONFORMANCE_RETRY: '2'

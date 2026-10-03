@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    // Pinned to the Node version in `engines`, so the compiler refuses any API
+    // that would not exist on the oldest runtime we claim to support. Listed
+    // explicitly rather than auto-discovered, to keep unrelated @types packages
+    // in the workspace from quietly becoming part of our ambient scope.
+    "types": ["node"],
+
+    // Off because the published package ships `dist` and not `src`, so a
+    // declaration map would point an editor at a file that is not in the
+    // tarball. See `tsdown.config.ts` - tsdown also infers sourcemaps from
+    // this setting, so leaving it on would quietly re-enable them.
+    "declarationMap": false
+  },
+  "include": ["src/**/*"]
+}

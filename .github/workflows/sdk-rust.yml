@@ -1,0 +1,101 @@
+name: SDK (Rust)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first one's result irrelevant.
+concurrency:
+  group: sdk-rust-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    # The oldest Rust the crate declares, and the newest; and the newest of
+    # every dependency, rmcp above all, against the lockfile's.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Rust 1.88
+            rust: '1.88'
+          - name: Rust stable
+            rust: stable
+          - name: Rust stable, newest dependencies
+            rust: stable
+            update: true
+
+    defaults:
+      run:
+        working-directory: packages/mcpspan-rust
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: rustup toolchain install ${{ matrix.rust }} --profile minimal --component clippy,rustfmt && rustup default ${{ matrix.rust }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/mcpspan-rust
+
+      # A new rmcp can add a ServerHandler method with a default, which the
+      # wrapper would silently leave out; tests/handler.rs catches that here.
+      - if: matrix.update
+        run: cargo update
+
+      - name: Formatted
+        if: matrix.rust == 'stable'
+        run: cargo fmt --check
+
+      - if: matrix.rust == 'stable'
+        run: cargo clippy --all-targets -- -D warnings
+
+      - run: cargo test
+
+      - if: matrix.rust == 'stable' && !matrix.update
+        run: cargo package
+
+  conformance:
+    name: Conformance, protocol ${{ matrix.protocol }}
+    runs-on: ubuntu-latest
+
+    # The same suite the other SDKs pass, through a real MCP client over
+    # stdio, on both protocol revisions rmcp speaks.
+    strategy:
+      fail-fast: false
+      matrix:
+        protocol: ['2025', '2026']
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: conformance/adapters/rust
+
+      - run: cargo build --release
+        working-directory: conformance/adapters/rust
+
+      # rmcp fails a tool with an ErrorData, which has a code but no type;
+      # the SDK names it by the code.
+      - run: pnpm --filter @mcpspan/conformance test
+        env:
+          CONFORMANCE_ADAPTER: '["adapters/rust/target/release/adapter"]'
+          CONFORMANCE_PROTOCOL: ${{ matrix.protocol }}
+          CONFORMANCE_EXCEPTION_TYPE: InternalError

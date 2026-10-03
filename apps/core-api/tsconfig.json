@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Node runs these sources directly, stripping the types as it loads them,
+    // so there is no build step and nothing to emit. That also means imports
+    // name the real files: `./app.ts`, not the `./app.js` a compiled package
+    // would have to write.
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

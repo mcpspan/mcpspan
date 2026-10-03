@@ -1,0 +1,100 @@
+name: SDK (Python)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first one's result irrelevant.
+concurrency:
+  group: sdk-python-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python }}, ${{ matrix.mcp }}
+    runs-on: ubuntu-latest
+
+    # The oldest Python the package declares and the newest, against each MCP
+    # SDK it instruments: the official one's two major versions, and FastMCP.
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.14']
+        mcp: [mcp1, mcp2, fastmcp]
+
+    defaults:
+      run:
+        working-directory: packages/mcpspan-python
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+
+      # Locked, so a lockfile that disagrees with pyproject.toml fails here
+      # rather than quietly resolving to something nobody has run locally.
+      - run: uv sync --locked --group ${{ matrix.mcp }}
+      - run: uv run --group ${{ matrix.mcp }} ruff check
+      - run: uv run --group ${{ matrix.mcp }} ruff format --check
+      - run: uv run --group ${{ matrix.mcp }} mypy
+      - run: uv run --group ${{ matrix.mcp }} pytest
+
+  conformance:
+    name: Conformance, ${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    # The same suite the TypeScript SDK passes, through a real MCP client over
+    # stdio, on every protocol revision each MCP SDK speaks.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: MCP SDK v1, protocol 2025-11-25
+            group: mcp1
+            adapter: adapters/python/server.py
+            protocol: '2025'
+          - name: MCP SDK v2, protocol 2025-11-25
+            group: mcp2
+            adapter: adapters/python/server.py
+            protocol: '2025'
+          - name: MCP SDK v2, protocol 2026-07-28
+            group: mcp2
+            adapter: adapters/python/server.py
+            protocol: '2026'
+          - name: FastMCP, protocol 2025-11-25
+            group: fastmcp
+            adapter: adapters/python-fastmcp/server.py
+            protocol: '2025'
+          - name: FastMCP, protocol 2026-07-28
+            group: fastmcp
+            adapter: adapters/python-fastmcp/server.py
+            protocol: '2026'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+
+      - run: uv sync --locked --group ${{ matrix.group }}
+        working-directory: packages/mcpspan-python
+
+      - run: pnpm --filter @mcpspan/conformance test
+        env:
+          # An absolute path: the adapter starts in the conformance directory.
+          CONFORMANCE_ADAPTER: '["${{ github.workspace }}/packages/mcpspan-python/.venv/bin/python", "${{ matrix.adapter }}"]'
+          CONFORMANCE_PROTOCOL: ${{ matrix.protocol }}

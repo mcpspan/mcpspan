@@ -1,0 +1,75 @@
+{
+  "name": "mcpspan",
+  "version": "0.1.0",
+  "description": "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "analytics",
+    "telemetry",
+    "observability",
+    "monitoring",
+    "metrics",
+    "mcp-server",
+    "tool-calls",
+    "ai-agents"
+  ],
+  "license": "MIT",
+  "author": "Kacper Zatoń",
+  "homepage": "https://github.com/mcpspan/mcpspan/tree/main/packages/mcpspan#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcpspan/mcpspan.git",
+    "directory": "packages/mcpspan"
+  },
+  "bugs": {
+    "url": "https://github.com/mcpspan/mcpspan/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:readme": "node scripts/check-readme.mjs",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm build && pnpm typecheck && pnpm test && pnpm check:readme"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/server": "^2.1.0",
+    "@types/node": "^18.19.130",
+    "@vitest/coverage-v8": "4.1.11",
+    "tsdown": "^0.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "4.1.11",
+    "zod": "^4.6.5"
+  }
+}

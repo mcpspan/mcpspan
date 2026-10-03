@@ -1,0 +1,81 @@
+name: SDK (Ruby)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first one's result irrelevant.
+concurrency:
+  group: sdk-ruby-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Ruby ${{ matrix.ruby }}
+    runs-on: ubuntu-latest
+
+    # The oldest Ruby the gem declares and the newest. Neither lockfile is
+    # kept, so every run takes the newest mcp gem: the SDK hooks two of its
+    # private methods, and a release that moves them should fail here first.
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.2', '4.0']
+
+    defaults:
+      run:
+        working-directory: packages/mcpspan-ruby
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: packages/mcpspan-ruby
+
+      - run: bundle exec rake test
+
+      - if: matrix.ruby == '4.0'
+        run: bundle exec rubocop
+
+      - if: matrix.ruby == '4.0'
+        run: gem build mcpspan.gemspec
+
+  conformance:
+    name: Conformance, protocol ${{ matrix.protocol }}
+    runs-on: ubuntu-latest
+
+    # The same suite the other SDKs pass, through a real MCP client over
+    # stdio, on both protocol revisions the Ruby MCP SDK speaks.
+    strategy:
+      fail-fast: false
+      matrix:
+        protocol: ['2025', '2026']
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The suite passes the adapter nothing but PATH, so the adapter names its
+      # own Gemfile, and bundler finds the installed gems from its config.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+          bundler-cache: true
+          working-directory: conformance/adapters/ruby
+
+      - run: pnpm --filter @mcpspan/conformance test
+        env:
+          CONFORMANCE_ADAPTER: '["ruby", "adapters/ruby/server.rb"]'
+          CONFORMANCE_PROTOCOL: ${{ matrix.protocol }}

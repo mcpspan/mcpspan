@@ -1,0 +1,59 @@
+node_modules/
+dist/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+
+# Database dumps. Somebody's data, and often a lot of it.
+backups/
+.DS_Store
+
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Go conformance adapters, built before the suite runs
+conformance/adapters/go-*/adapter
+
+# .NET build output
+bin/
+obj/
+conformance/adapters/dotnet/out/
+
+# Throwaway twins for comparing SDKs against the dashboard
+conformance/.criterion/
+
+# Gradle
+.gradle/
+packages/mcpspan-jvm/**/build/
+conformance/adapters/java/build/
+conformance/adapters/kotlin/build/
+
+# Cargo
+packages/mcpspan-rust/target/
+conformance/adapters/rust/target/
+
+# Bundler
+packages/mcpspan-ruby/Gemfile.lock
+packages/mcpspan-ruby/vendor/
+packages/mcpspan-ruby/*.gem
+conformance/adapters/ruby/Gemfile.lock
+conformance/adapters/ruby/vendor/
+conformance/adapters/ruby/.bundle/
+
+# Composer
+packages/mcpspan-php/vendor/
+packages/mcpspan-php/composer.lock
+packages/mcpspan-php/.php-cs-fixer.cache
+packages/mcpspan-php/.phpunit.cache/
+conformance/adapters/php-*/vendor/
+conformance/adapters/php-*/composer.lock
+packages/mcpspan-php/.phpunit.result.cache

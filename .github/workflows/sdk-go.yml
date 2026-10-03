@@ -1,0 +1,99 @@
+name: SDK (Go)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first one's result irrelevant.
+concurrency:
+  group: sdk-go-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Go ${{ matrix.go }}
+    runs-on: ubuntu-latest
+
+    # The oldest Go the packages declare and the newest release.
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.25.5', '1.27']
+
+    defaults:
+      run:
+        working-directory: packages/mcpspan-go
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: packages/mcpspan-go/**/go.sum
+
+      - name: Formatted
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
+      - run: go vet ./... ./mcpsdk/... ./mcpgo/...
+
+      # With the race detector: delivery runs on a goroutine beside the
+      # server's own, and a data race there is exactly the bug a tool call
+      # would never show.
+      - run: go test -race ./... ./mcpsdk/... ./mcpgo/...
+
+      # Each module's go.mod and go.sum must already be what tidy makes them.
+      - name: Tidy
+        run: |
+          for module in . mcpsdk mcpgo; do
+            (cd "$module" && go mod tidy -diff)
+          done
+
+  conformance:
+    name: Conformance, ${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    # The same suite the other SDKs pass, through a real MCP client over
+    # stdio, on both protocol revisions each Go MCP SDK speaks.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: official Go SDK, protocol 2025-11-25
+            adapter: go-mcpsdk
+            protocol: '2025'
+          - name: official Go SDK, protocol 2026-07-28
+            adapter: go-mcpsdk
+            protocol: '2026'
+          - name: mcp-go, protocol 2025-11-25
+            adapter: go-mcpgo
+            protocol: '2025'
+          - name: mcp-go, protocol 2026-07-28
+            adapter: go-mcpgo
+            protocol: '2026'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27'
+          cache-dependency-path: conformance/adapters/${{ matrix.adapter }}/go.sum
+
+      - run: go build -o adapter .
+        working-directory: conformance/adapters/${{ matrix.adapter }}
+
+      - run: pnpm --filter @mcpspan/conformance test
+        env:
+          CONFORMANCE_ADAPTER: '["adapters/${{ matrix.adapter }}/adapter"]'
+          CONFORMANCE_PROTOCOL: ${{ matrix.protocol }}

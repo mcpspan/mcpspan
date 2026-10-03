@@ -1,0 +1,149 @@
+# The self-hosted mcpspan stack: database, ingest API and dashboard.
+#
+# 6270 is MCP on a telephone keypad, and the API and database follow it. The
+# usual 3000, 4000 and 5432 are the first ports every other development stack
+# claims, and the people who run this are by definition already running an MCP
+# server of their own - so a collision before the thing has even started would
+# be the common case rather than bad luck. These are unregistered, and below
+# the range Linux hands out to outgoing connections.
+#
+#   docker compose up -d
+#
+# That is all. Settings are optional; to change any, copy .env.example to .env.
+#
+# Then open http://localhost:6270. The first visit offers to create the
+# account; registration closes once it exists.
+#
+# To work on the code instead, start the database alone and run the apps from
+# the repository with `pnpm dev`:
+#
+#   docker compose up -d db
+
+# The database address as the containers see it: a service name on the compose
+# network, not localhost. Any DATABASE_URL in .env is the host-side one, used
+# by `pnpm dev` and the tests, and would send these services to the wrong place.
+x-database-url: &db-url postgres://${POSTGRES_USER:-mcpspan}:${POSTGRES_PASSWORD:-mcpspan}@db:5432/${POSTGRES_DB:-mcpspan}
+
+services:
+  db:
+    # Pinned rather than tracking latest: a database that quietly upgrades
+    # itself underneath somebody's production data is not a surprise anyone
+    # wants to discover during an outage.
+    image: timescale/timescaledb:2.30.1-pg17
+    container_name: mcpspan-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mcpspan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcpspan}
+      POSTGRES_DB: ${POSTGRES_DB:-mcpspan}
+    ports:
+      # Bound to the loopback address on purpose. Host tools and the test
+      # suite still reach it; the network does not. The other services talk to
+      # it over the compose network and do not need this published at all.
+      - '127.0.0.1:${POSTGRES_PORT:-6272}:5432'
+    volumes:
+      - mcpspan-db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Whether the server accepts connections, which is a later and more
+      # useful moment than the container merely having started.
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-mcpspan} -d ${POSTGRES_DB:-mcpspan}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Schema changes run once, to completion, before anything serves a request.
+  # Doing this in the API's own startup would mean every replica racing to
+  # apply the same migration, and a failed one hiding inside a restart loop.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/core-api/Dockerfile
+    image: mcpspan/core-api
+    container_name: mcpspan-migrate
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: *db-url
+    command: ['./node_modules/.bin/node-pg-migrate', 'up']
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/core-api/Dockerfile
+    image: mcpspan/core-api
+    container_name: mcpspan-api
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: *db-url
+      PORT: 6271
+      # Signs API keys. Given in .env, it is used as it is; otherwise the API
+      # makes one on first start and keeps it in the file below, on a volume of
+      # its own, so a copy of the database alone cannot make keys that verify.
+      # Changing it later invalidates every key ever issued, which the API
+      # reports at start.
+      API_KEY_SECRET: ${API_KEY_SECRET:-}
+      MCPSPAN_SECRET_FILE: /var/lib/mcpspan/api-key-secret
+      # How long anything is kept. Passed through rather than defaulted here:
+      # the API refuses a period short enough to have the rollup recomputed
+      # from raw rows that were already dropped, and says so, which a default
+      # in this file would quietly pre-empt.
+      MCPSPAN_RETENTION_DAYS: ${MCPSPAN_RETENTION_DAYS:-}
+      MCPSPAN_ROLLUP_RETENTION_DAYS: ${MCPSPAN_ROLLUP_RETENTION_DAYS:-}
+      # How fast a server may write. Passed through for the same reason as the
+      # retention above: the API refuses a value that makes no sense and says
+      # so, which a default here would pre-empt.
+      MCPSPAN_INGEST_EVENTS_PER_SECOND: ${MCPSPAN_INGEST_EVENTS_PER_SECOND:-}
+      MCPSPAN_INGEST_BURST_EVENTS: ${MCPSPAN_INGEST_BURST_EVENTS:-}
+      # Forwarding to OpenTelemetry, off unless an endpoint is given. The
+      # standard variables, passed through as they are.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-}
+      OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-}
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-}
+    volumes:
+      - mcpspan-api-data:/var/lib/mcpspan
+    ports:
+      # On every interface unless MCPSPAN_BIND_ADDRESS says otherwise, so MCP
+      # servers on other machines and in containers can reach it.
+      - '${MCPSPAN_BIND_ADDRESS:-0.0.0.0}:${CORE_API_PORT:-6271}:6271'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:6271/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/core-dashboard/Dockerfile
+    image: mcpspan/core-dashboard
+    container_name: mcpspan-dashboard
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # How this app reaches the API: over the compose network, by service
+      # name. Set here rather than passed through from .env, where CORE_API_URL
+      # is the host-side address for `pnpm dev`.
+      CORE_API_URL: http://api:6271
+      # How the outside world reaches the API, which is a different question:
+      # this is the address printed in the setup snippet for somebody else's
+      # MCP server to send telemetry to. Read when a page renders, so changing
+      # it is a restart rather than a rebuild.
+      MCPSPAN_INGEST_URL: ${MCPSPAN_INGEST_URL:-http://localhost:${CORE_API_PORT:-6271}}
+    ports:
+      - '${MCPSPAN_BIND_ADDRESS:-0.0.0.0}:${CORE_DASHBOARD_PORT:-6270}:6270'
+
+volumes:
+  mcpspan-db-data:
+  mcpspan-api-data:

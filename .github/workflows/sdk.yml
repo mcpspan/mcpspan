@@ -1,0 +1,92 @@
+name: SDK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first one's result irrelevant.
+concurrency:
+  group: sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build, typecheck and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Frozen, so a lockfile that disagrees with the manifests fails here
+      # rather than quietly resolving to something nobody has run locally.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter mcpspan build
+      - run: pnpm --filter mcpspan typecheck
+      - run: pnpm --filter mcpspan test
+
+      # The README is the first thing a reader runs. Its samples are checked
+      # against the built package, so a rename that misses the documentation
+      # fails here rather than on somebody else's machine.
+      - run: pnpm --filter mcpspan check:readme
+
+      # The SDK against docs/sdk-contract.md, through a real MCP client and a
+      # fake ingest API. Other languages' SDKs run the same suite. Three runs,
+      # because the official MCP SDK has two major versions in use and the
+      # protocol two revisions: v1 speaks the 2025 protocol only, v2 both.
+      - run: pnpm --filter @mcpspan/conformance typecheck
+
+      - name: Conformance, MCP SDK v1, protocol 2025-11-25
+        run: pnpm --filter @mcpspan/conformance test
+        env:
+          CONFORMANCE_ADAPTER: '["node", "adapters/typescript/server.mjs"]'
+          CONFORMANCE_PROTOCOL: '2025'
+
+      - name: Conformance, MCP SDK v2, protocol 2025-11-25
+        run: pnpm --filter @mcpspan/conformance test
+        env:
+          CONFORMANCE_ADAPTER: '["node", "adapters/typescript-v2/server.mjs"]'
+          CONFORMANCE_PROTOCOL: '2025'
+
+      - name: Conformance, MCP SDK v2, protocol 2026-07-28
+        run: pnpm --filter @mcpspan/conformance test
+        env:
+          CONFORMANCE_ADAPTER: '["node", "adapters/typescript-v2/server.mjs"]'
+          CONFORMANCE_PROTOCOL: '2026'
+
+  oldest-node:
+    name: Runs on the oldest supported Node
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter mcpspan build
+
+      # The package declares Node 18. Types are checked against that version,
+      # but a type definition is a claim about an API, not proof it is there:
+      # only running the built output on that runtime settles it. Vitest needs
+      # Node 20, so this is a plain script rather than the test suite.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 18
+
+      - name: Exercise the built package
+        working-directory: packages/mcpspan
+        run: node scripts/oldest-node-check.mjs

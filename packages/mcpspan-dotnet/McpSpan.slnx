@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/McpSpan/McpSpan.csproj" />
+  <Project Path="tests/McpSpan.Tests/McpSpan.Tests.csproj" />
+</Solution>

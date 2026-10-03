@@ -1,0 +1,24 @@
+{
+  "about": "The client-type table of the SDK contract (section 7), as cases. Every SDK's unit tests read this file, so the table is checked in one place in every language. A name of null is a client that named itself nowhere.",
+  "cases": [
+    ["claude-code", "claude-code"],
+    ["Claude Code", "claude-code"],
+    ["CLAUDE-CODE-cli", "claude-code"],
+    ["Claude", "claude"],
+    ["claude-ai", "claude"],
+    ["Claude Desktop", "claude"],
+    ["Cursor", "cursor"],
+    ["cursor-vscode", "cursor"],
+    ["cursor-vscode-1.7-insiders", "cursor"],
+    ["ChatGPT", "chatgpt"],
+    ["openai-mcp", "chatgpt"],
+    ["mcp-inspector", "mcp-inspector"],
+    ["inspector-cli", "mcp-inspector"],
+    ["@modelcontextprotocol/inspector", "mcp-inspector"],
+    ["windsurf", "other"],
+    ["someone-new", "other"],
+    ["", "unknown"],
+    ["   ", "unknown"],
+    [null, "unknown"]
+  ]
+}

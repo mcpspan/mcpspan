@@ -1,0 +1,22 @@
+{
+  "name": "@mcpspan/conformance",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Checks any mcpspan SDK against docs/sdk-contract.md",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/server": "^2.1.0",
+    "@types/node": "^22.20.3",
+    "mcpspan": "workspace:*",
+    "typescript": "^6.0.3",
+    "vitest": "4.1.11",
+    "zod": "^4.6.5"
+  }
+}

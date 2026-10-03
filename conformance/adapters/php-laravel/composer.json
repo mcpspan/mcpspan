@@ -1,0 +1,19 @@
+{
+    "name": "mcpspan/conformance-php-laravel",
+    "description": "The conformance adapter for the PHP SDK, on Laravel MCP: a minimal Laravel application.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.45 || ^12.41 || ^13.0",
+        "laravel/mcp": "^1.0",
+        "mcpspan/mcpspan": "@dev"
+    },
+    "repositories": [
+        { "type": "path", "url": "../../../packages/mcpspan-php" }
+    ],
+    "autoload": {
+        "psr-4": { "App\\": "app/" }
+    },
+    "config": { "sort-packages": true }
+}

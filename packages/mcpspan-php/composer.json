@@ -1,0 +1,52 @@
+{
+    "name": "mcpspan/mcpspan",
+    "description": "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/mcpspan/mcpspan",
+    "support": {
+        "issues": "https://github.com/mcpspan/mcpspan/issues",
+        "source": "https://github.com/mcpspan/mcpspan-php"
+    },
+    "keywords": ["mcp", "analytics", "telemetry", "observability", "laravel"],
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "laravel/mcp": "^1.0",
+        "mcp/sdk": "^0.8",
+        "nyholm/psr7": "^1.8",
+        "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^11.5 || ^12.0 || ^13.0",
+        "friendsofphp/php-cs-fixer": "^3.95"
+    },
+    "suggest": {
+        "mcp/sdk": "The official PHP MCP SDK, instrumented with McpSpan\\McpSdk::instrument()",
+        "laravel/mcp": "Laravel MCP, instrumented as soon as this package is installed"
+    },
+    "autoload": {
+        "psr-4": {
+            "McpSpan\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "McpSpan\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": ["McpSpan\\LaravelMcp\\McpSpanServiceProvider"]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse",
+        "lint": "php-cs-fixer check"
+    }
+}

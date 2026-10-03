@@ -1,0 +1,84 @@
+name: Core API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Integration tests
+    runs-on: ubuntu-latest
+
+    services:
+      # The same image the development stack uses, pinned to the same version.
+      # A runner on a different build would test a different database than the
+      # one anybody actually deploys - and the aggregation queries lean on
+      # TimescaleDB specifics, so that difference would matter.
+      db:
+        image: timescale/timescaledb:2.30.1-pg17
+        env:
+          POSTGRES_USER: mcpspan
+          POSTGRES_PASSWORD: mcpspan
+          # Named to match what the tests expect, so nothing has to create it.
+          POSTGRES_DB: mcpspan_test
+        ports:
+          - 5432:5432
+        # Steps start as soon as the container does, which is well before
+        # PostgreSQL accepts connections. Without this the first test loses a
+        # race it did not know it was in.
+        options: >-
+          --health-cmd "pg_isready -U mcpspan -d mcpspan_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      TEST_DATABASE_URL: postgres://mcpspan:mcpspan@localhost:5432/mcpspan_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The end-to-end test drives the published package rather than its
+      # sources, so it has to exist first.
+      - run: pnpm --filter mcpspan build
+
+      - run: pnpm --filter @mcpspan/core-api typecheck
+      - run: pnpm --filter @mcpspan/core-api test
+
+  dashboard:
+    name: Dashboard builds
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @mcpspan/core-dashboard typecheck
+
+      # No database and no API here on purpose. This asks whether the pages
+      # compile and render, which is a different question from whether they
+      # show the right numbers - and that one is already answered by the
+      # contract test in the job above.
+      - run: pnpm --filter @mcpspan/core-dashboard build

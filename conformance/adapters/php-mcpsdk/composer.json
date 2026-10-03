@@ -1,0 +1,15 @@
+{
+    "name": "mcpspan/conformance-php-mcpsdk",
+    "description": "The conformance adapter for the PHP SDK, on the official PHP MCP SDK.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "mcp/sdk": "^0.8",
+        "mcpspan/mcpspan": "@dev"
+    },
+    "repositories": [
+        { "type": "path", "url": "../../../packages/mcpspan-php" }
+    ],
+    "config": { "sort-packages": true }
+}

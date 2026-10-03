@@ -1,0 +1,54 @@
+[package]
+name = "mcpspan"
+version = "0.1.0"
+edition = "2024"
+# As the MCP SDK it instruments requires.
+rust-version = "1.88"
+description = "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail."
+license = "MIT"
+repository = "https://github.com/mcpspan/mcpspan"
+homepage = "https://github.com/mcpspan/mcpspan"
+authors = ["Kacper Zatoń"]
+readme = "README.md"
+keywords = ["mcp", "analytics", "telemetry", "observability", "rmcp"]
+categories = ["development-tools::debugging", "web-programming"]
+
+[features]
+default = ["tls"]
+# HTTPS to the ingest API, for an installation reached over the internet.
+# Without it only plain HTTP endpoints work, which is enough on one machine or a
+# private network.
+tls = ["ureq/rustls"]
+
+[dependencies]
+# The MCP SDK it instruments.
+rmcp = { version = "3.4.1", default-features = false, features = ["server"] }
+serde_json = "1"
+# Deliveries: a blocking client, on a thread of its own, whatever runtime the server uses.
+ureq = { version = "3.4.2", default-features = false }
+# Random identifiers for events and sessions; the standard library has no random numbers.
+uuid = { version = "1", features = ["v4"] }
+# The HTTP request the MCP SDK hands a tool call over streamable HTTP, to find its session.
+http = "1"
+
+[dev-dependencies]
+rmcp = { version = "3.4.1", features = [
+    "server",
+    "client",
+    "macros",
+    "transport-io",
+    "transport-streamable-http-server",
+    "transport-streamable-http-client-reqwest",
+    "reqwest",
+] }
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-util"] }
+serde = { version = "1", features = ["derive"] }
+schemars = "1"
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

@@ -1,0 +1,31 @@
+# Everything the images build from is source. Installed or generated trees are
+# rebuilt inside the image, and copying them in would be slower and, in pnpm's
+# case, broken: its node_modules is symlinks into a store outside this
+# directory, which do not survive the copy.
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+*.tsbuildinfo
+
+.git
+.github
+
+# Real secrets, as opposed to the example that documents them.
+.env
+.env.*
+!.env.example
+
+# Working notes and agent tooling. Never part of an image, the same way they
+# are never part of the repository.
+.claude
+.cursor
+CLAUDE.md
+AGENTS.md
+
+docs
+*.log
+*.tgz
+.DS_Store
