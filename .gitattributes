@@ -1,5 +1,8 @@
 # Text files are stored with LF and checked out as the platform prefers,
 # except shell scripts: bash cannot run a script with CRLF line endings, which
 # is what Git for Windows would otherwise give scripts/backup.sh and restore.sh.
+# Windows batch files the other way: cmd can misread labels in LF ones.
 * text=auto
 *.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
