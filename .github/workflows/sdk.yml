@@ -15,6 +15,8 @@ concurrency:
 
 jobs:
   test:
+    # Only where the code is public: the private repository is tested before every export.
+    if: github.repository == 'mcpspan/mcpspan'
     name: Build, typecheck and test
     runs-on: ubuntu-latest
 
@@ -66,6 +68,8 @@ jobs:
           CONFORMANCE_PROTOCOL: '2026'
 
   oldest-node:
+    # Only where the code is public: the private repository is tested before every export.
+    if: github.repository == 'mcpspan/mcpspan'
     name: Runs on the oldest supported Node
     runs-on: ubuntu-latest
 

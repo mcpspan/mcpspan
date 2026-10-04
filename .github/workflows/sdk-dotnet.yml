@@ -19,6 +19,8 @@ env:
 
 jobs:
   test:
+    # Only where the code is public: the private repository is tested before every export.
+    if: github.repository == 'mcpspan/mcpspan'
     name: Build and test, .NET 8, 9 and 10
     runs-on: ubuntu-latest
 
@@ -47,6 +49,8 @@ jobs:
       - run: dotnet pack src/McpSpan -c Release -o ${{ runner.temp }}/package
 
   conformance:
+    # Only where the code is public: the private repository is tested before every export.
+    if: github.repository == 'mcpspan/mcpspan'
     name: Conformance, protocol ${{ matrix.protocol }}
     runs-on: ubuntu-latest
 
