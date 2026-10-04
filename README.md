@@ -13,6 +13,8 @@
 Add one line to your MCP server, run the dashboard with `docker compose up`,
 and nothing ever leaves your machine.
 
+![mcpspan overview: calls over time with release markers, tools by calls and errors, versions compared](https://raw.githubusercontent.com/mcpspan/.github/main/assets/screenshot-overview.png)
+
 ## Features
 
 - **Every call, from every client.** Tool calls, resource reads and prompt
@@ -35,6 +37,17 @@ and nothing ever leaves your machine.
   like.
 - **Private by design.** Parameter values never leave your server's process,
   and nothing is sent anywhere you did not set up yourself.
+
+<table>
+  <tr>
+    <td width="50%"><strong>Every call</strong>, of every kind, filtered by outcome<br><img src="https://raw.githubusercontent.com/mcpspan/.github/main/assets/screenshot-calls.png" alt="The list of calls"></td>
+    <td width="50%"><strong>Failures, told apart</strong>, with what went wrong<br><img src="https://raw.githubusercontent.com/mcpspan/.github/main/assets/screenshot-errors.png" alt="Failed calls"></td>
+  </tr>
+  <tr>
+    <td><strong>Sessions</strong>, step by step<br><img src="https://raw.githubusercontent.com/mcpspan/.github/main/assets/screenshot-session.png" alt="One session's calls in order"></td>
+    <td><strong>One call</strong>, and everything recorded about it<br><img src="https://raw.githubusercontent.com/mcpspan/.github/main/assets/screenshot-call.png" alt="A failed call in detail"></td>
+  </tr>
+</table>
 
 ## Quick start
 
