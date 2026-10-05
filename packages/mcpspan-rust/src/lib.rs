@@ -16,6 +16,7 @@
 //! Without an API key nothing is collected and nothing is sent. Parameter values never leave the process.
 
 mod collector;
+mod definition;
 mod event;
 mod handler;
 mod instrument;

@@ -321,6 +321,8 @@ internal sealed class Call
                 SessionId = SessionId,
                 Parameters = Collector.CaptureParameterNames ? DescribedParameters ?? Parameters.Describe(Arguments) : null,
                 ResponseBytes = ResponseBytes(response),
+                // A tool the server has, refused arguments included: often the schema is why.
+                DefinitionHash = Kind is null && source != ErrorSources.UnknownTool ? Definitions.Of(ToolName) : null,
             });
         }
         catch (Exception)

@@ -61,6 +61,12 @@ export interface ToolDetails {
   parametersHaveMore: boolean;
   /** Null when no call in the window reported a size. */
   responseSizes: ResponseSizes | null;
+  /**
+   * When a new definition of the tool (contract, 3.8) was first seen in the
+   * window, oldest first. The first definition ever seen is where recording
+   * began, not a change, and is never here.
+   */
+  definitionChanges: { at: string }[];
 }
 
 /**
@@ -82,12 +88,13 @@ export async function getToolDetails(
     parameters: { offset: 0, limit: MAX_PARAMETERS },
   },
 ): Promise<ToolDetails> {
-  const [failures, messages, parameters, sampled, sizes] = await Promise.all([
+  const [failures, messages, parameters, sampled, sizes, changes] = await Promise.all([
     failureShares(serverId, toolName, range),
     failureMessages(serverId, toolName, range, maxScanned, pages.messages),
     parameterUse(serverId, toolName, range, maxScanned, pages.parameters),
     wasSampled(serverId, toolName, range, maxScanned),
     responseSizes(serverId, toolName, range, maxScanned),
+    definitionChanges(serverId, toolName, range),
   ]);
 
   return {
@@ -99,7 +106,29 @@ export async function getToolDetails(
     callsWithParameters: parameters.callsWithParameters,
     sampled,
     responseSizes: sizes,
+    definitionChanges: changes,
   };
+}
+
+/**
+ * New definitions first seen in the window. A definition seen before, coming
+ * back after a rollback, is not new and makes no mark: the mark is for words
+ * agents had not read before.
+ */
+async function definitionChanges(serverId: string, toolName: string, range: TimeRange): Promise<{ at: string }[]> {
+  const result = await getPool().query<{ first_seen_at: Date }>(
+    `SELECT first_seen_at
+     FROM tool_definitions
+     WHERE server_id = $1 AND tool_name = $2
+       AND first_seen_at >= $3 AND first_seen_at < $4
+       AND first_seen_at > (
+         SELECT min(first_seen_at) FROM tool_definitions WHERE server_id = $1 AND tool_name = $2
+       )
+     ORDER BY first_seen_at`,
+    [serverId, toolName, range.from, range.to],
+  );
+
+  return result.rows.map((row) => ({ at: row.first_seen_at.toISOString() }));
 }
 
 /**

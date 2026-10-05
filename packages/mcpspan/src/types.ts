@@ -113,6 +113,9 @@ export interface ToolCallEvent {
    */
   responseBytes?: number;
 
+  /** The tool's definition as last listed, fingerprinted (contract, 3.8). */
+  definitionHash?: string;
+
   /** When the call started, as an ISO 8601 timestamp. */
   timestamp: string;
 

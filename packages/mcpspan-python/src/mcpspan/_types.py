@@ -51,5 +51,6 @@ class ToolCallEvent(_RequiredEventFields, total=False):
     clientVersion: str
     serverVersion: str
     responseBytes: int
+    definitionHash: str
     sessionId: str
     parameters: dict[str, str]

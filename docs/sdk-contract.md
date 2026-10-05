@@ -259,6 +259,37 @@ language's usual JSON encoder.
   sends twice the bytes, and that is the size recorded.
 - Over 2,147,483,647 bytes it is sent as that number.
 
+### 3.8 Tool definitions
+
+Rewording a tool's description can change how often agents call it, and how
+well, more than a change to its code. So a tool call SHOULD carry
+`definitionHash`, a fingerprint of the tool as the server lists it, which
+lets the dashboard mark when a tool's definition changed.
+
+- Taken from the server's answer to `tools/list`, as it goes to the client:
+  what an agent actually read. An SDK keeps the latest fingerprint listed for
+  each tool, for the life of the process, and sends it with each call to that
+  tool, including one whose arguments the server refused. A call to a tool no
+  listing in this process named has none.
+- The fingerprint covers the tool's `name`, `title`, `description` and
+  `inputSchema`, those of them present. Other fields (annotations, the output
+  schema, `_meta`) are left out: they change what a client may do, not what a
+  model reads first.
+- Those fields are written as one JSON object in canonical form: keys sorted
+  by their characters (all keys in MCP's own schemas are ASCII, so code point
+  and UTF-16 order agree), no whitespace, strings escaping only `"`, `\` and
+  control characters (`\b`, `\f`, `\n`, `\r`, `\t` as such, the rest as
+  `\u00XX` in lower case), everything else as is in UTF-8, integers without a
+  fraction, `true`, `false`, `null` as such. The fingerprint is the first 16
+  characters of the SHA-256 of its UTF-8 bytes, in lower-case hex. A number
+  with a fraction is written as the language writes it; schemas rarely hold
+  one, and an SDK that writes it differently only marks one change on the day
+  the server moves to it.
+- Every SDK MUST give the same fingerprint for the same definition, checked
+  by the cases in `conformance/definition-hashes.json`: moving a server from
+  one SDK to another must not look like a change.
+- Not for resource reads, prompt gets, or calls the server refused as unknown.
+
 ## 4. The event
 
 A batch is a JSON object with one field, `events`, an array of these:
@@ -278,6 +309,7 @@ A batch is a JSON object with one field, `events`, an array of these:
 | `clientVersion` | string | no | 100 characters | The client's own version, as sent (3.6). |
 | `serverVersion` | string | no | 100 characters | The version of the server that answered (3.6). |
 | `responseBytes` | integer | no | 0 to 2,147,483,647 | Size of the answer, in bytes (3.7). |
+| `definitionHash` | string | no | 64 characters | The tool's definition, as listed, fingerprinted (3.8). |
 | `timestamp` | string | yes | ISO 8601 with an offset | When the call started, by the reporting machine's clock. |
 | `sdkVersion` | string | yes | 1 to 50 characters | The SDK's own version. |
 | `sessionId` | UUID string | no | | See 8. |

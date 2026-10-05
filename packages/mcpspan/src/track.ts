@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { currentCall } from './call.js';
+import { definitionOf } from './definition.js';
 import { type ClientInfo, clientName, detectClient } from './client.js';
 import {
   describeErrorResult,
@@ -149,6 +150,7 @@ export function track<TArgs extends unknown[], TResult>(
           timestamp,
           sdkVersion: SDK_VERSION,
           ...(session !== undefined && { sessionId: session }),
+          ...definition(toolName),
           ...outcome,
         });
       } catch {
@@ -296,6 +298,8 @@ export function recordRefusedCall(refused: {
       timestamp: refused.timestamp,
       sdkVersion: SDK_VERSION,
       ...(refused.sessionId !== undefined && { sessionId: refused.sessionId }),
+      // A tool the server has, whose arguments it refused: often the schema is why.
+      ...(refused.errorSource === 'unknown_tool' ? {} : definition(refused.toolName)),
     });
   } catch {
     // Recording a refusal must never disturb the answer the client gets.
@@ -357,6 +361,12 @@ export function recordPrimitiveCall(call: {
 /** Whether anything is currently collecting, so callers can skip the work entirely. */
 export function isRecording(): boolean {
   return sink !== undefined;
+}
+
+/** The fingerprint of a tool as last listed (contract, 3.8), as event fields. */
+function definition(toolName: string): { definitionHash?: string } {
+  const hash = definitionOf(toolName);
+  return hash === undefined ? {} : { definitionHash: hash };
 }
 
 /** The largest size an event carries; anything larger is sent as this (contract, 3.7). */

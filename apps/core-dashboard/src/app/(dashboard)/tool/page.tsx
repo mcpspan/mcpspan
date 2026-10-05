@@ -118,6 +118,7 @@ export default async function ToolPage({
                 points={timeseries.points}
                 bucketSeconds={timeseries.bucketSeconds}
                 versions={versions?.versions ?? []}
+                definitionChanges={details instanceof ApiError ? [] : details.definitionChanges}
               />
             )}
           </Card>

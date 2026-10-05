@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { createAccount, resetDatabase, seedEvents, type TestAccount } from '../../test/fixtures.ts';
+import { createAccount, resetDatabase, seedDefinition, seedEvents, type TestAccount } from '../../test/fixtures.ts';
 import { createApp } from '../app.ts';
 import { closePool } from '../db.ts';
 import { getToolDetails } from '../tool-details.ts';
@@ -29,6 +29,7 @@ interface Details {
   callsWithParameters: number;
   sampled: boolean;
   responseSizes: { measured: number; medianBytes: number; p95Bytes: number; maxBytes: number } | null;
+  definitionChanges: { at: string }[];
 }
 
 beforeEach(async () => {
@@ -165,6 +166,30 @@ describe("a tool's own page", () => {
     const details = await get<Details>('tool-details?toolName=search');
 
     expect(details.responseSizes).toBeNull();
+  });
+
+  it('marks where a new definition began, not where recording began, and not a definition coming back', async () => {
+    // Recording began long ago; changed twice in the window, then rolled back to the first one.
+    const first = ago(120);
+    const second = ago(60);
+    await seedDefinition(account.serverId, 'search', 'aaaaaaaaaaaaaaaa', ago(60 * 24 * 30), ago(5));
+    await seedDefinition(account.serverId, 'search', 'bbbbbbbbbbbbbbbb', first, ago(60));
+    await seedDefinition(account.serverId, 'search', 'cccccccccccccccc', second, ago(30));
+    // Another tool's change is its own.
+    await seedDefinition(account.serverId, 'book', 'aaaaaaaaaaaaaaaa', ago(60 * 24 * 30));
+    await seedDefinition(account.serverId, 'book', 'dddddddddddddddd', ago(90));
+
+    const { definitionChanges } = await get<Details>('tool-details?toolName=search');
+
+    expect(definitionChanges).toEqual([{ at: first.toISOString() }, { at: second.toISOString() }]);
+  });
+
+  it('shows no change for a tool whose first definition was seen in the window', async () => {
+    await seedDefinition(account.serverId, 'search', 'aaaaaaaaaaaaaaaa', ago(30));
+
+    const { definitionChanges } = await get<Details>('tool-details?toolName=search');
+
+    expect(definitionChanges).toEqual([]);
   });
 
   it('needs to be told which tool', async () => {

@@ -73,6 +73,7 @@ export interface McpClient {
   }): Promise<{ isError?: boolean; content?: unknown }>;
   readResource(params: { uri: string }): Promise<unknown>;
   getPrompt(params: { name: string; arguments?: Record<string, string> }): Promise<unknown>;
+  listTools(): Promise<{ tools: Record<string, unknown>[] }>;
   listResources(): Promise<unknown>;
   listPrompts(): Promise<unknown>;
   close(): Promise<void>;

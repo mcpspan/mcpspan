@@ -125,6 +125,8 @@ public final class Call {
                 Text.version(clientVersion),
                 Text.version(Collector.serverVersion() != null ? Collector.serverVersion() : serverVersion),
                 responseBytes,
+                // A tool the server has, refused arguments included: often the schema is why.
+                kind == null && !ToolCallEvent.UNKNOWN_TOOL.equals(source) ? Definitions.of(toolName) : null,
                 timestamp,
                 Version.CURRENT,
                 sessionId,

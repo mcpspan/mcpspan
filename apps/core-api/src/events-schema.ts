@@ -69,6 +69,8 @@ export const toolCallEventSchema = z.object({
   serverVersion: z.string().max(LIMITS.version).optional(),
   // Size of the answer in bytes (contract, 3.7); the content itself is never sent.
   responseBytes: z.number().int().min(0).max(2_147_483_647).optional(),
+  // The tool's definition as the server listed it, fingerprinted (contract, 3.8).
+  definitionHash: z.string().max(64).optional(),
 
   // Any valid instant is accepted, including implausible ones. This clock
   // belongs to the reporting machine and is sometimes wrong, and rejecting the

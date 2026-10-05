@@ -127,6 +127,13 @@ func middleware(server *mcp.Server) mcp.Middleware {
 			if method == "resources/read" || method == "prompts/get" {
 				return measurePrimitive(ctx, server, next, method, req)
 			}
+			if method == "tools/list" {
+				result, err := next(ctx, method, req)
+				if listing, ok := result.(*mcp.ListToolsResult); ok && err == nil {
+					core.NoteListing(listing.Tools)
+				}
+				return result, err
+			}
 			if method != "tools/call" {
 				return next(ctx, method, req)
 			}

@@ -189,3 +189,17 @@ async function refreshRollup(): Promise<void> {
     await getPool().query(`CALL refresh_continuous_aggregate('${rollup}', NULL, NULL)`);
   }
 }
+
+/** A definition of a tool as first and last seen (contract, 3.8), as ingest would have kept it. */
+export async function seedDefinition(
+  serverId: string,
+  toolName: string,
+  hash: string,
+  firstSeenAt: Date,
+  lastSeenAt: Date = firstSeenAt,
+): Promise<void> {
+  await getPool().query(
+    `INSERT INTO tool_definitions (server_id, tool_name, hash, first_seen_at, last_seen_at) VALUES ($1, $2, $3, $4, $5)`,
+    [serverId, toolName, hash, firstSeenAt, lastSeenAt],
+  );
+}

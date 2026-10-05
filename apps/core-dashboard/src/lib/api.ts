@@ -304,6 +304,8 @@ export interface ToolDetails {
   sampled: boolean;
   /** How large its answers were; null when no call reported a size (SDKs before 0.2.0). */
   responseSizes: { measured: number; medianBytes: number; p95Bytes: number; maxBytes: number } | null;
+  /** When a new definition of the tool was first seen in the window (contract, 3.8). */
+  definitionChanges: { at: string }[];
   messagesOffset: number;
   messagesHaveMore: boolean;
   parametersOffset: number;

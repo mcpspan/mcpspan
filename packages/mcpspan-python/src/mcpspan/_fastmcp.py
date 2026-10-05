@@ -23,6 +23,7 @@ from typing import Any
 
 from ._call import CallState, cannot_ask
 from ._client import client_from_request
+from ._definition import note_listing
 from ._failure import (
     describe_error_result,
     describe_exception,
@@ -86,6 +87,12 @@ def instrument_fastmcp(server: Any) -> bool:
 
         async def on_get_prompt(self, context: Any, call_next: Any) -> Any:
             return await _measure_primitive(server, context, call_next, "prompt")
+
+        async def on_list_tools(self, context: Any, call_next: Any) -> Any:
+            tools = await call_next(context)
+            if is_recording():
+                note_listing(tools)
+            return tools
 
     server.add_middleware(McpspanMiddleware())
     _instrumented.add(server)

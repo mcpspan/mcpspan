@@ -21,11 +21,13 @@ type Event struct {
 	ClientVersion string `json:"clientVersion,omitempty"`
 	ServerVersion string `json:"serverVersion,omitempty"`
 	// ResponseBytes is the size of the answer, when there was one (contract, 3.7).
-	ResponseBytes *int64            `json:"responseBytes,omitempty"`
-	Timestamp     string            `json:"timestamp"`
-	SDKVersion    string            `json:"sdkVersion"`
-	SessionID     string            `json:"sessionId,omitempty"`
-	Parameters    map[string]string `json:"parameters,omitempty"`
+	ResponseBytes *int64 `json:"responseBytes,omitempty"`
+	// DefinitionHash fingerprints the tool as last listed (contract, 3.8).
+	DefinitionHash string            `json:"definitionHash,omitempty"`
+	Timestamp      string            `json:"timestamp"`
+	SDKVersion     string            `json:"sdkVersion"`
+	SessionID      string            `json:"sessionId,omitempty"`
+	Parameters     map[string]string `json:"parameters,omitempty"`
 }
 
 // Error sources, as the contract names them.
@@ -48,4 +50,4 @@ const (
 
 // Version is the SDK's own version, reported in every event and in the
 // User-Agent.
-const Version = "0.2.0"
+const Version = "0.3.0"

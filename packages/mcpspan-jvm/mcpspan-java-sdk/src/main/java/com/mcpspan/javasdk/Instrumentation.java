@@ -77,6 +77,13 @@ final class Instrumentation {
         }
 
         if (handlers != null) {
+            McpRequestHandler<?> listing = handlers.get(McpSchema.METHOD_TOOLS_LIST);
+            if (listing != null && !WRAPPED_HANDLERS.contains(listing)) {
+                McpRequestHandler<Object> wrapped = Listings.handler(castAny(listing));
+                WRAPPED_HANDLERS.add(wrapped);
+                handlers.put(McpSchema.METHOD_TOOLS_LIST, wrapped);
+            }
+
             for (String method : List.of(McpSchema.METHOD_RESOURCES_READ, McpSchema.METHOD_PROMPT_GET)) {
                 McpRequestHandler<?> original = handlers.get(method);
                 if (original != null && !WRAPPED_HANDLERS.contains(original)) {

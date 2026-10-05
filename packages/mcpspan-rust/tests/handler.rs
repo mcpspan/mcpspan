@@ -8,7 +8,10 @@ use std::process::Command;
 fn methods(source: &str, indent: &str) -> BTreeSet<String> {
     source
         .lines()
-        .filter_map(|line| line.strip_prefix(indent)?.strip_prefix("fn "))
+        .filter_map(|line| {
+            let line = line.strip_prefix(indent)?;
+            line.strip_prefix("fn ").or_else(|| line.strip_prefix("async fn "))
+        })
         .map(|rest| {
             rest.split(|c: char| !(c.is_alphanumeric() || c == '_'))
                 .next()

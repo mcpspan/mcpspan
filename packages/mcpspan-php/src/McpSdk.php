@@ -8,6 +8,7 @@ use Mcp\Server\Builder;
 use McpSpan\Core\Collector;
 use McpSpan\McpSdk\CallToolHandler;
 use McpSpan\McpSdk\Connections;
+use McpSpan\McpSdk\ListToolsHandler;
 use McpSpan\McpSdk\PrimitiveHandler;
 use McpSpan\McpSdk\ReferenceHandler;
 
@@ -54,6 +55,7 @@ final class McpSdk
             $builder->setReferenceHandler(new ReferenceHandler($builder));
             $builder->addRequestHandler(new CallToolHandler($builder, $connections));
             $builder->addRequestHandler(new PrimitiveHandler($builder, $connections));
+            $builder->addRequestHandler(new ListToolsHandler($builder));
         } catch (\Throwable) {
         }
 

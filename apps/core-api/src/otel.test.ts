@@ -139,6 +139,7 @@ describe('a call as a span, named as the conventions for MCP servers name it', (
       clientName: 'Claude Desktop',
       parameters: { destination: 'string' },
       responseBytes: 48_213,
+      definitionHash: '9e5ebf01427bfdf5',
     });
     exporter.record('server-a', [
       tool,
@@ -158,6 +159,7 @@ describe('a call as a span, named as the conventions for MCP servers name it', (
       'mcpspan.client.name': 'Claude Desktop',
       'mcpspan.sdk.version': '0.1.0',
       'mcpspan.response.size': '48213',
+      'mcpspan.tool.definition': '9e5ebf01427bfdf5',
       'mcpspan.parameter.names': ['destination'],
     });
     expect(toolSpan?.startTimeUnixNano).toBe(`${Date.parse('2026-09-17T10:00:00.000Z')}000000`);

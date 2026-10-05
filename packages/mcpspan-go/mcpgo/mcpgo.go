@@ -74,6 +74,11 @@ func Instrument(s *server.MCPServer, config ...mcpspan.Config) *server.MCPServer
 		server.WithHooks(hooks)(s)
 	}
 
+	hooks.AddAfterListTools(func(_ context.Context, _ any, _ *mcp.ListToolsRequest, result *mcp.ListToolsResult) {
+		if result != nil && core.Recording() {
+			core.NoteListing(result.Tools)
+		}
+	})
 	hooks.AddBeforeCallTool(func(ctx context.Context, _ any, request *mcp.CallToolRequest) {
 		before(s, ctx, request)
 	})

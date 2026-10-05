@@ -22,7 +22,7 @@ use McpSpan\Core\Text;
 final class McpSpan
 {
     /** The SDK's own version, reported with every event. */
-    public const VERSION = '0.2.0';
+    public const VERSION = '0.3.0';
 
     /** @var array<string, true> */
     private static array $excluded = [];

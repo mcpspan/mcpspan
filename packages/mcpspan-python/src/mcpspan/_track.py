@@ -11,6 +11,7 @@ from typing import Any, TypeVar, overload
 
 from ._call import CallState, current_call
 from ._client import ClientInfo, client_name, detect_client
+from ._definition import definition_of
 from ._failure import (
     MAX_NAME_LENGTH,
     describe_error_result,
@@ -177,10 +178,20 @@ class _Measurement:
             event.update(outcome or {})  # type: ignore[typeddict-item]
             if size is not None:
                 event["responseBytes"] = size
+            _add_definition(event)
             self._sink(event)
         except Exception:
             # Recording a call must never disturb the call itself.
             pass
+
+
+def _add_definition(event: ToolCallEvent) -> None:
+    """The tool's fingerprint as last listed (contract, 3.8), on a call to a tool the server has."""
+    if event.get("kind", "tool") != "tool" or event.get("errorSource") == "unknown_tool":
+        return
+    fingerprint = definition_of(event["toolName"])
+    if fingerprint is not None:
+        event["definitionHash"] = fingerprint
 
 
 def _build_event(
@@ -376,6 +387,7 @@ def record_call(
         size = response_bytes(response) if response is not None else None
         if size is not None:
             event["responseBytes"] = size
+        _add_definition(event)
         sink(event)
     except Exception:
         # Recording a call must never disturb the answer the client gets.

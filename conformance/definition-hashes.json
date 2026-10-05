@@ -1,0 +1,190 @@
+{
+  "_about": "Tool definitions and the fingerprint every SDK must give them (contract, 3.8). The fingerprint covers name, title, description and inputSchema only.",
+  "cases": [
+    {
+      "case": "a name alone",
+      "tool": {
+        "name": "ok"
+      },
+      "hash": "e36279b38bcc149b"
+    },
+    {
+      "case": "an empty schema",
+      "tool": {
+        "name": "ok",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "hash": "115fab7742124c8f"
+    },
+    {
+      "case": "every field hashed, with text that needs escaping",
+      "tool": {
+        "name": "search_flights",
+        "title": "Search flights",
+        "description": "Finds flights.\n\tZażółć gęślą jaźń ✈️ <b>&'</b> \\ path \u0001 end",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "passengers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9
+            },
+            "destination": {
+              "type": "string",
+              "description": "IATA code, e.g. \"WAW\""
+            },
+            "direct": {
+              "type": "boolean",
+              "default": false
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "destination",
+            "passengers"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "hash": "9e5ebf01427bfdf5"
+    },
+    {
+      "case": "the same definition with its keys in another order",
+      "tool": {
+        "inputSchema": {
+          "required": [
+            "destination",
+            "passengers"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "note": {
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "direct": {
+              "default": false,
+              "type": "boolean"
+            },
+            "destination": {
+              "description": "IATA code, e.g. \"WAW\"",
+              "type": "string"
+            },
+            "passengers": {
+              "maximum": 9,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "description": "Finds flights.\n\tZażółć gęślą jaźń ✈️ <b>&'</b> \\ path \u0001 end",
+        "title": "Search flights",
+        "name": "search_flights"
+      },
+      "hash": "9e5ebf01427bfdf5"
+    },
+    {
+      "case": "the same definition with fields that are not hashed",
+      "tool": {
+        "name": "search_flights",
+        "title": "Search flights",
+        "description": "Finds flights.\n\tZażółć gęślą jaźń ✈️ <b>&'</b> \\ path \u0001 end",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "passengers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9
+            },
+            "destination": {
+              "type": "string",
+              "description": "IATA code, e.g. \"WAW\""
+            },
+            "direct": {
+              "type": "boolean",
+              "default": false
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "destination",
+            "passengers"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "readOnlyHint": true
+        },
+        "outputSchema": {
+          "type": "object"
+        },
+        "_meta": {
+          "x": 1
+        },
+        "execution": {
+          "taskSupport": "optional"
+        }
+      },
+      "hash": "9e5ebf01427bfdf5"
+    },
+    {
+      "case": "one word of the description changed",
+      "tool": {
+        "name": "search_flights",
+        "title": "Search flights",
+        "description": "Searches flights.\n\tZażółć gęślą jaźń ✈️ <b>&'</b> \\ path \u0001 end",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "passengers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9
+            },
+            "destination": {
+              "type": "string",
+              "description": "IATA code, e.g. \"WAW\""
+            },
+            "direct": {
+              "type": "boolean",
+              "default": false
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "destination",
+            "passengers"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "hash": "ef659b1b01ec9403"
+    }
+  ]
+}

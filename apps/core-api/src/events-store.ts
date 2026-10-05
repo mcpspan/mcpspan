@@ -42,8 +42,52 @@ export async function insertEvents(
   }
 
   await noteVersions(serverId, events);
+  await noteDefinitions(serverId, events);
 
   return stored;
+}
+
+/**
+ * Keeps when each definition of each tool was first and last seen (contract,
+ * 3.8), from the whole batch for the same reason as versions. Only tool calls
+ * carry one; a fingerprint on anything else is ignored rather than refused.
+ */
+async function noteDefinitions(serverId: string, events: readonly ToolCallEventInput[]): Promise<void> {
+  const seen = new Map<string, { tool: string; hash: string; first: string; last: string }>();
+
+  for (const event of events) {
+    if (event.definitionHash === undefined || event.definitionHash === '') continue;
+    if ((event.kind ?? 'tool') !== 'tool' || event.errorSource === 'unknown_tool') continue;
+    const at = new Date(event.timestamp).toISOString();
+    const key = JSON.stringify([event.toolName, event.definitionHash]);
+    const known = seen.get(key);
+    seen.set(key, {
+      tool: event.toolName,
+      hash: event.definitionHash,
+      first: known === undefined || at < known.first ? at : known.first,
+      last: known === undefined || at > known.last ? at : known.last,
+    });
+  }
+
+  if (seen.size === 0) return;
+
+  const rows = [...seen.values()];
+  await getPool().query(
+    `INSERT INTO tool_definitions (server_id, tool_name, hash, first_seen_at, last_seen_at)
+     SELECT $1::uuid, tool_name, hash, first_seen_at, last_seen_at
+     FROM unnest($2::text[], $3::text[], $4::timestamptz[], $5::timestamptz[])
+       AS seen (tool_name, hash, first_seen_at, last_seen_at)
+     ON CONFLICT (server_id, tool_name, hash) DO UPDATE SET
+       first_seen_at = LEAST(tool_definitions.first_seen_at, EXCLUDED.first_seen_at),
+       last_seen_at = GREATEST(tool_definitions.last_seen_at, EXCLUDED.last_seen_at)`,
+    [
+      serverId,
+      rows.map((row) => row.tool),
+      rows.map((row) => row.hash),
+      rows.map((row) => row.first),
+      rows.map((row) => row.last),
+    ],
+  );
 }
 
 /**

@@ -1,6 +1,7 @@
 import { withCall } from './call.js';
 import { clientFor, serverVersionOf } from './client.js';
 import { configure, isCollecting, type McpspanConfig } from './config.js';
+import { noteListing } from './definition.js';
 import { describeErrorResult, formatError, isErrorResult } from './failure.js';
 import { isExcluded, isMarked } from './marks.js';
 import { PRIMITIVE_METHODS, watchPrimitive } from './primitives.js';
@@ -334,7 +335,7 @@ function interceptToolCalls(server: object, registry: Map<string, ToolEntry>): v
   const handlers = inner._requestHandlers;
 
   if (handlers instanceof Map) {
-    for (const method of ['tools/call', ...PRIMITIVE_METHODS]) {
+    for (const method of ['tools/call', 'tools/list', ...PRIMITIVE_METHODS]) {
       const installed: unknown = handlers.get(method);
       if (typeof installed === 'function') handlers.set(method, watch(installed as AnyFunction, server, registry));
     }
@@ -362,7 +363,16 @@ function interceptToolCalls(server: object, registry: Map<string, ToolEntry>): v
  * so the handler for any other method runs exactly as it did.
  */
 function watch(handler: AnyFunction, server: object, registry: Map<string, ToolEntry>): AnyFunction {
-  return watchPrimitive(watchToolCalls(handler, server, registry), server);
+  return watchListing(watchPrimitive(watchToolCalls(handler, server, registry), server));
+}
+
+/** Notes the tools a `tools/list` answer describes, for the fingerprint each call carries (contract, 3.8). */
+function watchListing(handler: AnyFunction): AnyFunction {
+  return async function watchedListing(this: unknown, request: { method?: unknown }, ...rest: unknown[]): Promise<unknown> {
+    const result: unknown = await (handler as (...a: unknown[]) => unknown).call(this, request, ...rest);
+    if (request?.method === 'tools/list' && isRecording()) noteListing(result);
+    return result;
+  };
 }
 
 interface ToolCallRequest {

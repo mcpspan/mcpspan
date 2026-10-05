@@ -20,6 +20,8 @@ internal sealed record ToolCallEvent
     [JsonPropertyName("serverVersion")] public string? ServerVersion { get; init; }
     /// <summary>Size of the answer, when there was one (contract, 3.7).</summary>
     [JsonPropertyName("responseBytes")] public long? ResponseBytes { get; init; }
+    /// <summary>The tool's definition as last listed, fingerprinted (contract, 3.8).</summary>
+    [JsonPropertyName("definitionHash")] public string? DefinitionHash { get; init; }
     [JsonPropertyName("timestamp")] public required string Timestamp { get; init; }
     [JsonPropertyName("sdkVersion")] public required string SdkVersion { get; init; }
     [JsonPropertyName("sessionId")] public string? SessionId { get; init; }

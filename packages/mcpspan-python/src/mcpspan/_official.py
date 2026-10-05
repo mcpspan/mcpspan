@@ -25,6 +25,7 @@ from typing import Any
 
 from ._call import CallState, cannot_ask, current_call
 from ._client import client_from_request
+from ._definition import note_listing
 from ._marks import is_excluded, is_marked
 from ._primitives import instrument_primitives
 from ._session import session_for
@@ -60,9 +61,51 @@ def instrument_official(server: Any) -> bool:
 
     _wrap_add_tool(manager)
     _wrap_call_tool(server, manager)
+    _watch_listings(server)
     instrument_primitives(server)
 
     return True
+
+
+def _watch_listings(server: Any) -> None:
+    """Notes the tools each `tools/list` answer describes (contract, 3.8).
+
+    v2 lists through the server's own `list_tools`, looked up on every
+    request, so wrapping it on the instance is enough. v1 binds that method
+    into the protocol handler when the server is built, so there the handler
+    for ListToolsRequest is wrapped instead. Both together are harmless: the
+    same listing noted twice is the same fingerprints.
+    """
+    with contextlib.suppress(Exception):
+        list_tools = server.list_tools
+
+        @functools.wraps(list_tools)
+        async def listed(*args: Any, **kwargs: Any) -> Any:
+            tools = await list_tools(*args, **kwargs)
+            if is_recording():
+                note_listing(tools)
+            return tools
+
+        server.list_tools = listed
+
+    with contextlib.suppress(Exception):
+        import mcp.types as types
+
+        handlers = server._mcp_server.request_handlers
+        request = getattr(types, "ListToolsRequest", None)
+        handler = handlers.get(request) if request is not None else None
+        if handler is None:
+            return
+
+        @functools.wraps(handler)
+        async def handled(*args: Any, **kwargs: Any) -> Any:
+            result = await handler(*args, **kwargs)
+            if is_recording():
+                answer = getattr(result, "root", result)
+                note_listing(getattr(answer, "tools", None) or [])
+            return result
+
+        handlers[request] = handled
 
 
 def _wrap_tool(tool: Any) -> None:

@@ -274,6 +274,7 @@ export class OtelExporter {
               ...attribute('mcpspan.server.version', event.serverVersion),
               ...attribute('mcpspan.client.version', event.clientVersion),
               ...intAttribute('mcpspan.response.size', event.responseBytes),
+              ...attribute('mcpspan.tool.definition', event.definitionHash),
               ...attribute('mcpspan.parameter.names', event.parameters ? Object.keys(event.parameters) : undefined),
             ],
             status: event.success ? { code: 0 } : { code: 2, ...(event.errorMessage ? { message: event.errorMessage } : {}) },

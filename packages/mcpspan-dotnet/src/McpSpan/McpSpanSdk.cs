@@ -102,6 +102,11 @@ public static class McpSpanSdk
         {
             options.Filters.Request.GetPromptFilters.Add(GetFilter);
         }
+
+        if (!options.Filters.Request.ListToolsFilters.Contains(Definitions.ListFilter))
+        {
+            options.Filters.Request.ListToolsFilters.Add(Definitions.ListFilter);
+        }
     }
 
     internal static readonly McpRequestFilter<CallToolRequestParams, CallToolResult> Filter = next =>

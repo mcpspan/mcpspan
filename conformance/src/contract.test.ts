@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -9,6 +11,7 @@ import {
   type McpClient,
   SERVER_VERSION,
 } from './adapter.ts';
+import { definitionHash } from './definition.ts';
 import { FakeIngest } from './ingest.ts';
 
 /**
@@ -38,6 +41,7 @@ const EVENT_FIELDS = new Set([
   'clientVersion',
   'serverVersion',
   'responseBytes',
+  'definitionHash',
   'timestamp',
   'sdkVersion',
   'sessionId',
@@ -405,6 +409,38 @@ describe('3.7 Response size', () => {
 
     expect(only('config://app')['responseBytes']).toEqual(expect.any(Number));
     expect(only('plan_trip')['responseBytes']).toEqual(expect.any(Number));
+  });
+});
+
+describe('3.8 Tool definitions', () => {
+  it('fingerprints the shared cases as every SDK must', () => {
+    const shared = JSON.parse(readFileSync(new URL('../definition-hashes.json', import.meta.url), 'utf8')) as {
+      cases: { case: string; tool: Record<string, unknown>; hash: string }[];
+    };
+
+    for (const { case: name, tool, hash } of shared.cases) expect(definitionHash(tool), name).toBe(hash);
+  });
+
+  it('marks each call with the fingerprint of the tool as the server listed it', async () => {
+    const connection = await start();
+    const { tools } = await connection.client.listTools();
+    await run(connection, [{ name: 'ok' }, { name: 'ok' }, { name: 'typed', arguments: { destination: 'WAW', passengers: 2 } }]);
+
+    const listed = (name: string) => definitionHash(tools.find((tool) => tool['name'] === name) ?? {});
+    const ok = events().filter((event) => event['toolName'] === 'ok');
+    expect(ok.map((event) => event['definitionHash'])).toEqual([listed('ok'), listed('ok')]);
+    expect(only('typed')['definitionHash']).toBe(listed('typed'));
+    expect(listed('ok')).not.toBe(listed('typed'));
+  });
+
+  it('fingerprints no unknown tool, resource or prompt', async () => {
+    const connection = await start();
+    await connection.client.listTools();
+    await connection.client.readResource({ uri: 'config://app' }).catch(() => undefined);
+    await connection.client.getPrompt({ name: 'plan_trip', arguments: { destination: 'Lisbon' } }).catch(() => undefined);
+    await run(connection, [{ name: 'no_such_tool' }]);
+
+    for (const name of ['no_such_tool', 'config://app', 'plan_trip']) expect(only(name)).not.toHaveProperty('definitionHash');
   });
 });
 

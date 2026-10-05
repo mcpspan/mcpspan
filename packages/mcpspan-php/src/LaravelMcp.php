@@ -10,6 +10,7 @@ use McpSpan\Core\Collector;
 use McpSpan\LaravelMcp\CallTool;
 use McpSpan\LaravelMcp\GetPrompt;
 use McpSpan\LaravelMcp\Initialize;
+use McpSpan\LaravelMcp\ListTools;
 use McpSpan\LaravelMcp\ReadResource;
 
 /**
@@ -45,6 +46,7 @@ final class LaravelMcp
             }
 
             $server->addMethod('tools/call', CallTool::class);
+            $server->addMethod('tools/list', ListTools::class);
             $server->addMethod('resources/read', ReadResource::class);
             $server->addMethod('prompts/get', GetPrompt::class);
             $server->addMethod('initialize', Initialize::class);

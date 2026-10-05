@@ -190,6 +190,8 @@ final class Collector
                 Text::version($call->clientVersion),
                 Text::version($call->serverVersion),
                 self::responseBytes($response),
+                // A tool the server has, refused arguments included: often the schema is why.
+                null === $call->kind && Event::SOURCE_UNKNOWN_TOOL !== $source ? Definitions::of($call->toolName) : null,
             );
             $delivery->record($event->toArray());
         } catch (\Throwable) {

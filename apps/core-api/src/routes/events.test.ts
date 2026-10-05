@@ -323,3 +323,50 @@ describe('resources and prompts', () => {
     await expect(again.json()).resolves.toEqual({ accepted: 1, stored: 0 });
   });
 });
+
+describe('tool definitions (contract, 3.8)', () => {
+  async function definitions(): Promise<{ tool_name: string; hash: string; first: string; last: string }[]> {
+    const result = await getPool().query(
+      `SELECT tool_name, hash, first_seen_at::text AS first, last_seen_at::text AS last
+       FROM tool_definitions ORDER BY tool_name, first_seen_at`,
+    );
+    return result.rows as { tool_name: string; hash: string; first: string; last: string }[];
+  }
+
+  it('keeps when each definition of each tool was first and last seen', async () => {
+    await post({
+      events: [
+        event({ definitionHash: 'aaaaaaaaaaaaaaaa', timestamp: '2026-09-17T10:00:00.000Z' }),
+        event({ definitionHash: 'aaaaaaaaaaaaaaaa', timestamp: '2026-09-17T12:00:00.000Z' }),
+        event({ definitionHash: 'bbbbbbbbbbbbbbbb', timestamp: '2026-09-17T13:00:00.000Z' }),
+        event({ toolName: 'book_flight', definitionHash: 'aaaaaaaaaaaaaaaa', timestamp: '2026-09-17T11:00:00.000Z' }),
+      ],
+    });
+    // A batch resent, and an older call arriving late, only widen what is known.
+    await post({ events: [event({ definitionHash: 'aaaaaaaaaaaaaaaa', timestamp: '2026-09-17T09:00:00.000Z' })] });
+
+    expect(await definitions()).toEqual([
+      { tool_name: 'book_flight', hash: 'aaaaaaaaaaaaaaaa', first: '2026-09-17 11:00:00+00', last: '2026-09-17 11:00:00+00' },
+      { tool_name: 'search_flights', hash: 'aaaaaaaaaaaaaaaa', first: '2026-09-17 09:00:00+00', last: '2026-09-17 12:00:00+00' },
+      { tool_name: 'search_flights', hash: 'bbbbbbbbbbbbbbbb', first: '2026-09-17 13:00:00+00', last: '2026-09-17 13:00:00+00' },
+    ]);
+  });
+
+  it('ignores a fingerprint on anything but a call to a tool the server has', async () => {
+    const response = await post({
+      events: [
+        event({ kind: 'resource', toolName: 'trips://{id}', definitionHash: 'aaaaaaaaaaaaaaaa' }),
+        event({ success: false, errorSource: 'unknown_tool', toolName: 'ghost', definitionHash: 'aaaaaaaaaaaaaaaa' }),
+      ],
+    });
+
+    expect(response.status).toBe(202);
+    expect(await definitions()).toEqual([]);
+  });
+
+  it('refuses a fingerprint longer than 64 characters', async () => {
+    const response = await post({ events: [event({ definitionHash: 'a'.repeat(65) })] });
+
+    expect(response.status).toBe(400);
+  });
+});

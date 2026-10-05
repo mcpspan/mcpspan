@@ -116,6 +116,10 @@ func Record(call Call, outcome Outcome) {
 		event.ErrorMessage = outcome.ErrorMessage
 	}
 	event.ResponseBytes = ResponseBytes(outcome.Response)
+	// A tool the server has, refused arguments included: often the schema is why.
+	if call.Kind == "" && outcome.ErrorSource != SourceUnknownTool {
+		event.DefinitionHash = DefinitionOf(call.ToolName)
+	}
 	if capture {
 		event.Parameters = DescribeParameters(call.Arguments)
 	}

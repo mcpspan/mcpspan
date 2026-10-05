@@ -20,6 +20,8 @@ pub(crate) struct Event {
     pub server_version: Option<String>,
     /// Size of the answer, when there was one (contract, 3.7).
     pub response_bytes: Option<u64>,
+    /// The tool's definition as last listed, fingerprinted (contract, 3.8).
+    pub definition_hash: Option<String>,
     pub timestamp: String,
     pub session_id: Option<String>,
     pub parameters: Option<Map<String, Value>>,
@@ -57,6 +59,7 @@ impl Event {
         optional("clientVersion", self.client_version.clone().map(Value::from));
         optional("serverVersion", self.server_version.clone().map(Value::from));
         optional("responseBytes", self.response_bytes.map(Value::from));
+        optional("definitionHash", self.definition_hash.clone().map(Value::from));
         optional("timestamp", Some(self.timestamp.clone().into()));
         optional("sdkVersion", Some(crate::VERSION.into()));
         optional("sessionId", self.session_id.clone().map(Value::from));

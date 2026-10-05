@@ -139,6 +139,8 @@ module McpSpan
           client_version: Text.version(call.client_version),
           server_version: Text.version(call.server_version),
           response_bytes: response_bytes(response),
+          # A tool the server has, refused arguments included: often the schema is why.
+          definition_hash: call.kind.nil? && source != Source::UNKNOWN_TOOL ? Definitions.of(call.tool_name) : nil,
           timestamp: call.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%LZ"),
           session_id: call.session_id,
           parameters: call.parameters,

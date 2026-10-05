@@ -33,7 +33,9 @@ and nothing ever leaves your machine.
 - **Sessions.** Each connection's calls, step by step, as the agent made them.
 - **Releases.** Every call carries the version of your server that answered
   it; the charts mark where each release began and compare it with the one
-  before.
+  before. A tool's own chart also marks where its description or input schema
+  changed, since rewording a description can change how agents use a tool
+  more than a change to its code.
 - **Alerts** to Slack, Discord or any webhook, when errors climb or a server
   goes quiet, for a whole server or one tool.
 - **Your data, yours to take.** CSV and NDJSON exports of anything you can

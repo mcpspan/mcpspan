@@ -297,6 +297,12 @@ pub(crate) fn record_answered(call: Call, outcome: Outcome, response_bytes: Opti
         client_version: text::version(call.client_version.as_deref()),
         server_version: text::version(call.server_version.as_deref()),
         response_bytes,
+        // A tool the server has, refused arguments included: often the schema is why.
+        definition_hash: if call.kind.is_none() && error_source != Some(crate::event::source::UNKNOWN_TOOL) {
+            crate::definition::definition_of(&call.tool_name)
+        } else {
+            None
+        },
         timestamp: transport::iso8601(call.timestamp),
         session_id: call.session_id,
         parameters: call.parameters,

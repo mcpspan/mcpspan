@@ -6,7 +6,7 @@ subprojects {
     apply(plugin = "signing")
 
     group = "com.mcpspan"
-    version = "0.2.0"
+    version = "0.3.0"
 
     repositories {
         mavenCentral()

@@ -39,7 +39,33 @@ module McpSpan
 
       server.singleton_class.prepend(ServerHooks)
       server.singleton_class.prepend(Primitives::ServerHooks) if Primitives.hookable?
+      watch_listings(server)
       server
+    end
+
+    # Notes the tools each `tools/list` answer describes (contract, 3.8). The gem binds its handlers when the server
+    # is built, so the bound handler is wrapped where the server keeps it, taking the server's context only if the
+    # handler it wraps asks for it, as the gem decides from the handler's own parameters.
+    def watch_listings(server)
+      handlers = server.instance_variable_get(:@handlers)
+      method = ::MCP::Methods::TOOLS_LIST
+      original = handlers.is_a?(Hash) ? handlers[method] : nil
+      return unless original.respond_to?(:call) && original.respond_to?(:parameters)
+
+      note = lambda do |result|
+        Definitions.note(result[:tools] || result["tools"]) if Collector.collecting? && result.is_a?(Hash)
+        result
+      end
+      contextual = original.parameters.any? { |kind, name| %i[key keyreq].include?(kind) && name == :server_context }
+      handlers[method] = if contextual
+                           lambda do |params, server_context: nil|
+                             note.call(original.call(params, server_context: server_context))
+                           end
+                         else
+                           ->(params) { note.call(original.call(params)) }
+                         end
+    rescue StandardError
+      nil
     end
 
     def hookable?

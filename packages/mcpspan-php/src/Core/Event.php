@@ -44,6 +44,8 @@ final class Event
         public readonly ?string $serverVersion = null,
         /** Size of the answer, when there was one (contract, 3.7). */
         public readonly ?int $responseBytes = null,
+        /** The tool's definition as last listed, fingerprinted (contract, 3.8). */
+        public readonly ?string $definitionHash = null,
     ) {
     }
 
@@ -68,6 +70,7 @@ final class Event
             'clientVersion' => $this->clientVersion,
             'serverVersion' => $this->serverVersion,
             'responseBytes' => $this->responseBytes,
+            'definitionHash' => $this->definitionHash,
             'timestamp' => $this->timestamp,
             'sdkVersion' => McpSpan::VERSION,
             'sessionId' => $this->sessionId,

@@ -137,12 +137,18 @@ impl<S: ServerHandler> ServerHandler for Instrumented<S> {
         self.measure(request, context)
     }
 
-    fn list_tools(
+    async fn list_tools(
         &self,
         request: Option<PaginatedRequestParams>,
         context: RequestContext<RoleServer>,
-    ) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_ {
-        self.inner.list_tools(request, context)
+    ) -> Result<ListToolsResult, McpError> {
+        let result = self.inner.list_tools(request, context).await;
+        if let Ok(listing) = &result
+            && crate::collector::collecting()
+        {
+            crate::definition::note_listing(&listing.tools);
+        }
+        result
     }
 
     fn get_tool(&self, name: &str) -> Option<Tool> {

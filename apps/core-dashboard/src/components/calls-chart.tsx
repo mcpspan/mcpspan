@@ -40,18 +40,25 @@ export function CallsChart({
   points,
   bucketSeconds,
   versions = [],
+  definitionChanges = [],
 }: {
   points: ChartPoint[];
   /** How wide each point is, which decides what the axis labels say. */
   bucketSeconds: number;
   /** Server versions first seen in this window, to mark where each began. */
   versions?: { version: string; firstSeenAt: string }[];
+  /**
+   * Where one tool's definition changed. Only a tool's own chart is given
+   * these: on a whole server's chart, every tool's edits would bury the line.
+   */
+  definitionChanges?: { at: string }[];
 }) {
   const format = (value: string): string => formatTime(value, bucketSeconds);
+  const edits = editMarkersFor(points, bucketSeconds, definitionChanges);
 
   return (
     <figure className="m-0">
-      <Legend />
+      <Legend edited={edits.length > 0} />
 
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -109,6 +116,13 @@ export function CallsChart({
               />
             ))}
 
+            {/* Where the tool's definition changed: dotted, and unlabelled, the
+                legend saying what it is, so no text lands on a line or on a
+                version's label. Several edits in one bucket are one mark. */}
+            {edits.map((time) => (
+              <ReferenceLine key={`edit-${time}`} x={time} stroke="var(--color-ink-muted)" strokeDasharray="1 3" />
+            ))}
+
             {SERIES.map((series) => (
               <Area
                 key={series.key}
@@ -142,9 +156,9 @@ export function CallsChart({
  * alone and the chart stays readable printed, or to somebody who cannot tell
  * the two hues apart.
  */
-function Legend() {
+function Legend({ edited }: { edited: boolean }) {
   return (
-    <figcaption className="mb-3 flex items-center gap-4">
+    <figcaption className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
       {SERIES.map((series) => (
         <span key={series.key} className="flex items-center gap-1.5 text-xs text-ink-muted">
           <span
@@ -155,6 +169,12 @@ function Legend() {
           {series.label}
         </span>
       ))}
+      {edited ? (
+        <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+          <span aria-hidden className="h-3 border-l border-dotted border-ink-muted" />
+          Tool description or schema changed
+        </span>
+      ) : null}
     </figcaption>
   );
 }
@@ -209,6 +229,17 @@ function markersFor(
 
     return bucket === undefined ? [] : [{ version: version.version, time: bucket.time }];
   });
+}
+
+/** The buckets in which the definition changed, each once. */
+function editMarkersFor(points: ChartPoint[], bucketSeconds: number, changes: { at: string }[]): string[] {
+  const times = markersFor(
+    points,
+    bucketSeconds,
+    changes.map((change) => ({ version: change.at, firstSeenAt: change.at })),
+  ).map((marker) => marker.time);
+
+  return [...new Set(times)];
 }
 
 const HOUR = 3_600;

@@ -18,7 +18,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class DeliveryTest {
 
     static ToolCallEvent event(int id) {
-        return new ToolCallEvent(String.valueOf(id), null, "t", 0, true, null, null, null, "unknown", null, null, null, null, "", "", null, null);
+        return new ToolCallEvent(String.valueOf(id), null, "t", 0, true, null, null, null, "unknown", null, null, null, null, null, "", "", null, null);
     }
 
     /** Records each batch and answers from a script, then with success. */
@@ -74,7 +74,7 @@ class DeliveryTest {
     @Test
     void writesTheEventAsJsonLeavingAbsentFieldsOut() {
         ToolCallEvent event = new ToolCallEvent("1", null, "say \"hi\"\n", 1.5, false, "result", null, "m", "claude",
-            "Claude", "2.3.4", "1.0.0", 48213L, "2026-01-01T00:00:00.000Z", "0.1.0", null, Map.of("a", "string"));
+            "Claude", "2.3.4", "1.0.0", 48213L, null, "2026-01-01T00:00:00.000Z", "0.1.0", null, Map.of("a", "string"));
 
         String json = Transport.body(List.of(event));
 
