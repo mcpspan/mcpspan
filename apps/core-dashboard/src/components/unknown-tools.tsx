@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import type { UnknownPrimitive, UnknownTool } from '@/lib/api';
+import type { Afterwards, UnknownPrimitive, UnknownTool } from '@/lib/api';
 import { clientLabel, formatCount } from '@/lib/format';
 import { type Params, withParams } from '@/lib/query';
 import { LocalTime } from './local-time';
@@ -20,7 +20,8 @@ import { Card, CardHeader } from './ui/card';
  * the server has a name close to it, that is shown too: a near miss is a name
  * or a description to fix rather than a feature to add. Who asked is shown
  * as well: a name only one client reaches for is that client's habit, one
- * every client wants is something the server lacks. A
+ * every client wants is something the server lacks. And what the agent did
+ * next: went on to another tool, asked again, or stopped. A
  * resource is named by the scheme of the address asked for, which is all the
  * SDK records: the rest of it came from the client, and may be somebody's data.
  */
@@ -59,6 +60,7 @@ export function UnknownTools({
             lastCalledAt={tool.lastCalledAt}
             closest={tool.closest}
             clients={tool.clients}
+            afterwards={tool.afterwards}
             closestHref={
               tool.closest === null
                 ? undefined
@@ -81,6 +83,7 @@ export function UnknownTools({
             lastCalledAt={item.lastCalledAt}
             closest={item.closest ?? null}
             clients={item.clients ?? []}
+            afterwards={item.afterwards ?? null}
             href={`/errors${withParams(params, {
               errorSource: item.source,
               toolName: undefined,
@@ -103,6 +106,7 @@ function Row({
   lastCalledAt,
   closest,
   clients,
+  afterwards,
   closestHref,
   href,
 }: {
@@ -112,6 +116,7 @@ function Row({
   lastCalledAt: string;
   closest: string | null;
   clients: { clientType: string; calls: number }[];
+  afterwards: Afterwards | null;
   /** Where the suggested name leads, when it has a page of its own. */
   closestHref?: string;
   href: string;
@@ -124,6 +129,7 @@ function Row({
           {name}
         </Link>
         <AskedBy clients={clients} />
+        <Next afterwards={afterwards} />
         {closest === null ? null : (
           <span className="mt-0.5 block text-xs text-ink-muted">
             Closest on this server:{' '}
@@ -163,6 +169,32 @@ function AskedBy({ clients }: { clients: { clientType: string; calls: number }[]
             rest > 0 ? `, +${rest} more` : ''
           }`
         : `Only from ${clientLabel(only.clientType)}`}
+    </span>
+  );
+}
+
+/** What the agent did next: "Next: search_flights 6, asked again 2, stopped 3". */
+function Next({ afterwards }: { afterwards: Afterwards | null }) {
+  if (afterwards === null) return null;
+
+  const parts: ReactNode[] = afterwards.called.map((call) => (
+    <span key={`${call.kind}:${call.name}`}>
+      <span className="font-mono">{call.name}</span> {formatCount(call.calls)}
+    </span>
+  ));
+  if (afterwards.again > 0) parts.push(<span key="again">asked again {formatCount(afterwards.again)}</span>);
+  if (afterwards.stopped > 0) parts.push(<span key="stopped">stopped {formatCount(afterwards.stopped)}</span>);
+  if (parts.length === 0) return null;
+
+  return (
+    <span className="mt-0.5 block text-xs text-ink-muted">
+      Next:{' '}
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 ? ', ' : null}
+          {part}
+        </span>
+      ))}
     </span>
   );
 }

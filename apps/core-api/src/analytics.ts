@@ -440,7 +440,32 @@ export interface UnknownTool {
    * something the server is missing.
    */
   clients: { clientType: string; calls: number }[];
+  /** What the agent did next in the same session; null when no call to it had a session to follow. */
+  afterwards: Afterwards | null;
 }
+
+/**
+ * What came right after the calls to a missing name, in the same session.
+ *
+ * An agent that went on to call the right tool hit a naming problem; one that
+ * asked again was stuck; one that stopped got nothing it could use. Calls
+ * without a session, as stateless HTTP sends them, cannot be followed and are
+ * left out.
+ */
+export interface Afterwards {
+  /** Calls to something else next, most frequent first, at most a few. */
+  called: { kind: CallKind; name: string; calls: number }[];
+  /** The same missing name asked for again, straight after. */
+  again: number;
+  /** Nothing more in the session. */
+  stopped: number;
+}
+
+/** Next calls named; the rest are only counted in the total. */
+const MAX_NEXT_CALLS = 3;
+
+/** How far past the window to look for the next call, so one just after its end still counts. */
+const FOLLOW_UP_GRACE = '1 hour';
 
 /** How far back a name counts as one the server has, for suggesting it. */
 const KNOWN_NAMES_DAYS = 30;
@@ -486,9 +511,10 @@ export async function getUnknownTools(
 
   const { items, hasMore } = takePage(result.rows, page);
   const names = items.map((row) => row.tool_name);
-  const [known, clients] = await Promise.all([
+  const [known, clients, afterwards] = await Promise.all([
     names.length === 0 || kind === 'resource' ? [] : knownNames(serverId, kind),
     names.length === 0 ? new Map<string, UnknownTool['clients']>() : askedBy(serverId, range, kind, names),
+    names.length === 0 ? new Map<string, Afterwards>() : whatNext(serverId, range, kind, names),
   ]);
 
   return {
@@ -498,9 +524,75 @@ export async function getUnknownTools(
       lastCalledAt: row.last_at.toISOString(),
       closest: closestName(row.tool_name, known),
       clients: clients.get(row.tool_name) ?? [],
+      afterwards: afterwards.get(row.tool_name) ?? null,
     })),
     hasMore,
   };
+}
+
+/**
+ * What followed each call to these missing names in its session: the next
+ * call of any kind, by time, then by id to settle calls in the same instant.
+ */
+async function whatNext(
+  serverId: string,
+  range: TimeRange,
+  kind: CallKind,
+  names: string[],
+): Promise<Map<string, Afterwards>> {
+  const table = CALL_TABLES[kind];
+  const every = (Object.keys(CALL_TABLES) as CallKind[]).map(
+    (each) =>
+      `SELECT id, session_id, occurred_at, '${each}' AS kind, ${CALL_TABLES[each].name} AS name
+       FROM ${CALL_TABLES[each].raw}
+       WHERE server_id = $1
+         AND occurred_at >= $2
+         AND occurred_at < $3::timestamptz + interval '${FOLLOW_UP_GRACE}'
+         AND session_id IN (SELECT session_id FROM asked)`,
+  );
+  const result = await getPool().query<{
+    name: string;
+    next_kind: CallKind | null;
+    next_name: string | null;
+    calls: string;
+  }>(
+    `WITH asked AS (
+       SELECT id, session_id, ${table.name} AS name
+       FROM ${table.raw}
+       WHERE server_id = $1
+         AND occurred_at >= $2
+         AND occurred_at < $3
+         AND NOT success
+         AND error_source = $4
+         AND ${table.name} = ANY($5)
+         AND session_id IS NOT NULL
+     ),
+     ordered AS (
+       SELECT id, kind,
+              lead(kind) OVER session AS next_kind,
+              lead(name) OVER session AS next_name
+       FROM (${every.join(' UNION ALL ')}) AS calls
+       WINDOW session AS (PARTITION BY session_id ORDER BY occurred_at, id)
+     )
+     SELECT asked.name, ordered.next_kind, ordered.next_name, count(*) AS calls
+     FROM asked
+     JOIN ordered ON ordered.id = asked.id AND ordered.kind = '${kind}'
+     GROUP BY asked.name, ordered.next_kind, ordered.next_name
+     ORDER BY calls DESC, ordered.next_name ASC`,
+    [serverId, range.from, range.to, table.unknown, names],
+  );
+
+  const byName = new Map<string, Afterwards>();
+  for (const row of result.rows) {
+    const entry = byName.get(row.name) ?? { called: [], again: 0, stopped: 0 };
+    const calls = Number(row.calls);
+    if (row.next_kind === null || row.next_name === null) entry.stopped += calls;
+    else if (row.next_kind === kind && row.next_name === row.name) entry.again += calls;
+    else if (entry.called.length < MAX_NEXT_CALLS) entry.called.push({ kind: row.next_kind, name: row.next_name, calls });
+    byName.set(row.name, entry);
+  }
+
+  return byName;
 }
 
 /** Which clients asked for each of these missing names, most first. */

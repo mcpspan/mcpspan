@@ -155,6 +155,13 @@ export interface CallList {
   nextCursor: string | null;
 }
 
+/** What came right after calls to a missing name, in the same session. */
+export interface Afterwards {
+  called: { kind: 'tool' | 'resource' | 'prompt'; name: string; calls: number }[];
+  again: number;
+  stopped: number;
+}
+
 export interface UnknownTool {
   toolName: string;
   calls: number;
@@ -163,6 +170,8 @@ export interface UnknownTool {
   closest: string | null;
   /** Who asked, most first. */
   clients: { clientType: string; calls: number }[];
+  /** What the agent did next in the same session; null when nothing could be followed. */
+  afterwards: Afterwards | null;
 }
 
 export interface UnknownTools extends PageInfo {
@@ -188,6 +197,8 @@ export interface UnknownPrimitive {
   closest: string | null;
   /** Who asked, most first. */
   clients: { clientType: string; calls: number }[];
+  /** What the agent did next in the same session; null when nothing could be followed. */
+  afterwards: Afterwards | null;
 }
 
 export interface ResourcesAndPrompts {

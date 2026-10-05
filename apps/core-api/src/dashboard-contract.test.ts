@@ -220,6 +220,7 @@ describe('getUnknownTools', () => {
         calls: 1,
         lastCalledAt: expect.any(String),
         closest: null,
+        afterwards: null,
         clients: [{ clientType: expect.any(String), calls: 1 }],
       },
     ]);
@@ -480,6 +481,7 @@ describe('getResourcesAndPrompts', () => {
         calls: 1,
         lastCalledAt: expect.any(String),
         closest: null,
+        afterwards: null,
         clients: [{ clientType: expect.any(String), calls: 1 }],
       },
     ]);

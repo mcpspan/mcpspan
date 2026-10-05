@@ -115,6 +115,7 @@ describe('calls to tools that do not exist', () => {
         calls: 3,
         lastCalledAt: expect.any(String),
         closest: null,
+        afterwards: null,
         clients: [{ clientType: 'claude', calls: 3 }],
       },
       {
@@ -122,6 +123,7 @@ describe('calls to tools that do not exist', () => {
         calls: 1,
         lastCalledAt: expect.any(String),
         closest: null,
+        afterwards: null,
         clients: [{ clientType: 'claude', calls: 1 }],
       },
     ]);
@@ -161,6 +163,48 @@ describe('calls to tools that do not exist', () => {
     expect(tools.find((tool) => tool.toolName === 'cancel')?.clients).toEqual([
       { clientType: 'cursor', calls: 2 },
       { clientType: 'claude', calls: 1 },
+    ]);
+  });
+
+  it('say what the agent did next in the same session', async () => {
+    const renamed = '00000000-0000-4000-8000-0000000000a1';
+    const stuck = '00000000-0000-4000-8000-0000000000a2';
+    const at = (seconds: number) => new Date(Date.now() - 60_000 + seconds * 1000);
+    await seedEvents(account.serverId, [
+      // Went on to the right tool.
+      { toolName: 'search_flight', success: false, errorSource: 'unknown_tool', sessionId: renamed, occurredAt: at(0) },
+      { toolName: 'search_flights', sessionId: renamed, occurredAt: at(2) },
+      // Asked again, then gave up.
+      { toolName: 'search_flight', success: false, errorSource: 'unknown_tool', sessionId: stuck, occurredAt: at(0) },
+      { toolName: 'search_flight', success: false, errorSource: 'unknown_tool', sessionId: stuck, occurredAt: at(1) },
+      // No session to follow: left out.
+      { toolName: 'search_flight', success: false, errorSource: 'unknown_tool', occurredAt: at(3) },
+    ]);
+
+    const { tools } = await get<{
+      tools: { toolName: string; afterwards: { called: unknown[]; again: number; stopped: number } | null }[];
+    }>('unknown-tools');
+
+    expect(tools.find((tool) => tool.toolName === 'search_flight')?.afterwards).toEqual({
+      called: [{ kind: 'tool', name: 'search_flights', calls: 1 }],
+      again: 1,
+      stopped: 1,
+    });
+  });
+
+  it('follow the agent to a resource or a prompt as well', async () => {
+    const session = '00000000-0000-4000-8000-0000000000a3';
+    await seedEvents(account.serverId, [
+      { toolName: 'trip_plan', success: false, errorSource: 'unknown_tool', sessionId: session, occurredAt: ago(1) },
+      { kind: 'prompt', toolName: 'plan_trip', sessionId: session, occurredAt: new Date(ago(1).getTime() + 1000) },
+    ]);
+
+    const { tools } = await get<{ tools: { toolName: string; afterwards: { called: unknown[] } | null }[] }>(
+      'unknown-tools',
+    );
+
+    expect(tools.find((tool) => tool.toolName === 'trip_plan')?.afterwards?.called).toEqual([
+      { kind: 'prompt', name: 'plan_trip', calls: 1 },
     ]);
   });
 
