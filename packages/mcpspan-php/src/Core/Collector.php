@@ -192,6 +192,7 @@ final class Collector
                 self::responseBytes($response),
                 // A tool the server has, refused arguments included: often the schema is why.
                 null === $call->kind && Event::SOURCE_UNKNOWN_TOOL !== $source ? Definitions::of($call->toolName) : null,
+                null === $call->kind && $call->repeated ? true : null,
             );
             $delivery->record($event->toArray());
         } catch (\Throwable) {

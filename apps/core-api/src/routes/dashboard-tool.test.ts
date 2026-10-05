@@ -30,6 +30,7 @@ interface Details {
   sampled: boolean;
   responseSizes: { measured: number; medianBytes: number; p95Bytes: number; maxBytes: number } | null;
   definitionChanges: { at: string }[];
+  repeats: { repeated: number; of: number };
 }
 
 beforeEach(async () => {
@@ -190,6 +191,19 @@ describe("a tool's own page", () => {
     const { definitionChanges } = await get<Details>('tool-details?toolName=search');
 
     expect(definitionChanges).toEqual([]);
+  });
+
+  it('counts the calls an agent repeated with the same arguments, out of the calls read', async () => {
+    await seedEvents(account.serverId, [
+      { toolName: 'export_trip', occurredAt: ago(10) },
+      { toolName: 'export_trip', occurredAt: ago(9), repeated: true },
+      { toolName: 'export_trip', occurredAt: ago(8), repeated: true },
+      { toolName: 'get_weather', occurredAt: ago(8), repeated: true },
+    ]);
+
+    const { repeats } = await get<Details>('tool-details?toolName=export_trip');
+
+    expect(repeats).toEqual({ repeated: 2, of: 3 });
   });
 
   it('needs to be told which tool', async () => {

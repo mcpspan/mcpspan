@@ -23,11 +23,14 @@ type Event struct {
 	// ResponseBytes is the size of the answer, when there was one (contract, 3.7).
 	ResponseBytes *int64 `json:"responseBytes,omitempty"`
 	// DefinitionHash fingerprints the tool as last listed (contract, 3.8).
-	DefinitionHash string            `json:"definitionHash,omitempty"`
-	Timestamp      string            `json:"timestamp"`
-	SDKVersion     string            `json:"sdkVersion"`
-	SessionID      string            `json:"sessionId,omitempty"`
-	Parameters     map[string]string `json:"parameters,omitempty"`
+	DefinitionHash string `json:"definitionHash,omitempty"`
+	// Repeated is true when the arguments were the previous call's to the
+	// same tool in this session (contract, 3.9), and absent otherwise.
+	Repeated   bool              `json:"repeated,omitempty"`
+	Timestamp  string            `json:"timestamp"`
+	SDKVersion string            `json:"sdkVersion"`
+	SessionID  string            `json:"sessionId,omitempty"`
+	Parameters map[string]string `json:"parameters,omitempty"`
 }
 
 // Error sources, as the contract names them.
@@ -50,4 +53,4 @@ const (
 
 // Version is the SDK's own version, reported in every event and in the
 // User-Agent.
-const Version = "0.3.0"
+const Version = "0.4.0"

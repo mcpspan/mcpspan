@@ -6,8 +6,8 @@ module McpSpan
   # One call of a tool, a resource or a prompt, in the shape the ingest API takes. Parameter values are never in it.
   Event = Struct.new(
     :id, :kind, :tool_name, :duration_ms, :success, :error_source, :error_type, :error_message,
-    :client_type, :client_name, :client_version, :server_version, :response_bytes, :definition_hash, :timestamp,
-    :session_id, :parameters,
+    :client_type, :client_name, :client_version, :server_version, :response_bytes, :definition_hash, :repeated,
+    :timestamp, :session_id, :parameters,
     keyword_init: true,
   ) do
     # The event as the API takes it, leaving absent fields out rather than sending them as null.
@@ -27,6 +27,7 @@ module McpSpan
         serverVersion: server_version,
         responseBytes: response_bytes,
         definitionHash: definition_hash,
+        repeated: repeated,
         timestamp: timestamp,
         sdkVersion: VERSION,
         sessionId: session_id,

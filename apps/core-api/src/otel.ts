@@ -117,6 +117,7 @@ export function parseHeaders(raw: string): Record<string, string> {
 type AnyValue =
   | { stringValue: string }
   | { intValue: string }
+  | { boolValue: boolean }
   | { arrayValue: { values: { stringValue: string }[] } };
 type KeyValue = { key: string; value: AnyValue };
 
@@ -275,6 +276,7 @@ export class OtelExporter {
               ...attribute('mcpspan.client.version', event.clientVersion),
               ...intAttribute('mcpspan.response.size', event.responseBytes),
               ...attribute('mcpspan.tool.definition', event.definitionHash),
+              ...(event.repeated === true ? [{ key: 'mcpspan.call.repeated', value: { boolValue: true } }] : []),
               ...attribute('mcpspan.parameter.names', event.parameters ? Object.keys(event.parameters) : undefined),
             ],
             status: event.success ? { code: 0 } : { code: 2, ...(event.errorMessage ? { message: event.errorMessage } : {}) },

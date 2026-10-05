@@ -26,6 +26,7 @@ public final class Call {
     private volatile String clientVersion;
     private volatile String serverVersion;
     private volatile boolean reached;
+    private volatile boolean repeated;
     private volatile boolean recorded;
 
     /** A call starting now. */
@@ -54,6 +55,17 @@ public final class Call {
     public Call versions(String clientVersion, String serverVersion) {
         this.clientVersion = clientVersion;
         this.serverVersion = serverVersion;
+        return this;
+    }
+
+    /**
+     * Compares the call's arguments with the previous call's to the same tool in its session (contract, 3.9), once,
+     * as the request arrives; {@code params}, the request's, say whether it continues an earlier call instead.
+     */
+    public Call compareArguments(Object params) {
+        if (sessionId != null && kind == null && !Repeats.continuesEarlierCall(params)) {
+            this.repeated = Repeats.note(sessionId, toolName, arguments);
+        }
         return this;
     }
 
@@ -127,6 +139,7 @@ public final class Call {
                 responseBytes,
                 // A tool the server has, refused arguments included: often the schema is why.
                 kind == null && !ToolCallEvent.UNKNOWN_TOOL.equals(source) ? Definitions.of(toolName) : null,
+                kind == null && repeated ? Boolean.TRUE : null,
                 timestamp,
                 Version.CURRENT,
                 sessionId,

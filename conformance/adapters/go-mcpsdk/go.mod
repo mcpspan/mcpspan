@@ -3,8 +3,8 @@ module github.com/mcpspan/mcpspan/conformance/adapters/go-mcpsdk
 go 1.25.0
 
 require (
-	github.com/mcpspan/mcpspan/packages/mcpspan-go v0.3.0
-	github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpsdk v0.3.0
+	github.com/mcpspan/mcpspan/packages/mcpspan-go v0.4.0
+	github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpsdk v0.4.0
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 )
 

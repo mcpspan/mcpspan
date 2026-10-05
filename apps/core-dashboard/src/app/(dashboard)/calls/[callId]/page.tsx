@@ -163,6 +163,9 @@ function Detail({ call, carried }: { call: CallDetail; carried: Record<string, s
                 </Link>
               ),
             ],
+            ...(call.repeated
+              ? [['Repeated', 'Same arguments as this tool\'s call before it in the session'] as [string, string]]
+              : []),
             [
               'Answer size',
               call.responseBytes === null ? (

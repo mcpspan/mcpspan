@@ -13,6 +13,7 @@ use Laravel\Mcp\Transport\JsonRpcResponse;
 use McpSpan\Core\Call;
 use McpSpan\Core\Collector;
 use McpSpan\Core\Event;
+use McpSpan\Core\Repeats;
 use McpSpan\Core\Text;
 use McpSpan\McpSpan;
 use McpSpan\Measuring;
@@ -40,6 +41,8 @@ final class CallTool extends LaravelCallTool
             $tool = $context->tools()->first(static fn ($candidate): bool => $candidate instanceof Tool && $candidate->name() === $name);
             if (!McpSpan::excluded($name, $tool instanceof Tool ? new \ReflectionClass($tool) : null)) {
                 $call = Collector::begin($name, self::arguments($request), Connection::client($request), Connection::session(), null, $context->implementation->version);
+                // Compared once, as the request arrives, before any validation (contract, 3.9).
+                $call?->compareArguments(self::arguments($request), Repeats::continuesEarlierCall($request->params));
             }
         } catch (\Throwable) {
         }

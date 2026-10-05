@@ -58,8 +58,8 @@ export function definitionHash(tool: Record<string, unknown>): string | undefine
   }
 }
 
-/** Sorted keys, no whitespace, minimal escaping: the same text in every SDK. */
-function canonical(value: unknown): string {
+/** Sorted keys, no whitespace, minimal escaping: the same text in every SDK. Throws on what JSON cannot hold. */
+export function canonical(value: unknown): string {
   if (value === null) return 'null';
   if (typeof value === 'boolean') return String(value);
   if (typeof value === 'number') {

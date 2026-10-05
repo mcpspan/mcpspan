@@ -25,6 +25,9 @@ type Call struct {
 	ServerVersion string
 	SessionID     string
 	Started       time.Time
+	// Repeated says the arguments were the previous call's to the same tool
+	// in this session (contract, 3.9).
+	Repeated bool
 }
 
 // MaxVersionLength is the longest version the API takes; longer is cut.
@@ -119,6 +122,9 @@ func Record(call Call, outcome Outcome) {
 	// A tool the server has, refused arguments included: often the schema is why.
 	if call.Kind == "" && outcome.ErrorSource != SourceUnknownTool {
 		event.DefinitionHash = DefinitionOf(call.ToolName)
+	}
+	if call.Kind == "" && call.Repeated {
+		event.Repeated = true
 	}
 	if capture {
 		event.Parameters = DescribeParameters(call.Arguments)

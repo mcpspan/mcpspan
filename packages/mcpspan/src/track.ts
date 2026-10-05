@@ -151,6 +151,7 @@ export function track<TArgs extends unknown[], TResult>(
           sdkVersion: SDK_VERSION,
           ...(session !== undefined && { sessionId: session }),
           ...definition(toolName),
+          ...(call?.repeated === true && { repeated: true }),
           ...outcome,
         });
       } catch {
@@ -279,6 +280,8 @@ export function recordRefusedCall(refused: {
   client: ClientInfo | undefined;
   /** The version the server gives itself. */
   serverVersion?: string | undefined;
+  /** The arguments are the previous call's to the same tool in this session (contract, 3.9). */
+  repeated?: boolean;
 }): void {
   const active = sink;
   if (active === undefined) return;
@@ -300,6 +303,7 @@ export function recordRefusedCall(refused: {
       ...(refused.sessionId !== undefined && { sessionId: refused.sessionId }),
       // A tool the server has, whose arguments it refused: often the schema is why.
       ...(refused.errorSource === 'unknown_tool' ? {} : definition(refused.toolName)),
+      ...(refused.repeated === true && { repeated: true }),
     });
   } catch {
     // Recording a refusal must never disturb the answer the client gets.

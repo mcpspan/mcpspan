@@ -236,6 +236,11 @@ function SessionList({
                     {formatCount(session.failures)} failed
                   </span>
                 ) : null}
+                {session.repeated > 0 ? (
+                  <span className="text-xs text-status-warning-ink">
+                    {formatCount(session.repeated)} repeated
+                  </span>
+                ) : null}
               </p>
               <p className="mt-1 text-xs text-ink-muted">
                 {clientLabel(session.clientType)}

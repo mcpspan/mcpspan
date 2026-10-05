@@ -48,6 +48,12 @@ module McpSpan
         nil
       end
 
+      # A value as canonical JSON (contract, 3.8), read the way it was sent: through JSON, so symbols and strings
+      # alike. Raises on what cannot be written so.
+      def canonical_text(value)
+        canonical(JSON.parse(JSON.generate(value)))
+      end
+
       private
 
       # Sorted keys, no whitespace, minimal escaping: the same text in every SDK.

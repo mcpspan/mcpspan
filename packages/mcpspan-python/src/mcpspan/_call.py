@@ -28,6 +28,8 @@ class CallState:
     server_version: str | None = None
     reached: bool = False
     interim: bool = False
+    repeated: bool = False
+    """The arguments are the previous call's to the same tool in this session (contract, 3.9)."""
 
 
 current_call: ContextVar[CallState | None] = ContextVar("mcpspan_call", default=None)

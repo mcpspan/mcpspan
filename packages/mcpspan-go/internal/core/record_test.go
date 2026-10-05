@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"strconv"
 	"testing"
 )
 
@@ -62,5 +63,49 @@ func TestNoteListingKeepsTheLatestFingerprintOfEachTool(t *testing.T) {
 	}
 	if DefinitionOf("b") == "" || DefinitionOf("c") != "" {
 		t.Fatalf("b %q, c %q", DefinitionOf("b"), DefinitionOf("c"))
+	}
+}
+
+func TestNoteArgumentsTellsARepeatWhateverTheKeyOrder(t *testing.T) {
+	defer ForgetArguments()
+	steps := []struct {
+		session, tool string
+		arguments     any
+		want          bool
+	}{
+		{"s1", "search", json.RawMessage(`{"to":"WAW","n":2}`), false},
+		{"s1", "search", map[string]any{"n": 2, "to": "WAW"}, true},
+		{"s1", "search", json.RawMessage(`{"to":"KRK","n":2}`), false},
+		{"s1", "book", json.RawMessage(`{"to":"KRK","n":2}`), false},
+		{"s2", "search", json.RawMessage(`{"to":"KRK","n":2}`), false},
+		{"s1", "list", nil, false},
+		{"s1", "list", map[string]any{}, true},
+		{"s1", "odd", make(chan int), false},
+		{"s1", "odd", make(chan int), false},
+	}
+	for i, step := range steps {
+		if got := NoteArguments(step.session, step.tool, step.arguments); got != step.want {
+			t.Fatalf("step %d: got %v, want %v", i, got, step.want)
+		}
+	}
+}
+
+func TestNoteArgumentsForgetsTheOldestPastItsBound(t *testing.T) {
+	defer ForgetArguments()
+	NoteArguments("first", "search", map[string]any{"to": "WAW"})
+	for i := 0; i < maxKept; i++ {
+		NoteArguments(strconv.Itoa(i), "search", nil)
+	}
+	if NoteArguments("first", "search", map[string]any{"to": "WAW"}) {
+		t.Fatal("a forgotten pair still counted as a repeat")
+	}
+}
+
+func TestContinuesEarlierCallKnowsARetryAnsweringAQuestion(t *testing.T) {
+	if !ContinuesEarlierCall(map[string]any{"name": "a", "requestState": "x"}) ||
+		!ContinuesEarlierCall(map[string]any{"inputResponses": map[string]any{"q": 1}}) ||
+		ContinuesEarlierCall(map[string]any{"name": "a", "requestState": ""}) ||
+		ContinuesEarlierCall(map[string]any{"name": "a"}) {
+		t.Fatal("misread a retry")
 	}
 }

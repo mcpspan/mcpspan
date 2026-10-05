@@ -290,6 +290,35 @@ lets the dashboard mark when a tool's definition changed.
   one SDK to another must not look like a change.
 - Not for resource reads, prompt gets, or calls the server refused as unknown.
 
+### 3.9 Repeated calls
+
+An agent stuck in a loop calls the same tool with the same arguments again
+and again, and each call looks fine on its own. So a tool call SHOULD carry
+`repeated: true` when its arguments are the same as those of the previous
+call to the same tool in the same session (8).
+
+- Arguments are compared as the client sent them, before any validation, so
+  the same bad arguments sent twice are a repeat. Two argument objects are
+  the same when their canonical JSON (3.8) is.
+- The comparison is made in the process and only its outcome leaves it. The
+  SDK keeps, for each session and tool, a SHA-256 of the canonical arguments
+  of the latest call, and nothing else; no digest, no value, no part of one
+  is ever sent. A digest is not private on its own (a short identifier or an
+  enumerated value can be found by trying every candidate), which is why it
+  never leaves.
+- What is kept is bounded: an SDK keeps at most 10,000 session and tool
+  pairs, forgetting the oldest first. A pair forgotten makes its next call
+  look new, which only ever undercounts.
+- Every tool call counts, those the server refused included (an agent
+  retrying the same unknown tool or the same bad arguments is the commonest
+  loop). Not resource reads or prompt gets, and not a call without a session,
+  which cannot be told apart from another client's.
+- A call whose parameters carry `inputResponses` or `requestState` answers
+  an interim result's question (2026-07-28) and continues the call that
+  asked; it is neither compared nor kept, so the call it completes is not
+  counted as its own repeat.
+- `repeated` is absent rather than false on any other call.
+
 ## 4. The event
 
 A batch is a JSON object with one field, `events`, an array of these:
@@ -310,6 +339,7 @@ A batch is a JSON object with one field, `events`, an array of these:
 | `serverVersion` | string | no | 100 characters | The version of the server that answered (3.6). |
 | `responseBytes` | integer | no | 0 to 2,147,483,647 | Size of the answer, in bytes (3.7). |
 | `definitionHash` | string | no | 64 characters | The tool's definition, as listed, fingerprinted (3.8). |
+| `repeated` | boolean | no | | `true` when the call's arguments are the previous call's to the same tool in the same session (3.9); absent otherwise. |
 | `timestamp` | string | yes | ISO 8601 with an offset | When the call started, by the reporting machine's clock. |
 | `sdkVersion` | string | yes | 1 to 50 characters | The SDK's own version. |
 | `sessionId` | UUID string | no | | See 8. |
@@ -343,6 +373,9 @@ A batch is a JSON object with one field, `events`, an array of these:
   is why it is kept shorter than an exception's.
 - An answer MAY be encoded to measure its size (3.7), and MUST then be
   dropped: the size is all that leaves the process.
+- Arguments MAY be digested to tell a repeated call (3.9), and the digest
+  MUST stay in the process: only whether the call repeated the previous one
+  is sent.
 - An SDK MUST NOT record anything that identifies a person: no IP address, no
   user identifier, no transport session identifier (see 8).
 - The address a client read MUST NOT be recorded, only the URI or template

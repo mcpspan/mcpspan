@@ -67,6 +67,11 @@ export interface ToolDetails {
    * began, not a change, and is never here.
    */
   definitionChanges: { at: string }[];
+  /**
+   * Calls whose arguments were the previous call's to the same tool in the
+   * session (contract, 3.9), out of the calls read: an agent looping.
+   */
+  repeats: { repeated: number; of: number };
 }
 
 /**
@@ -88,13 +93,14 @@ export async function getToolDetails(
     parameters: { offset: 0, limit: MAX_PARAMETERS },
   },
 ): Promise<ToolDetails> {
-  const [failures, messages, parameters, sampled, sizes, changes] = await Promise.all([
+  const [failures, messages, parameters, sampled, sizes, changes, repeats] = await Promise.all([
     failureShares(serverId, toolName, range),
     failureMessages(serverId, toolName, range, maxScanned, pages.messages),
     parameterUse(serverId, toolName, range, maxScanned, pages.parameters),
     wasSampled(serverId, toolName, range, maxScanned),
     responseSizes(serverId, toolName, range, maxScanned),
     definitionChanges(serverId, toolName, range),
+    repeatedCalls(serverId, toolName, range, maxScanned),
   ]);
 
   return {
@@ -107,7 +113,31 @@ export async function getToolDetails(
     sampled,
     responseSizes: sizes,
     definitionChanges: changes,
+    repeats,
   };
+}
+
+/** Repeated calls among the newest in the window, read as the other lists are. */
+async function repeatedCalls(
+  serverId: string,
+  toolName: string,
+  range: TimeRange,
+  maxScanned: number,
+): Promise<{ repeated: number; of: number }> {
+  const result = await getPool().query<{ repeated: string; of: string }>(
+    `SELECT count(*) FILTER (WHERE repeated) AS repeated, count(*) AS of
+     FROM (
+       SELECT repeated
+       FROM tool_calls
+       WHERE server_id = $1 AND tool_name = $2 AND occurred_at >= $3 AND occurred_at < $4
+       ORDER BY occurred_at DESC
+       LIMIT $5
+     ) AS newest`,
+    [serverId, toolName, range.from, range.to, maxScanned],
+  );
+  const row = result.rows[0];
+
+  return { repeated: Number(row?.repeated ?? 0), of: Number(row?.of ?? 0) };
 }
 
 /**

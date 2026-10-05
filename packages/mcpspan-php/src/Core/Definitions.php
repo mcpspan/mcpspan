@@ -76,6 +76,15 @@ final class Definitions
         }
     }
 
+    /**
+     * A value as canonical JSON (contract, 3.8), read the way it was sent: written to JSON and read back, so an empty
+     * object stays an object. Throws on what cannot be written so.
+     */
+    public static function canonicalText(mixed $value): string
+    {
+        return self::canonical(json_decode(json_encode($value, \JSON_THROW_ON_ERROR), false, 512, \JSON_THROW_ON_ERROR));
+    }
+
     /** Sorted keys, no whitespace, minimal escaping: the same text in every SDK. */
     private static function canonical(mixed $value): string
     {

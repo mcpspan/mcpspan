@@ -189,6 +189,8 @@ pub(crate) struct Call {
     /// The one the SDK was told, or else the one the server gives itself.
     pub server_version: Option<String>,
     pub session_id: Option<String>,
+    /// The arguments were the previous call's to the same tool in this session (contract, 3.9).
+    pub repeated: bool,
     pub started: Instant,
     pub timestamp: SystemTime,
 }
@@ -241,6 +243,7 @@ pub(crate) fn begin(
             Some(configured)
         },
         session_id,
+        repeated: false,
         started,
         timestamp,
     })
@@ -303,6 +306,7 @@ pub(crate) fn record_answered(call: Call, outcome: Outcome, response_bytes: Opti
         } else {
             None
         },
+        repeated: call.kind.is_none() && call.repeated,
         timestamp: transport::iso8601(call.timestamp),
         session_id: call.session_id,
         parameters: call.parameters,

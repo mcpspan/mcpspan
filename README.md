@@ -30,7 +30,9 @@ and nothing ever leaves your machine.
   error, arguments the server refused, and tools that agents asked for but
   your server does not have: which clients asked, the closest name you do
   have, and what the agent did next.
-- **Sessions.** Each connection's calls, step by step, as the agent made them.
+- **Sessions.** Each connection's calls, step by step, as the agent made them,
+  with the calls an agent repeated with the same arguments marked: a loop
+  that looks fine one call at a time.
 - **Releases.** Every call carries the version of your server that answered
   it; the charts mark where each release began and compare it with the one
   before. A tool's own chart also marks where its description or input schema

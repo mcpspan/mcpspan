@@ -36,6 +36,8 @@ export interface CallRecord {
   /** As the server gives itself in its handshake, or as the SDK was told. */
   serverVersion: string | null;
   clientVersion: string | null;
+  /** Its arguments were the previous call's to the same tool in the session: an agent looping (contract, 3.9). */
+  repeated: boolean;
 }
 
 /** One call with everything recorded about it. Parameter values are never stored, so never here. */
@@ -50,7 +52,7 @@ export interface CallDetail extends CallRecord {
 }
 
 const LIST_COLUMNS = `id, occurred_at, duration_ms, success, error_source, error_type, error_message,
-  client_type, client_name, session_id, server_version, client_version`;
+  client_type, client_name, session_id, server_version, client_version, repeated`;
 
 interface CallRow {
   id: string;
@@ -67,6 +69,7 @@ interface CallRow {
   session_id: string | null;
   server_version: string | null;
   client_version: string | null;
+  repeated: boolean | null;
 }
 
 /**
@@ -205,5 +208,6 @@ function toRecord(row: CallRow): CallRecord {
     sessionId: row.session_id,
     serverVersion: row.server_version,
     clientVersion: row.client_version,
+    repeated: row.repeated === true,
   };
 }

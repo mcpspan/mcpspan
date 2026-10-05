@@ -76,6 +76,13 @@ public final class Definitions {
         }
     }
 
+    /** A value as canonical JSON (contract, 3.8). Throws on what cannot be written so. */
+    public static String canonicalText(Object value) {
+        StringBuilder text = new StringBuilder();
+        canonical(text, value);
+        return text.toString();
+    }
+
     /** Sorted keys, no whitespace, minimal escaping: the same text in every SDK. */
     private static void canonical(StringBuilder text, Object value) {
         if (value == null) {

@@ -116,6 +116,9 @@ export interface ToolCallEvent {
   /** The tool's definition as last listed, fingerprinted (contract, 3.8). */
   definitionHash?: string;
 
+  /** The arguments are the previous call's to the same tool in this session (contract, 3.9). */
+  repeated?: boolean;
+
   /** When the call started, as an ISO 8601 timestamp. */
   timestamp: string;
 

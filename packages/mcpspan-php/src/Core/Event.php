@@ -46,6 +46,8 @@ final class Event
         public readonly ?int $responseBytes = null,
         /** The tool's definition as last listed, fingerprinted (contract, 3.8). */
         public readonly ?string $definitionHash = null,
+        /** True when the arguments were the previous call's to the same tool in this session (contract, 3.9). */
+        public readonly ?bool $repeated = null,
     ) {
     }
 
@@ -71,6 +73,7 @@ final class Event
             'serverVersion' => $this->serverVersion,
             'responseBytes' => $this->responseBytes,
             'definitionHash' => $this->definitionHash,
+            'repeated' => $this->repeated,
             'timestamp' => $this->timestamp,
             'sdkVersion' => McpSpan::VERSION,
             'sessionId' => $this->sessionId,

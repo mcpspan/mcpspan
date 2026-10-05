@@ -93,8 +93,8 @@ describe('/v1/dashboard/export/calls', () => {
     );
     expect(records[0]).toContain('session_id');
     // New columns go last, so scripts reading by position keep working.
-    expect(records[0]?.at(-1)).toBe('response_bytes');
-    expect(records[1]?.at(-1)).toBe('48213');
+    expect(records[0]?.slice(-2)).toEqual(['response_bytes', 'repeated']);
+    expect(records[1]?.slice(-2)).toEqual(['48213', 'false']);
     expect(records.slice(1).map((record) => record[3])).toEqual([
       'search',
       'search',

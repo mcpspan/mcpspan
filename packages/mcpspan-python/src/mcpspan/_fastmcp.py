@@ -32,6 +32,7 @@ from ._failure import (
 )
 from ._marks import is_excluded
 from ._primitives import scheme_of
+from ._repeats import continues_earlier_call, note_arguments
 from ._session import session_for
 from ._track import is_recording, now_iso, record_call, server_version_of
 
@@ -120,6 +121,9 @@ async def _begin(server: Any, context: Any) -> tuple[str | None, CallState, Any]
 
     if not isinstance(name, str) or await _is_excluded(server, name):
         return None, call, request_context
+
+    if call.session_id is not None and not continues_earlier_call(message):
+        call.repeated = note_arguments(call.session_id, name, arguments)
 
     return name, call, request_context
 

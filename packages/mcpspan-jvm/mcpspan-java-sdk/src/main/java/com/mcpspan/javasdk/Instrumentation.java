@@ -275,7 +275,8 @@ final class Instrumentation {
             : null;
 
         return new Call(name, client.name(), session, arguments)
-            .versions(client.version(), connection instanceof McpAsyncServer server ? serverVersionOf(server) : null);
+            .versions(client.version(), connection instanceof McpAsyncServer server ? serverVersionOf(server) : null)
+            .compareArguments(params);
     }
 
     /** The same, for a synchronous tool tracked by hand, from the exchange the SDK handed it. */
@@ -284,7 +285,8 @@ final class Instrumentation {
         String session = exchange != null && exchange.sessionId() != null
             ? Sessions.of(TrackedSync.class, false, exchange.sessionId())
             : null;
-        return new Call(request.name(), client.name(), session, request.arguments()).versions(client.version(), null);
+        return new Call(request.name(), client.name(), session, request.arguments()).versions(client.version(), null)
+            .compareArguments(null);
     }
 
     private static String nameOf(Object params) {

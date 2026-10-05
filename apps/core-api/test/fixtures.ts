@@ -112,6 +112,7 @@ export interface EventSeed {
   parameters?: Record<string, string>;
   serverVersion?: string;
   responseBytes?: number;
+  repeated?: boolean;
   clientVersion?: string;
 }
 
@@ -130,8 +131,8 @@ export async function seedEvents(serverId: string, seeds: readonly EventSeed[]):
       `INSERT INTO ${table.raw} (
          id, server_id, occurred_at, ${table.name}, duration_ms, success,
          error_source, error_type, error_message, client_type, client_name, sdk_version,
-         session_id, parameters, server_version, client_version, response_bytes
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+         session_id, parameters, server_version, client_version, response_bytes, repeated
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
       [
         seed.id ?? randomUUID(),
         serverId,
@@ -150,6 +151,7 @@ export async function seedEvents(serverId: string, seeds: readonly EventSeed[]):
         seed.serverVersion ?? null,
         seed.clientVersion ?? null,
         seed.responseBytes ?? null,
+        seed.repeated === true ? true : null,
       ],
     );
 

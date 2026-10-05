@@ -25,4 +25,26 @@ final class Call
         public readonly ?string $serverVersion = null,
     ) {
     }
+
+    /** The arguments were the previous call's to the same tool in this session (contract, 3.9). */
+    public bool $repeated = false;
+
+    /**
+     * Compares the arguments, as the client sent them, with the previous call's to the same tool in this session,
+     * once, as the request arrives; unless the call continues an earlier one.
+     */
+    public function compareArguments(mixed $arguments, bool $continues = false): void
+    {
+        if (null !== $this->sessionId && null === $this->kind && !$continues) {
+            $this->repeated = Repeats::note($this->sessionId, $this->toolName, $arguments);
+        }
+    }
+
+    /** Says this call ended asking the client for more, so the retry that answers is not its repeat. */
+    public function endedInterim(): void
+    {
+        if (null !== $this->sessionId) {
+            Repeats::interim($this->sessionId, $this->toolName);
+        }
+    }
 }

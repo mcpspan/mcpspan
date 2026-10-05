@@ -139,6 +139,30 @@ export default async function ToolPage({
             )}
           </Card>
 
+          {details instanceof ApiError || details.repeats.repeated === 0 ? null : (
+            <Card>
+              <CardHeader title="Repeated calls" hint="Same arguments as the call before, in the same session" />
+              <p className="text-sm text-ink">
+                <span className="text-2xl font-semibold tabular-nums">{formatCount(details.repeats.repeated)}</span>{' '}
+                <span className="text-ink-muted">
+                  of {formatCount(details.repeats.of)} calls (
+                  {Math.round((100 * details.repeats.repeated) / Math.max(details.repeats.of, 1))}%)
+                </span>
+              </p>
+              <p className="mt-2 text-sm text-ink-muted">
+                An agent sending the same call again usually did not get what it needed from the answer: an error it
+                could not act on, or a result it did not recognise as complete.{' '}
+                <Link
+                  href={`/sessions${withParams(carried, {})}`}
+                  className="underline underline-offset-2"
+                >
+                  Sessions
+                </Link>{' '}
+                show where it happened.
+              </p>
+            </Card>
+          )}
+
           {details instanceof ApiError || details.responseSizes === null ? null : (
             <Card>
               <CardHeader

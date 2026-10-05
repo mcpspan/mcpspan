@@ -177,6 +177,10 @@ module McpSpan
           server_version: Instrumentation.server_version(self),
           **Instrumentation.client(envelope, session, self),
         )
+        # Compared once, as the request arrives, before any validation (contract, 3.9).
+        if call&.session_id && !Repeats.continues_earlier_call?(request)
+          call.repeated = Repeats.note(call.session_id, name, request[:arguments])
+        end
         [call, tool]
       rescue *INTERNAL
         nil

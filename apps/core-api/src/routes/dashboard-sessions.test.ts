@@ -55,7 +55,8 @@ beforeEach(async () => {
     { sessionId: first, toolName: 'book', occurredAt: ago(580), clientType: 'claude-code' },
     { sessionId: second, toolName: 'search', occurredAt: ago(300), clientType: 'cursor' },
     { sessionId: second, toolName: 'list_items', occurredAt: ago(290), clientType: 'cursor' },
-    { sessionId: second, toolName: 'list_items', occurredAt: ago(280), clientType: 'cursor' },
+    // The same page asked for again: the SDK marks it repeated (contract, 3.9).
+    { sessionId: second, toolName: 'list_items', occurredAt: ago(280), clientType: 'cursor', repeated: true },
     { sessionId: second, toolName: 'book', occurredAt: ago(270), clientType: 'cursor' },
     // Recorded without a session: through track() alone, or an older SDK.
     { toolName: 'search', occurredAt: ago(100) },
@@ -69,13 +70,27 @@ afterAll(async () => {
 describe('/v1/dashboard/sessions', () => {
   it('lists sessions newest first, with what happened in each', async () => {
     const { sessions, sampled } = await get<{
-      sessions: { sessionId: string; calls: number; failures: number; tools: number; clientType: string }[];
+      sessions: {
+        sessionId: string;
+        calls: number;
+        failures: number;
+        tools: number;
+        repeated: number;
+        clientType: string;
+      }[];
       sampled: boolean;
     }>('sessions');
 
     expect(sessions).toEqual([
-      expect.objectContaining({ sessionId: second, calls: 4, failures: 0, tools: 3, clientType: 'cursor' }),
-      expect.objectContaining({ sessionId: first, calls: 3, failures: 1, tools: 2, clientType: 'claude-code' }),
+      expect.objectContaining({ sessionId: second, calls: 4, failures: 0, tools: 3, repeated: 1, clientType: 'cursor' }),
+      expect.objectContaining({
+        sessionId: first,
+        calls: 3,
+        failures: 1,
+        tools: 2,
+        repeated: 0,
+        clientType: 'claude-code',
+      }),
     ]);
     expect(sampled).toBe(false);
   });
@@ -98,6 +113,12 @@ describe('/v1/dashboard/sessions/:sessionId', () => {
       ['book', false, 'arguments'],
       ['book', true, null],
     ]);
+  });
+
+  it('marks the call that repeated the one before it', async () => {
+    const { calls } = await get<{ calls: { toolName: string; repeated: boolean }[] }>(`sessions/${second}`);
+
+    expect(calls.map((call) => call.repeated)).toEqual([false, false, true, false]);
   });
 
   it('reads only the window it is given', async () => {

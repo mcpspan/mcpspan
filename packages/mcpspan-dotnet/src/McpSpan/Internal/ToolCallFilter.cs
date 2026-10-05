@@ -57,7 +57,16 @@ internal static class ToolCallFilter
                 return null;
             }
 
-            return CallFor(request, request.Params?.Name ?? string.Empty, kind: null, request.Params?.Arguments, described: null);
+            var call = CallFor(request, request.Params?.Name ?? string.Empty, kind: null, request.Params?.Arguments, described: null);
+
+            // Compared once, as the request arrives, before any validation (contract, 3.9). A retry answering an
+            // interim result's question continues that call, and is neither compared nor kept.
+            if (call.SessionId is not null && request.Params is { InputResponses: null, RequestState: null })
+            {
+                call.Repeated = Repeats.Note(call.SessionId, call.ToolName, request.Params.Arguments);
+            }
+
+            return call;
         }
         catch (Exception)
         {

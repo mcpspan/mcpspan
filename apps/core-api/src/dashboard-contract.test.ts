@@ -358,6 +358,7 @@ describe('getToolDetails', () => {
       sampled: false,
       responseSizes: null,
       definitionChanges: [],
+      repeats: { repeated: 0, of: 1 },
       messagesOffset: 0,
       messagesHaveMore: false,
       parametersOffset: 0,
@@ -388,6 +389,7 @@ describe('the session views', () => {
         calls: 2,
         failures: 1,
         tools: 2,
+        repeated: 0,
         clientType: 'claude',
         clientName: null,
       },
@@ -409,6 +411,7 @@ describe('the session views', () => {
       durationMs: 10,
       clientType: expect.any(String),
       clientName: expect.toBeOneOf([null, expect.any(String)]),
+      repeated: false,
     });
   });
 

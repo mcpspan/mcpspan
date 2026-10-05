@@ -192,6 +192,10 @@ func begin(server *mcp.Server, req *mcp.CallToolRequest) (call core.Call, ok boo
 			transportSession = req.Session.ID()
 		}
 		call.SessionID = core.SessionFor(server, overHTTP, transportSession)
+		// Compared once, as the request arrives, before any validation (contract, 3.9).
+		if call.SessionID != "" && !core.ContinuesEarlierCall(req.Params) {
+			call.Repeated = core.NoteArguments(call.SessionID, call.ToolName, req.Params.Arguments)
+		}
 	}
 
 	return call, true

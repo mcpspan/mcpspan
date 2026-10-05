@@ -179,6 +179,7 @@ class _Measurement:
             if size is not None:
                 event["responseBytes"] = size
             _add_definition(event)
+            _add_repeat(event, self._call)
             self._sink(event)
         except Exception:
             # Recording a call must never disturb the call itself.
@@ -192,6 +193,12 @@ def _add_definition(event: ToolCallEvent) -> None:
     fingerprint = definition_of(event["toolName"])
     if fingerprint is not None:
         event["definitionHash"] = fingerprint
+
+
+def _add_repeat(event: ToolCallEvent, call: CallState | None) -> None:
+    """Whether the call repeated the previous one to its tool in its session (contract, 3.9)."""
+    if call is not None and call.repeated and event.get("kind", "tool") == "tool":
+        event["repeated"] = True
 
 
 def _build_event(
@@ -388,6 +395,7 @@ def record_call(
         if size is not None:
             event["responseBytes"] = size
         _add_definition(event)
+        _add_repeat(event, call)
         sink(event)
     except Exception:
         # Recording a call must never disturb the answer the client gets.

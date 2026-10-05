@@ -157,6 +157,11 @@ function CallList({
                     {call.errorType}
                   </span>
                 )}
+                {call.repeated ? (
+                  <span className="text-status-warning-ink" title="The same arguments as this tool's call before it">
+                    Repeated
+                  </span>
+                ) : null}
                 <span className="tabular-nums">
                   {duration.value}
                   {duration.unit}

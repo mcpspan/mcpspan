@@ -5,6 +5,7 @@ import { noteListing } from './definition.js';
 import { describeErrorResult, formatError, isErrorResult } from './failure.js';
 import { isExcluded, isMarked } from './marks.js';
 import { PRIMITIVE_METHODS, watchPrimitive } from './primitives.js';
+import { noteArguments } from './repeats.js';
 import { sessionFor } from './session.js';
 import { isRecording, recordRefusedCall, track } from './track.js';
 import type { ErrorSource } from './types.js';
@@ -61,6 +62,32 @@ const registries = new WeakMap<object, Map<string, ToolEntry>>();
  * it on its own. A weak set, so contexts leave with their requests.
  */
 const reachedHandler = new WeakSet<object>();
+
+/** Requests whose arguments repeat the previous call's to the same tool in the session (contract, 3.9). */
+const repeatedCalls = new WeakSet<object>();
+
+/**
+ * Compares a call's arguments, as the client sent them, with the previous call's to the same tool in the same
+ * session, as it arrives, before any validation; and marks the request so the handler side knows too. A call
+ * without a session is never compared.
+ */
+function noteRepeat(server: object, request: ToolCallRequest, context: unknown): boolean {
+  try {
+    const name = request.params?.name;
+    if (typeof name !== 'string' || typeof context !== 'object' || context === null) return false;
+    // A retry answering an interim result's question continues that call; it is not a new one.
+    const params = request.params as Record<string, unknown>;
+    if (params['inputResponses'] !== undefined || params['requestState'] !== undefined) return false;
+    const sessionId = sessionFor(server, context);
+    if (sessionId === undefined) return false;
+
+    const repeated = noteArguments(sessionId, name, request.params?.arguments);
+    if (repeated) repeatedCalls.add(context);
+    return repeated;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Request contexts whose handler last answered with an interim
@@ -266,12 +293,14 @@ function noteReached(handler: AnyFunction, server: object): AnyFunction {
     const sessionId = hasContext ? sessionFor(server, context) : undefined;
     const client = clientFor(server, hasContext ? context : undefined);
     const serverVersion = serverVersionOf(server);
+    const repeated = hasContext && repeatedCalls.has(context);
 
     const result = withCall(
       {
         ...(sessionId !== undefined && { sessionId }),
         ...(client !== undefined && { client }),
         ...(serverVersion !== undefined && { serverVersion }),
+        ...(repeated && { repeated }),
       },
       run,
     );
@@ -396,6 +425,7 @@ function watchToolCalls(
 
     const timestamp = new Date().toISOString();
     const startedAt = performance.now();
+    const repeated = noteRepeat(server, request, context);
 
     const noteRefusal = (message: string | undefined): void => {
       try {
@@ -420,6 +450,7 @@ function watchToolCalls(
               sessionId: sessionFor(server, context),
               client: clientFor(server, context),
               serverVersion: serverVersionOf(server),
+              repeated,
             });
           }
 
@@ -439,6 +470,7 @@ function watchToolCalls(
           sessionId: sessionFor(server, context),
           client: clientFor(server, context),
           serverVersion: serverVersionOf(server),
+          repeated,
         });
       } catch {
         // Looking at a refusal must never change it.

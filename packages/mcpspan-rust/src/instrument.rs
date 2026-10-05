@@ -191,7 +191,16 @@ impl<S: ServerHandler> Instrumented<S> {
         mut context: RequestContext<RoleServer>,
     ) -> impl Future<Output = Result<CallToolResponse, ErrorData>> + MaybeSendFuture + '_ {
         context.extensions.insert(Measured);
-        let call = self.begin(&request.name, request.arguments.as_ref(), &context);
+        let mut call = self.begin(&request.name, request.arguments.as_ref(), &context);
+        // Compared once, as the request arrives, before any validation (contract, 3.9). A retry answering an interim
+        // result's question continues that call, and is neither compared nor kept.
+        if let Some(call) = call.as_mut()
+            && let Some(session) = call.session_id.as_deref()
+            && request.input_responses.is_none()
+            && request.request_state.is_none()
+        {
+            call.repeated = crate::repeats::note_arguments(session, &request.name, request.arguments.as_ref());
+        }
         let answer = self.inner.call_tool(request, context);
         async move {
             let Some(call) = call else {

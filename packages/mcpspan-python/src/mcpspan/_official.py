@@ -28,6 +28,7 @@ from ._client import client_from_request
 from ._definition import note_listing
 from ._marks import is_excluded, is_marked
 from ._primitives import instrument_primitives
+from ._repeats import continues_earlier_call, note_arguments
 from ._session import session_for
 from ._track import (
     is_recording,
@@ -169,6 +170,12 @@ def _begin(
         arguments=arguments,
         server_version=server_version_of(server),
     )
+    if (
+        call.session_id is not None
+        and isinstance(name, str)
+        and not continues_earlier_call(context)
+    ):
+        call.repeated = note_arguments(call.session_id, name, arguments)
 
     return str(name), call, request_context
 

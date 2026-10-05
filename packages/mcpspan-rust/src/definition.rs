@@ -55,6 +55,13 @@ pub(crate) fn definition_hash(tool: &Value) -> Option<String> {
     Some(hex)
 }
 
+/// A value as canonical JSON (contract, 3.8), or `None` for what cannot be written so.
+pub(crate) fn canonical_text(value: &Value) -> Option<String> {
+    let mut text = String::new();
+    canonical(&mut text, value)?;
+    Some(text)
+}
+
 /// Sorted keys, no whitespace, minimal escaping: the same text in every SDK.
 fn canonical(text: &mut String, value: &Value) -> Option<()> {
     match value {

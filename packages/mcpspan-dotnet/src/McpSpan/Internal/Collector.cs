@@ -261,6 +261,9 @@ internal sealed class Call
     /// <summary>Set when the call is seen to reach the tool's own code.</summary>
     public bool Reached { get; set; }
 
+    /// <summary>The arguments are the previous call's to the same tool in this session (contract, 3.9).</summary>
+    public bool Repeated { get; set; }
+
     /// <param name="response">The answer, to be measured (contract, 3.7); null when there was none.</param>
     public void Succeeded(object? response = null) => Record(success: true, null, null, null, response);
 
@@ -323,6 +326,7 @@ internal sealed class Call
                 ResponseBytes = ResponseBytes(response),
                 // A tool the server has, refused arguments included: often the schema is why.
                 DefinitionHash = Kind is null && source != ErrorSources.UnknownTool ? Definitions.Of(ToolName) : null,
+                Repeated = Kind is null && Repeated ? true : null,
             });
         }
         catch (Exception)

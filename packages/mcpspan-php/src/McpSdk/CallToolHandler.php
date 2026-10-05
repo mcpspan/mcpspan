@@ -58,6 +58,8 @@ final class CallToolHandler implements RequestHandlerInterface
             $exists = null !== $reference;
             if (!McpSpan::excluded($request->name, null === $reference ? null : self::reflect($reference->handler))) {
                 $call = Collector::begin($request->name, $request->arguments, Connections::client($session), $this->connections->session($session), null, Connections::serverVersion($this->builder));
+                // Compared once, as the request arrives, before any validation (contract, 3.9).
+                $call?->compareArguments($request->arguments);
                 ReferenceHandler::watch($request, $state);
             }
         } catch (\Throwable) {
@@ -106,6 +108,8 @@ final class CallToolHandler implements RequestHandlerInterface
             $result = $answer->result;
             // An interim result asking the client for input settles nothing; the call that follows it does.
             if (!$result instanceof CallToolResult) {
+                $call->endedInterim();
+
                 return;
             }
             if (!$result->isError) {

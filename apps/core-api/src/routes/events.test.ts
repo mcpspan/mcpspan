@@ -370,3 +370,23 @@ describe('tool definitions (contract, 3.8)', () => {
     expect(response.status).toBe(400);
   });
 });
+
+describe('repeated calls (contract, 3.9)', () => {
+  it('stores a repeat as true, and anything else as nothing', async () => {
+    await post({
+      events: [
+        event({ repeated: true, timestamp: '2026-09-17T10:00:00.000Z' }),
+        event({ repeated: false, timestamp: '2026-09-17T10:00:01.000Z' }),
+        event({ timestamp: '2026-09-17T10:00:02.000Z' }),
+      ],
+    });
+
+    expect((await storedRows()).map((row) => row['repeated'])).toEqual([true, null, null]);
+  });
+
+  it('refuses a repeat that is not a boolean', async () => {
+    const response = await post({ events: [event({ repeated: 'yes' })] });
+
+    expect(response.status).toBe(400);
+  });
+});

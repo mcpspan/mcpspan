@@ -93,6 +93,8 @@ function attributesOf(span: { attributes: { key: string; value: Record<string, u
         ? value['stringValue']
         : 'intValue' in value
           ? value['intValue']
+          : 'boolValue' in value
+            ? value['boolValue']
           : (value['arrayValue'] as { values: { stringValue: string }[] }).values.map((item) => item.stringValue),
     ]),
   );
@@ -140,6 +142,7 @@ describe('a call as a span, named as the conventions for MCP servers name it', (
       parameters: { destination: 'string' },
       responseBytes: 48_213,
       definitionHash: '9e5ebf01427bfdf5',
+      repeated: true,
     });
     exporter.record('server-a', [
       tool,
@@ -160,6 +163,7 @@ describe('a call as a span, named as the conventions for MCP servers name it', (
       'mcpspan.sdk.version': '0.1.0',
       'mcpspan.response.size': '48213',
       'mcpspan.tool.definition': '9e5ebf01427bfdf5',
+      'mcpspan.call.repeated': true,
       'mcpspan.parameter.names': ['destination'],
     });
     expect(toolSpan?.startTimeUnixNano).toBe(`${Date.parse('2026-09-17T10:00:00.000Z')}000000`);

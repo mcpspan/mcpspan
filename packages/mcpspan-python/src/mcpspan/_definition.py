@@ -77,6 +77,12 @@ def _wire(tool: Any) -> Mapping[str, Any] | None:
     return None
 
 
+def canonical(value: Any) -> str:
+    """Sorted keys, no whitespace, minimal escaping: the same text in every SDK.
+    Raises on what JSON cannot hold."""
+    return _canonical(value)
+
+
 def _canonical(value: Any) -> str:
     """Sorted keys, no whitespace, minimal escaping: the same text in every SDK."""
     if value is None:

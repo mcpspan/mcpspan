@@ -71,6 +71,8 @@ export const toolCallEventSchema = z.object({
   responseBytes: z.number().int().min(0).max(2_147_483_647).optional(),
   // The tool's definition as the server listed it, fingerprinted (contract, 3.8).
   definitionHash: z.string().max(64).optional(),
+  // The arguments were the previous call's to the same tool in the session (contract, 3.9).
+  repeated: z.boolean().optional(),
 
   // Any valid instant is accepted, including implausible ones. This clock
   // belongs to the reporting machine and is sometimes wrong, and rejecting the

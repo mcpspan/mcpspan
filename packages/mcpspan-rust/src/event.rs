@@ -22,6 +22,8 @@ pub(crate) struct Event {
     pub response_bytes: Option<u64>,
     /// The tool's definition as last listed, fingerprinted (contract, 3.8).
     pub definition_hash: Option<String>,
+    /// The arguments were the previous call's to the same tool in this session (contract, 3.9).
+    pub repeated: bool,
     pub timestamp: String,
     pub session_id: Option<String>,
     pub parameters: Option<Map<String, Value>>,
@@ -60,6 +62,7 @@ impl Event {
         optional("serverVersion", self.server_version.clone().map(Value::from));
         optional("responseBytes", self.response_bytes.map(Value::from));
         optional("definitionHash", self.definition_hash.clone().map(Value::from));
+        optional("repeated", self.repeated.then_some(Value::Bool(true)));
         optional("timestamp", Some(self.timestamp.clone().into()));
         optional("sdkVersion", Some(crate::VERSION.into()));
         optional("sessionId", self.session_id.clone().map(Value::from));

@@ -115,6 +115,8 @@ export interface CallRecord {
   /** As the server gives itself in its handshake, or as its SDK was told. */
   serverVersion: string | null;
   clientVersion: string | null;
+  /** Its arguments were the previous call's to the same tool in its session. */
+  repeated: boolean;
 }
 
 export type FailedCall = CallRecord;
@@ -306,6 +308,8 @@ export interface ToolDetails {
   responseSizes: { measured: number; medianBytes: number; p95Bytes: number; maxBytes: number } | null;
   /** When a new definition of the tool was first seen in the window (contract, 3.8). */
   definitionChanges: { at: string }[];
+  /** Calls that repeated the previous call's arguments in their session, out of the calls read. */
+  repeats: { repeated: number; of: number };
   messagesOffset: number;
   messagesHaveMore: boolean;
   parametersOffset: number;
@@ -319,6 +323,8 @@ export interface SessionSummary {
   calls: number;
   failures: number;
   tools: number;
+  /** Calls that repeated the previous call's arguments to the same tool: an agent looping. */
+  repeated: number;
   clientType: string;
   clientName: string | null;
 }
@@ -346,6 +352,8 @@ export interface SessionCall {
   durationMs: number;
   clientType: string;
   clientName: string | null;
+  /** Its arguments were the previous call's to the same tool in this session. */
+  repeated: boolean;
 }
 
 export interface SessionCalls {

@@ -21,6 +21,7 @@ public record ToolCallEvent(
     String serverVersion,
     Long responseBytes,
     String definitionHash,
+    Boolean repeated,
     String timestamp,
     String sdkVersion,
     String sessionId,
@@ -60,6 +61,9 @@ public record ToolCallEvent(
         Json.field(json, "clientVersion", clientVersion, false);
         Json.field(json, "serverVersion", serverVersion, false);
         Json.field(json, "definitionHash", definitionHash, false);
+        if (Boolean.TRUE.equals(repeated)) {
+            json.append(",\"repeated\":true");
+        }
         if (responseBytes != null) {
             json.append(",\"responseBytes\":").append(responseBytes.longValue());
         }

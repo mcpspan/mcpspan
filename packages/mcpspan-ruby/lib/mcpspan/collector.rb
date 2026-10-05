@@ -20,7 +20,7 @@ module McpSpan
 
     # What an integration knows about one call as it starts. A kind of nil is a tool call.
     Call = Struct.new(:tool_name, :parameters, :client_name, :client_version, :server_version, :session_id, :started,
-                      :timestamp, :kind, keyword_init: true,)
+                      :timestamp, :kind, :repeated, keyword_init: true,)
 
     @lock = Mutex.new
     @reporter = nil
@@ -141,6 +141,7 @@ module McpSpan
           response_bytes: response_bytes(response),
           # A tool the server has, refused arguments included: often the schema is why.
           definition_hash: call.kind.nil? && source != Source::UNKNOWN_TOOL ? Definitions.of(call.tool_name) : nil,
+          repeated: call.kind.nil? && call.repeated ? true : nil,
           timestamp: call.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%LZ"),
           session_id: call.session_id,
           parameters: call.parameters,

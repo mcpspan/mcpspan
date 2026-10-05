@@ -105,6 +105,14 @@ internal static class Definitions
         }
     }
 
+    /// <summary>A value as canonical JSON (contract, 3.8). Throws on what cannot be written so.</summary>
+    public static string CanonicalText(JsonNode? node)
+    {
+        var text = new StringBuilder();
+        Canonical(text, node);
+        return text.ToString();
+    }
+
     /// <summary>Sorted keys, no whitespace, minimal escaping: the same text in every SDK.</summary>
     private static void Canonical(StringBuilder text, JsonNode? node)
     {

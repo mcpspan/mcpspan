@@ -22,6 +22,7 @@ mod handler;
 mod instrument;
 mod options;
 mod primitives;
+mod repeats;
 mod reporter;
 mod text;
 mod transport;

@@ -17,6 +17,8 @@ export interface CallContext {
   client?: ClientInfo;
   /** The version the server this call arrived on gives itself. */
   serverVersion?: string;
+  /** The call's arguments are the previous call's to the same tool in this session (contract, 3.9). */
+  repeated?: boolean;
 }
 
 let current: CallContext | undefined;

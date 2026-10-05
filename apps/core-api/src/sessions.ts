@@ -35,6 +35,8 @@ export interface SessionSummary {
   failures: number;
   /** Distinct tools called, refused names included. */
   tools: number;
+  /** Calls that repeated the previous call's arguments to the same tool: an agent looping (contract, 3.9). */
+  repeated: number;
   clientType: string;
   clientName: string | null;
 }
@@ -53,6 +55,8 @@ export interface SessionCall {
   durationMs: number;
   clientType: string;
   clientName: string | null;
+  /** Its arguments were the previous call's to the same tool in this session (contract, 3.9). */
+  repeated: boolean;
 }
 
 export interface Transition {
@@ -87,7 +91,7 @@ function recentCalls(
   const newest = (kind: CallKind) => {
     const table = CALL_TABLES[kind];
     return `(SELECT id, session_id, occurred_at, ${table.name} AS tool_name, '${kind}' AS kind,
-             success, error_source, duration_ms, client_type, client_name
+             success, error_source, duration_ms, client_type, client_name, repeated
       FROM ${table.raw}
       WHERE server_id = $${at}
         AND occurred_at >= $${at + 1}
@@ -145,6 +149,7 @@ export async function getSessions(
       calls: string;
       failures: string;
       tools: string;
+      repeated: string;
       client_type: string;
       client_name: string | null;
     }>(
@@ -154,6 +159,7 @@ export async function getSessions(
               count(*) AS calls,
               count(*) FILTER (WHERE NOT success) AS failures,
               count(DISTINCT tool_name) FILTER (WHERE kind = 'tool') AS tools,
+              count(*) FILTER (WHERE repeated) AS repeated,
               -- One connection has one client, so any row says which.
               min(client_type) AS client_type,
               min(client_name) AS client_name
@@ -177,6 +183,7 @@ export async function getSessions(
       calls: Number(row.calls),
       failures: Number(row.failures),
       tools: Number(row.tools),
+      repeated: Number(row.repeated),
       clientType: row.client_type,
       clientName: row.client_name,
     })),
@@ -222,13 +229,14 @@ export async function getSessionCalls(
     duration_ms: number;
     client_type: string;
     client_name: string | null;
+    repeated: boolean | null;
   }>(
     `SELECT id, occurred_at, occurred_at::text AS cursor_at, tool_name, kind, success,
-            error_source, error_type, error_message, duration_ms, client_type, client_name
+            error_source, error_type, error_message, duration_ms, client_type, client_name, repeated
      FROM (${KINDS.map(
        (kind) => `SELECT id, occurred_at, ${CALL_TABLES[kind].name} AS tool_name, '${kind}' AS kind,
                          success, error_source, error_type, error_message, duration_ms,
-                         client_type, client_name
+                         client_type, client_name, repeated
                   FROM ${CALL_TABLES[kind].raw}
                   WHERE server_id = $1
                     AND session_id = $2
@@ -262,6 +270,7 @@ export async function getSessionCalls(
       durationMs: row.duration_ms,
       clientType: row.client_type,
       clientName: row.client_name,
+      repeated: row.repeated === true,
     })),
   };
 }

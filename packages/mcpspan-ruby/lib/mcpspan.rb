@@ -7,6 +7,7 @@ require_relative "mcpspan/transport"
 require_relative "mcpspan/reporter"
 require_relative "mcpspan/collector"
 require_relative "mcpspan/definitions"
+require_relative "mcpspan/repeats"
 require_relative "mcpspan/instrumentation"
 require_relative "mcpspan/primitives"
 

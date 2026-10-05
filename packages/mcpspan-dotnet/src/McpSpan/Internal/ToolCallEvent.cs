@@ -22,6 +22,8 @@ internal sealed record ToolCallEvent
     [JsonPropertyName("responseBytes")] public long? ResponseBytes { get; init; }
     /// <summary>The tool's definition as last listed, fingerprinted (contract, 3.8).</summary>
     [JsonPropertyName("definitionHash")] public string? DefinitionHash { get; init; }
+    /// <summary>True when the arguments were the previous call's to the same tool in this session (contract, 3.9).</summary>
+    [JsonPropertyName("repeated")] public bool? Repeated { get; init; }
     [JsonPropertyName("timestamp")] public required string Timestamp { get; init; }
     [JsonPropertyName("sdkVersion")] public required string SdkVersion { get; init; }
     [JsonPropertyName("sessionId")] public string? SessionId { get; init; }

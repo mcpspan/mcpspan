@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -42,6 +43,7 @@ const EVENT_FIELDS = new Set([
   'serverVersion',
   'responseBytes',
   'definitionHash',
+  'repeated',
   'timestamp',
   'sdkVersion',
   'sessionId',
@@ -441,6 +443,65 @@ describe('3.8 Tool definitions', () => {
     await run(connection, [{ name: 'no_such_tool' }]);
 
     for (const name of ['no_such_tool', 'config://app', 'plan_trip']) expect(only(name)).not.toHaveProperty('definitionHash');
+  });
+});
+
+describe('3.9 Repeated calls', () => {
+  const WAW = { destination: 'WAW', passengers: 2 };
+
+  /** Each event's `repeated`, in the order the calls were made. */
+  function repeats(): unknown[] {
+    return events().map((event) => event['repeated']);
+  }
+
+  it('marks a call with the same arguments as the previous call to the same tool in the session', async () => {
+    await run(await start(), [
+      { name: 'typed', arguments: WAW },
+      { name: 'typed', arguments: { passengers: 2, destination: 'WAW' } },
+      { name: 'typed', arguments: { destination: 'KRK', passengers: 2 } },
+      { name: 'ok' },
+      { name: 'typed', arguments: { destination: 'KRK', passengers: 2 } },
+    ]);
+
+    // The same object in another key order is the same arguments; another tool in between changes nothing.
+    expect(repeats()).toEqual([undefined, true, undefined, undefined, true]);
+  });
+
+  it('marks a refused call repeated as well: the same bad arguments, or the same unknown tool', async () => {
+    await run(await start(), [
+      { name: 'typed', arguments: { destination: 'WAW', passengers: 'two' } },
+      { name: 'typed', arguments: { destination: 'WAW', passengers: 'two' } },
+      { name: 'no_such_tool', arguments: { q: 1 } },
+      { name: 'no_such_tool', arguments: { q: 1 } },
+    ]);
+
+    expect(repeats()).toEqual([undefined, true, undefined, true]);
+  });
+
+  it('never compares calls from two sessions', async () => {
+    await run(await start(), [{ name: 'typed', arguments: WAW }]);
+    await run(await start(), [{ name: 'typed', arguments: WAW }]);
+
+    expect(repeats()).toEqual([undefined, undefined]);
+  });
+
+  it('sends whether a call repeated, and nothing of its arguments', async () => {
+    const secret = { destination: 'secret-4412', passengers: 7 };
+    await run(await start(), [
+      { name: 'typed', arguments: secret },
+      { name: 'typed', arguments: secret },
+    ]);
+
+    const sent = ingest.requests.map((request) => request.raw).join('\n');
+    expect(repeats()).toEqual([undefined, true]);
+    expect(sent).not.toContain('secret-4412');
+    // Not even a digest of them, in any of the usual encodings.
+    for (const text of ['{"destination":"secret-4412","passengers":7}', '{"passengers":7,"destination":"secret-4412"}']) {
+      const digest = createHash('sha256').update(text).digest();
+      for (const encoded of [digest.toString('hex'), digest.toString('base64'), digest.toString('hex').slice(0, 16)]) {
+        expect(sent).not.toContain(encoded);
+      }
+    }
   });
 });
 
