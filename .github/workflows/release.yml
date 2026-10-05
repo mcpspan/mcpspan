@@ -10,6 +10,7 @@ name: Release
 #   mcpspan-jvm/v0.1.0            Maven Central
 #   mcpspan-rust/v0.1.0           crates.io
 #   mcpspan-ruby/v0.1.0           RubyGems
+#   sdks/v0.2.0                   all seven at once, approved in one go
 #
 # PHP is released from github.com/mcpspan/mcpspan-php, which Packagist reads.
 #
@@ -33,7 +34,7 @@ env:
 
 jobs:
   npm:
-    if: startsWith(github.event.release.tag_name, 'mcpspan/v')
+    if: startsWith(github.event.release.tag_name, 'mcpspan/v') || startsWith(github.event.release.tag_name, 'sdks/v')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -49,7 +50,7 @@ jobs:
         with:
           node-version: 24
       - name: Version matches the tag
-        run: test "$(node -p "require('./package.json').version")" = "${TAG#mcpspan/v}"
+        run: test "$(node -p "require('./package.json').version")" = "${TAG##*/v}"
       # npm runs the package's prepublishOnly before publishing: build, types, tests, README samples.
       - run: pnpm install --frozen-lockfile
       # Trusted publishing needs npm 11.5.1 or later.
@@ -58,7 +59,7 @@ jobs:
       - run: npm publish --provenance --access public
 
   pypi:
-    if: startsWith(github.event.release.tag_name, 'mcpspan-python/v')
+    if: startsWith(github.event.release.tag_name, 'mcpspan-python/v') || startsWith(github.event.release.tag_name, 'sdks/v')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -71,7 +72,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - name: Version matches the tag
-        run: grep -qx "SDK_VERSION = \"${TAG#mcpspan-python/v}\"" src/mcpspan/_version.py
+        run: grep -qx "SDK_VERSION = \"${TAG##*/v}\"" src/mcpspan/_version.py
       - run: uv sync --locked --group mcp2 && uv run --group mcp2 pytest -q
       - run: uv build
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
@@ -79,7 +80,7 @@ jobs:
           packages-dir: packages/mcpspan-python/dist
 
   go:
-    if: startsWith(github.event.release.tag_name, 'packages/mcpspan-go/v')
+    if: startsWith(github.event.release.tag_name, 'packages/mcpspan-go/v') || startsWith(github.event.release.tag_name, 'sdks/v')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -89,25 +90,29 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Version matches the tag
         run: |
-          version="${TAG#packages/mcpspan-go/}"
+          version="v${TAG##*/v}"
           grep -qx "const Version = \"${version#v}\"" packages/mcpspan-go/internal/core/event.go
           # The integrations must ask for the core being released, since their
           # local replace means nothing to anybody who installs them.
           for module in mcpsdk mcpgo; do
             grep -q "github.com/mcpspan/mcpspan/packages/mcpspan-go ${version}$" "packages/mcpspan-go/$module/go.mod"
           done
-      - name: Tag the integrations
+      # The tags Go reads: the core's, unless the release was made with it, and the integrations'.
+      - name: Tag the modules
         run: |
-          version="${TAG#packages/mcpspan-go/}"
-          for module in mcpsdk mcpgo; do
-            git tag "packages/mcpspan-go/$module/$version" "$GITHUB_SHA"
-            git push origin "packages/mcpspan-go/$module/$version"
+          version="v${TAG##*/v}"
+          for module in "" /mcpsdk /mcpgo; do
+            tag="packages/mcpspan-go${module}/${version}"
+            if [ "$tag" != "$TAG" ]; then
+              git tag "$tag" "$GITHUB_SHA"
+              git push origin "$tag"
+            fi
           done
       # Asks the public Go proxy for each module, so the first person to install
       # it is not the one who waits.
       - name: Announce to the Go proxy
         run: |
-          version="${TAG#packages/mcpspan-go/}"
+          version="v${TAG##*/v}"
           for module in "" /mcpsdk /mcpgo; do
             path="github.com/mcpspan/mcpspan/packages/mcpspan-go${module}"
             curl --fail --silent --show-error --retry 5 --retry-delay 10 \
@@ -116,7 +121,7 @@ jobs:
           done
 
   nuget:
-    if: startsWith(github.event.release.tag_name, 'mcpspan-dotnet/v')
+    if: startsWith(github.event.release.tag_name, 'mcpspan-dotnet/v') || startsWith(github.event.release.tag_name, 'sdks/v')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -131,7 +136,7 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Version matches the tag
-        run: grep -q "<Version>${TAG#mcpspan-dotnet/v}</Version>" src/McpSpan/McpSpan.csproj
+        run: grep -q "<Version>${TAG##*/v}</Version>" src/McpSpan/McpSpan.csproj
       - run: dotnet test -c Release
       - run: dotnet pack src/McpSpan -c Release -o out
       - uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
@@ -142,7 +147,7 @@ jobs:
       - run: dotnet nuget push "out/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
 
   maven:
-    if: startsWith(github.event.release.tag_name, 'mcpspan-jvm/v')
+    if: startsWith(github.event.release.tag_name, 'mcpspan-jvm/v') || startsWith(github.event.release.tag_name, 'sdks/v')
     runs-on: ubuntu-latest
     environment: release
     defaults:
@@ -156,7 +161,7 @@ jobs:
           java-version: '25'
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - name: Version matches the tag
-        run: grep -q "version = \"${TAG#mcpspan-jvm/v}\"" build.gradle.kts
+        run: grep -q "version = \"${TAG##*/v}\"" build.gradle.kts
       - name: Build, test, sign
         env:
           MAVEN_SIGNING_KEY: ${{ secrets.MAVEN_SIGNING_KEY }}
@@ -196,7 +201,7 @@ jobs:
           exit 1
 
   crates:
-    if: startsWith(github.event.release.tag_name, 'mcpspan-rust/v')
+    if: startsWith(github.event.release.tag_name, 'mcpspan-rust/v') || startsWith(github.event.release.tag_name, 'sdks/v')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -209,7 +214,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - run: rustup toolchain install stable --profile minimal && rustup default stable
       - name: Version matches the tag
-        run: grep -qx "version = \"${TAG#mcpspan-rust/v}\"" Cargo.toml
+        run: grep -qx "version = \"${TAG##*/v}\"" Cargo.toml
       - run: cargo test
       # A short-lived token for this run, in exchange for the repository's identity.
       - uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
@@ -219,7 +224,7 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
 
   rubygems:
-    if: startsWith(github.event.release.tag_name, 'mcpspan-ruby/v')
+    if: startsWith(github.event.release.tag_name, 'mcpspan-ruby/v') || startsWith(github.event.release.tag_name, 'sdks/v')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -236,7 +241,7 @@ jobs:
           bundler-cache: true
           working-directory: packages/mcpspan-ruby
       - name: Version matches the tag
-        run: grep -q "VERSION = \"${TAG#mcpspan-ruby/v}\"" lib/mcpspan/version.rb
+        run: grep -q "VERSION = \"${TAG##*/v}\"" lib/mcpspan/version.rb
       - run: bundle exec rake
       - uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
       - run: gem build mcpspan.gemspec && gem push mcpspan-*.gem
