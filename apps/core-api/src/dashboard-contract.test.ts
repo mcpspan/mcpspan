@@ -215,7 +215,7 @@ describe('getUnknownTools', () => {
     const { tools } = await getUnknownTools(account.cookie);
 
     expect(tools).toEqual([
-      { toolName: 'book_hotel', calls: 1, lastCalledAt: expect.any(String) },
+      { toolName: 'book_hotel', calls: 1, lastCalledAt: expect.any(String), closest: null },
     ]);
   });
 });
@@ -468,7 +468,9 @@ describe('getResourcesAndPrompts', () => {
       },
     ]);
     expect(body.prompts.map((prompt) => prompt.name)).toEqual(['summarise']);
-    expect(body.unknownResources).toEqual([{ name: 'db://', calls: 1, lastCalledAt: expect.any(String) }]);
+    expect(body.unknownResources).toEqual([
+      { name: 'db://', calls: 1, lastCalledAt: expect.any(String), closest: null },
+    ]);
     expect(body.unknownPrompts.map((prompt) => prompt.name)).toEqual(['translate']);
   });
 });

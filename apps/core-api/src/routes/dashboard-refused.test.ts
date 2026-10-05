@@ -110,10 +110,38 @@ describe('calls to tools that do not exist', () => {
     }>('unknown-tools');
 
     expect(tools).toEqual([
-      { toolName: 'book_hotel', calls: 3, lastCalledAt: expect.any(String) },
-      { toolName: 'cancel', calls: 1, lastCalledAt: expect.any(String) },
+      { toolName: 'book_hotel', calls: 3, lastCalledAt: expect.any(String), closest: null },
+      { toolName: 'cancel', calls: 1, lastCalledAt: expect.any(String), closest: null },
     ]);
     expect(Date.parse(tools[0]?.lastCalledAt ?? '')).toBeGreaterThan(ago(3).getTime());
+  });
+
+  it('name the tool they most likely meant, when one is close', async () => {
+    await seedEvents(account.serverId, [
+      { toolName: 'search_flight', success: false, errorSource: 'unknown_tool', occurredAt: ago(1) },
+      { toolName: 'flightSearch', success: false, errorSource: 'unknown_tool', occurredAt: ago(1) },
+    ]);
+
+    const { tools } = await get<{ tools: { toolName: string; closest: string | null }[] }>('unknown-tools');
+    const closest = Object.fromEntries(tools.map((tool) => [tool.toolName, tool.closest]));
+
+    expect(closest).toEqual({
+      search_flight: 'search_flights',
+      flightSearch: 'search_flights',
+      // Nothing like it: a wrong hint is worse than none.
+      book_hotel: null,
+      cancel: null,
+    });
+  });
+
+  it('do not suggest a name only ever called as a missing one', async () => {
+    await seedEvents(account.serverId, [
+      { toolName: 'book_hotels', success: false, errorSource: 'unknown_tool', occurredAt: ago(1) },
+    ]);
+
+    const { tools } = await get<{ tools: { toolName: string; closest: string | null }[] }>('unknown-tools');
+
+    expect(tools.find((tool) => tool.toolName === 'book_hotels')?.closest).toBeNull();
   });
 
   it('appear in the list of failures, call by call', async () => {

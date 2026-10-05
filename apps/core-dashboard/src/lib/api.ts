@@ -159,6 +159,8 @@ export interface UnknownTool {
   toolName: string;
   calls: number;
   lastCalledAt: string;
+  /** The server's own tool this most likely meant, when one is close. */
+  closest: string | null;
 }
 
 export interface UnknownTools extends PageInfo {
@@ -180,6 +182,8 @@ export interface UnknownPrimitive {
   name: string;
   calls: number;
   lastCalledAt: string;
+  /** For a prompt, the server's own one this most likely meant; never for a resource. */
+  closest: string | null;
 }
 
 export interface ResourcesAndPrompts {

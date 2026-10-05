@@ -1,4 +1,5 @@
 import { type CallRecord, listCalls } from './calls.ts';
+import { closestName } from './closest.ts';
 import { getPool } from './db.ts';
 import { type Filters, UNKNOWN_TOOL } from './filters.ts';
 import { type Cursor, type Page, takePage } from './paging.ts';
@@ -427,7 +428,16 @@ export interface UnknownTool {
   toolName: string;
   calls: number;
   lastCalledAt: string;
+  /**
+   * The server's own name this most likely meant, when one is close: a typo,
+   * words in another order, a rename. Never for a resource, which is recorded
+   * by its scheme alone and so has nothing to compare.
+   */
+  closest: string | null;
 }
+
+/** How far back a name counts as one the server has, for suggesting it. */
+const KNOWN_NAMES_DAYS = 30;
 
 /** Names on one page. A client inventing names in a loop should not become one long page. */
 export const MAX_UNKNOWN_TOOLS = 50;
@@ -469,15 +479,44 @@ export async function getUnknownTools(
   );
 
   const { items, hasMore } = takePage(result.rows, page);
+  const known = items.length === 0 || kind === 'resource' ? [] : await knownNames(serverId, kind);
 
   return {
     tools: items.map((row) => ({
       toolName: row.tool_name,
       calls: Number(row.calls),
       lastCalledAt: row.last_at.toISOString(),
+      closest: closestName(row.tool_name, known),
     })),
     hasMore,
   };
+}
+
+/**
+ * The names the server has: those called lately other than as a missing one.
+ *
+ * The SDKs send no list of what a server registers, so this is what calls
+ * show. From the rollup for the last month, and from the raw rows for the
+ * last two hours, which the rollup may not have reached yet: a tool renamed a
+ * moment ago is the likeliest match for the old name still being asked for.
+ */
+async function knownNames(serverId: string, kind: CallKind): Promise<string[]> {
+  const table = CALL_TABLES[kind];
+  const result = await getPool().query<{ name: string }>(
+    `SELECT ${table.name} AS name FROM ${table.rollup}
+     WHERE server_id = $1
+       AND bucket >= now() - make_interval(days => $3)
+       AND error_source IS DISTINCT FROM $2
+     UNION
+     SELECT ${table.name} FROM ${table.raw}
+     WHERE server_id = $1
+       AND occurred_at >= now() - interval '2 hours'
+       AND error_source IS DISTINCT FROM $2
+     LIMIT 1000`,
+    [serverId, table.unknown, KNOWN_NAMES_DAYS],
+  );
+
+  return result.rows.map((row) => row.name);
 }
 
 export interface LatencyBucket {

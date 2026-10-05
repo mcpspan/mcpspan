@@ -17,8 +17,8 @@ interface Stats {
 interface Body {
   resources: Stats[];
   prompts: Stats[];
-  unknownResources: { name: string; calls: number }[];
-  unknownPrompts: { name: string; calls: number }[];
+  unknownResources: { name: string; calls: number; closest: string | null }[];
+  unknownPrompts: { name: string; calls: number; closest: string | null }[];
 }
 
 async function get(query = ''): Promise<Body> {
@@ -75,6 +75,22 @@ describe('/v1/dashboard/resources-and-prompts', () => {
     expect(body.resources.map((resource) => resource.name)).not.toContain('db://');
     expect(body.unknownResources).toMatchObject([{ name: 'db://', calls: 2 }]);
     expect(body.unknownPrompts).toMatchObject([{ name: 'translate', calls: 1 }]);
+  });
+
+  it('names the prompt a missing one most likely meant, and never guesses for a resource', async () => {
+    await seedEvents(account.serverId, [
+      { kind: 'prompt', toolName: 'plan_trips', success: false, errorSource: 'unknown_prompt' },
+      // Recorded by its scheme alone, so there is nothing to compare.
+      { kind: 'resource', toolName: 'trips://', success: false, errorSource: 'unknown_resource' },
+    ]);
+
+    const body = await get();
+
+    expect(Object.fromEntries(body.unknownPrompts.map((prompt) => [prompt.name, prompt.closest]))).toEqual({
+      plan_trips: 'plan_trip',
+      translate: null,
+    });
+    expect(body.unknownResources.every((resource) => resource.closest === null)).toBe(true);
   });
 
   it('narrows to one client', async () => {
