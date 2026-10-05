@@ -434,6 +434,12 @@ export interface UnknownTool {
    * by its scheme alone and so has nothing to compare.
    */
   closest: string | null;
+  /**
+   * Who asked, most first. A name only one client keeps reaching for is a
+   * different signal from one every client wants: that client's habit, or
+   * something the server is missing.
+   */
+  clients: { clientType: string; calls: number }[];
 }
 
 /** How far back a name counts as one the server has, for suggesting it. */
@@ -479,7 +485,11 @@ export async function getUnknownTools(
   );
 
   const { items, hasMore } = takePage(result.rows, page);
-  const known = items.length === 0 || kind === 'resource' ? [] : await knownNames(serverId, kind);
+  const names = items.map((row) => row.tool_name);
+  const [known, clients] = await Promise.all([
+    names.length === 0 || kind === 'resource' ? [] : knownNames(serverId, kind),
+    names.length === 0 ? new Map<string, UnknownTool['clients']>() : askedBy(serverId, range, kind, names),
+  ]);
 
   return {
     tools: items.map((row) => ({
@@ -487,9 +497,42 @@ export async function getUnknownTools(
       calls: Number(row.calls),
       lastCalledAt: row.last_at.toISOString(),
       closest: closestName(row.tool_name, known),
+      clients: clients.get(row.tool_name) ?? [],
     })),
     hasMore,
   };
+}
+
+/** Which clients asked for each of these missing names, most first. */
+async function askedBy(
+  serverId: string,
+  range: TimeRange,
+  kind: CallKind,
+  names: string[],
+): Promise<Map<string, UnknownTool['clients']>> {
+  const table = CALL_TABLES[kind];
+  const result = await getPool().query<{ name: string; client_type: string; calls: string }>(
+    `SELECT ${table.name} AS name, client_type, count(*) AS calls
+     FROM ${table.raw}
+     WHERE server_id = $1
+       AND occurred_at >= $2
+       AND occurred_at < $3
+       AND NOT success
+       AND error_source = $4
+       AND ${table.name} = ANY($5)
+     GROUP BY ${table.name}, client_type
+     ORDER BY calls DESC, client_type ASC`,
+    [serverId, range.from, range.to, table.unknown, names],
+  );
+
+  const byName = new Map<string, UnknownTool['clients']>();
+  for (const row of result.rows) {
+    const list = byName.get(row.name) ?? [];
+    list.push({ clientType: row.client_type, calls: Number(row.calls) });
+    byName.set(row.name, list);
+  }
+
+  return byName;
 }
 
 /**

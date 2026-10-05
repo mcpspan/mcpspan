@@ -161,6 +161,8 @@ export interface UnknownTool {
   lastCalledAt: string;
   /** The server's own tool this most likely meant, when one is close. */
   closest: string | null;
+  /** Who asked, most first. */
+  clients: { clientType: string; calls: number }[];
 }
 
 export interface UnknownTools extends PageInfo {
@@ -184,6 +186,8 @@ export interface UnknownPrimitive {
   lastCalledAt: string;
   /** For a prompt, the server's own one this most likely meant; never for a resource. */
   closest: string | null;
+  /** Who asked, most first. */
+  clients: { clientType: string; calls: number }[];
 }
 
 export interface ResourcesAndPrompts {

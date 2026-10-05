@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import type { UnknownPrimitive, UnknownTool } from '@/lib/api';
-import { formatCount } from '@/lib/format';
+import { clientLabel, formatCount } from '@/lib/format';
 import { type Params, withParams } from '@/lib/query';
 import { LocalTime } from './local-time';
 import { Card, CardHeader } from './ui/card';
@@ -18,7 +18,9 @@ import { Card, CardHeader } from './ui/card';
  * Usually something renamed or removed while a client still held the old
  * list; sometimes a model reaching for something it expected to find. Where
  * the server has a name close to it, that is shown too: a near miss is a name
- * or a description to fix rather than a feature to add. A
+ * or a description to fix rather than a feature to add. Who asked is shown
+ * as well: a name only one client reaches for is that client's habit, one
+ * every client wants is something the server lacks. A
  * resource is named by the scheme of the address asked for, which is all the
  * SDK records: the rest of it came from the client, and may be somebody's data.
  */
@@ -56,6 +58,7 @@ export function UnknownTools({
             calls={tool.calls}
             lastCalledAt={tool.lastCalledAt}
             closest={tool.closest}
+            clients={tool.clients}
             closestHref={
               tool.closest === null
                 ? undefined
@@ -77,6 +80,7 @@ export function UnknownTools({
             calls={item.calls}
             lastCalledAt={item.lastCalledAt}
             closest={item.closest ?? null}
+            clients={item.clients ?? []}
             href={`/errors${withParams(params, {
               errorSource: item.source,
               toolName: undefined,
@@ -98,6 +102,7 @@ function Row({
   calls,
   lastCalledAt,
   closest,
+  clients,
   closestHref,
   href,
 }: {
@@ -106,6 +111,7 @@ function Row({
   calls: number;
   lastCalledAt: string;
   closest: string | null;
+  clients: { clientType: string; calls: number }[];
   /** Where the suggested name leads, when it has a page of its own. */
   closestHref?: string;
   href: string;
@@ -117,6 +123,7 @@ function Row({
         <Link href={href} className="font-mono text-xs text-ink underline-offset-2 hover:underline">
           {name}
         </Link>
+        <AskedBy clients={clients} />
         {closest === null ? null : (
           <span className="mt-0.5 block text-xs text-ink-muted">
             Closest on this server:{' '}
@@ -134,5 +141,28 @@ function Row({
         {formatCount(calls)} call{calls === 1 ? '' : 's'}, last <LocalTime iso={lastCalledAt} />
       </span>
     </li>
+  );
+}
+
+/** Clients shown by name; the rest are counted. */
+const SHOWN_CLIENTS = 3;
+
+/** Who asked: "Only from Cursor", or the busiest few with their counts. */
+function AskedBy({ clients }: { clients: { clientType: string; calls: number }[] }) {
+  if (clients.length === 0) return null;
+
+  const only = clients.length === 1 ? clients[0] : undefined;
+  const shown = clients.slice(0, SHOWN_CLIENTS);
+  const rest = clients.length - shown.length;
+
+  return (
+    <span className="mt-0.5 block text-xs text-ink-muted">
+      {only === undefined
+        ? `From ${shown.map((client) => `${clientLabel(client.clientType)} ${formatCount(client.calls)}`).join(', ')}${
+            // "+2 more" rather than "2 others": one of the clients may itself be called Other.
+            rest > 0 ? `, +${rest} more` : ''
+          }`
+        : `Only from ${clientLabel(only.clientType)}`}
+    </span>
   );
 }

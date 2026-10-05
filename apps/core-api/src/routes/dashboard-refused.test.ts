@@ -110,8 +110,20 @@ describe('calls to tools that do not exist', () => {
     }>('unknown-tools');
 
     expect(tools).toEqual([
-      { toolName: 'book_hotel', calls: 3, lastCalledAt: expect.any(String), closest: null },
-      { toolName: 'cancel', calls: 1, lastCalledAt: expect.any(String), closest: null },
+      {
+        toolName: 'book_hotel',
+        calls: 3,
+        lastCalledAt: expect.any(String),
+        closest: null,
+        clients: [{ clientType: 'claude', calls: 3 }],
+      },
+      {
+        toolName: 'cancel',
+        calls: 1,
+        lastCalledAt: expect.any(String),
+        closest: null,
+        clients: [{ clientType: 'claude', calls: 1 }],
+      },
     ]);
     expect(Date.parse(tools[0]?.lastCalledAt ?? '')).toBeGreaterThan(ago(3).getTime());
   });
@@ -132,6 +144,24 @@ describe('calls to tools that do not exist', () => {
       book_hotel: null,
       cancel: null,
     });
+  });
+
+  it('say which clients asked, most first', async () => {
+    await seedEvents(account.serverId, [
+      { toolName: 'cancel', success: false, errorSource: 'unknown_tool', clientType: 'cursor', occurredAt: ago(1) },
+      { toolName: 'cancel', success: false, errorSource: 'unknown_tool', clientType: 'cursor', occurredAt: ago(1) },
+      // Outside the window: not counted.
+      { toolName: 'cancel', success: false, errorSource: 'unknown_tool', clientType: 'chatgpt', occurredAt: ago(60 * 24 * 40) },
+    ]);
+
+    const { tools } = await get<{ tools: { toolName: string; clients: { clientType: string; calls: number }[] }[] }>(
+      'unknown-tools',
+    );
+
+    expect(tools.find((tool) => tool.toolName === 'cancel')?.clients).toEqual([
+      { clientType: 'cursor', calls: 2 },
+      { clientType: 'claude', calls: 1 },
+    ]);
   });
 
   it('do not suggest a name only ever called as a missing one', async () => {
