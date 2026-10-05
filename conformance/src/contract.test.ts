@@ -37,6 +37,7 @@ const EVENT_FIELDS = new Set([
   'clientName',
   'clientVersion',
   'serverVersion',
+  'responseBytes',
   'timestamp',
   'sdkVersion',
   'sessionId',
@@ -365,6 +366,45 @@ describe('3.6 Versions', () => {
     await run(await start(), [{ name: 'ok' }, { name: 'no_such_tool' }]);
 
     expect(events().map((event) => event['clientVersion'])).toEqual([CLIENT_VERSION, CLIENT_VERSION]);
+  });
+});
+
+describe('3.7 Response size', () => {
+  /** What the large tool answers with: its text alone, before the result's own wrapping. */
+  const LARGE = 100_000;
+
+  it('measures every answer, from a few bytes to a large one', async () => {
+    await run(await start(), [{ name: 'ok' }, { name: 'reported_error' }, { name: 'large' }]);
+
+    const ok = only('ok')['responseBytes'];
+    expect(Number.isInteger(ok) && (ok as number) > 0 && (ok as number) < 1000, String(ok)).toBe(true);
+    expect(only('reported_error')['responseBytes']).toEqual(expect.any(Number));
+    // The text plus a little JSON around it; or twice the text, from a server that sends it as
+    // structured content too (FastMCP does, for a tool typed as returning a string). What the client got.
+    const large = only('large')['responseBytes'] as number;
+    const near = (target: number) => large >= target && large < target + 1000;
+    expect(near(LARGE) || near(2 * LARGE), String(large)).toBe(true);
+  });
+
+  it('has nothing to measure when no answer came back', async () => {
+    await run(await start(), [
+      { name: 'throws' },
+      { name: 'typed', arguments: { destination: 'WAW', passengers: 'two' } },
+      { name: 'no_such_tool' },
+    ]);
+
+    for (const name of ['throws', 'typed', 'no_such_tool']) expect(only(name)).not.toHaveProperty('responseBytes');
+  });
+
+  it('measures what a resource read and a prompt get answered too', async () => {
+    const connection = await start();
+    // As in 3.5: a client may refuse the answer's shape, which does not change what the server sent.
+    await connection.client.readResource({ uri: 'config://app' }).catch(() => undefined);
+    await connection.client.getPrompt({ name: 'plan_trip', arguments: { destination: 'Lisbon' } }).catch(() => undefined);
+    await run(connection, []);
+
+    expect(only('config://app')['responseBytes']).toEqual(expect.any(Number));
+    expect(only('plan_trip')['responseBytes']).toEqual(expect.any(Number));
   });
 });
 

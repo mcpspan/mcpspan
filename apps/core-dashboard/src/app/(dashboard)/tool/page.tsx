@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { CallsChart } from '@/components/calls-chart';
+import { Facts } from '@/components/facts';
 import { LatencyChart } from '@/components/latency-chart';
 import { LocalTime } from '@/components/local-time';
 import { CannotReachApi } from '@/components/notice';
@@ -21,6 +22,7 @@ import {
   type Summary,
   type ToolDetails,
 } from '@/lib/api';
+import { formatBytes } from '@/lib/diagnosis';
 import { clientLabel, errorSourceInfo, formatCount } from '@/lib/format';
 import { offsetParam, type Params, withParams } from '@/lib/query';
 import { resolveRange } from '@/lib/range';
@@ -135,6 +137,22 @@ export default async function ToolPage({
               <LatencyChart buckets={latency.buckets} totalCalls={latency.totalCalls} />
             )}
           </Card>
+
+          {details instanceof ApiError || details.responseSizes === null ? null : (
+            <Card>
+              <CardHeader
+                title="Response size"
+                hint={`Over ${formatCount(details.responseSizes.measured)} answers; what the client's context takes in`}
+              />
+              <Facts
+                rows={[
+                  ['Typical (median)', formatBytes(details.responseSizes.medianBytes)],
+                  ['Large (95th percentile)', formatBytes(details.responseSizes.p95Bytes)],
+                  ['Largest', formatBytes(details.responseSizes.maxBytes)],
+                ]}
+              />
+            </Card>
+          )}
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card id="failures">

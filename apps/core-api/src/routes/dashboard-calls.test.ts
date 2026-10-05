@@ -36,7 +36,13 @@ beforeEach(async () => {
   await resetDatabase();
   account = await createAccount();
   await seedEvents(account.serverId, [
-    { toolName: 'search', occurredAt: minutesAgo(50), sessionId: session, parameters: { city: 'string' } },
+    {
+      toolName: 'search',
+      occurredAt: minutesAgo(50),
+      sessionId: session,
+      parameters: { city: 'string' },
+      responseBytes: 48_213,
+    },
     { toolName: 'book', success: false, errorSource: 'exception', occurredAt: minutesAgo(40), sessionId: session },
     { kind: 'resource', toolName: 'trips://{id}', occurredAt: minutesAgo(30) },
     { kind: 'prompt', toolName: 'plan_trip', success: false, errorSource: 'arguments', occurredAt: minutesAgo(20) },
@@ -95,6 +101,7 @@ describe('/v1/dashboard/calls/:id', () => {
       success: true,
       sessionId: session,
       parameters: { city: 'string' },
+      responseBytes: 48_213,
       sdkVersion: expect.any(String),
       receivedAt: expect.any(String),
     });

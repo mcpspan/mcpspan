@@ -39,6 +39,15 @@ interface ParameterUse {
   calls: number;
 }
 
+/** How large the tool's answers were (contract, 3.7), over the calls that reported a size. */
+interface ResponseSizes {
+  /** Calls with a size; SDKs from before 0.2.0 send none. */
+  measured: number;
+  medianBytes: number;
+  p95Bytes: number;
+  maxBytes: number;
+}
+
 export interface ToolDetails {
   /** Failures by how they happened, from the same source as every other count. */
   failures: FailureShare[];
@@ -50,6 +59,8 @@ export interface ToolDetails {
   sampled: boolean;
   messagesHaveMore: boolean;
   parametersHaveMore: boolean;
+  /** Null when no call in the window reported a size. */
+  responseSizes: ResponseSizes | null;
 }
 
 /**
@@ -71,11 +82,12 @@ export async function getToolDetails(
     parameters: { offset: 0, limit: MAX_PARAMETERS },
   },
 ): Promise<ToolDetails> {
-  const [failures, messages, parameters, sampled] = await Promise.all([
+  const [failures, messages, parameters, sampled, sizes] = await Promise.all([
     failureShares(serverId, toolName, range),
     failureMessages(serverId, toolName, range, maxScanned, pages.messages),
     parameterUse(serverId, toolName, range, maxScanned, pages.parameters),
     wasSampled(serverId, toolName, range, maxScanned),
+    responseSizes(serverId, toolName, range, maxScanned),
   ]);
 
   return {
@@ -86,7 +98,42 @@ export async function getToolDetails(
     parametersHaveMore: parameters.hasMore,
     callsWithParameters: parameters.callsWithParameters,
     sampled,
+    responseSizes: sizes,
   };
+}
+
+/**
+ * Median, 95th percentile and largest answer, over the newest calls in the
+ * window: sizes are kept on raw rows only, like versions, and a percentile
+ * over the newest hundred thousand calls is as telling as over all of them.
+ */
+async function responseSizes(
+  serverId: string,
+  toolName: string,
+  range: TimeRange,
+  maxScanned: number,
+): Promise<ResponseSizes | null> {
+  const result = await getPool().query<{ measured: string; median: number | null; p95: number | null; max: number | null }>(
+    `SELECT count(*) AS measured,
+            percentile_disc(0.5) WITHIN GROUP (ORDER BY response_bytes) AS median,
+            percentile_disc(0.95) WITHIN GROUP (ORDER BY response_bytes) AS p95,
+            max(response_bytes) AS max
+     FROM (
+       SELECT response_bytes
+       FROM tool_calls
+       WHERE server_id = $1 AND tool_name = $2 AND occurred_at >= $3 AND occurred_at < $4
+         AND response_bytes IS NOT NULL
+       ORDER BY occurred_at DESC
+       LIMIT $5
+     ) AS newest`,
+    [serverId, toolName, range.from, range.to, maxScanned],
+  );
+
+  const row = result.rows[0];
+  if (row === undefined || Number(row.measured) === 0 || row.median === null || row.p95 === null || row.max === null) {
+    return null;
+  }
+  return { measured: Number(row.measured), medianBytes: row.median, p95Bytes: row.p95, maxBytes: row.max };
 }
 
 /** Failures by source, from the rollup and the raw edges like the rest of the counts. */

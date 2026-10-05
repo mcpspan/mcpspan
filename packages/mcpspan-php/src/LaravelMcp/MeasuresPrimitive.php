@@ -62,7 +62,7 @@ trait MeasuresPrimitive
         if ($response instanceof \Generator) {
             return $this->streamed($response, $call, $known);
         }
-        $this->settle($call, $known, $this->thrown);
+        $this->settle($call, $known, $this->thrown, $response);
 
         return $response;
     }
@@ -108,22 +108,24 @@ trait MeasuresPrimitive
      */
     private function streamed(\Generator $responses, Call $call, bool $known): \Generator
     {
+        $last = null;
         try {
             foreach ($responses as $key => $response) {
+                $last = $response;
                 yield $key => $response;
             }
         } catch (\Throwable $e) {
             $this->settle($call, $known, $this->thrown ?? $e);
             throw $e;
         }
-        $this->settle($call, $known, $this->thrown);
+        $this->settle($call, $known, $this->thrown, $last instanceof JsonRpcResponse ? $last : null);
     }
 
-    private function settle(Call $call, bool $known, ?\Throwable $thrown): void
+    private function settle(Call $call, bool $known, ?\Throwable $thrown, ?JsonRpcResponse $response = null): void
     {
         try {
             if (null === $thrown) {
-                Collector::record($call, true);
+                Collector::record($call, true, response: $response?->content['result'] ?? null);
             } elseif (!$known) {
                 Collector::record($call, false, $this->unknownSource());
             } elseif ($thrown instanceof ValidationException && Event::KIND_PROMPT === $this->kind()) {

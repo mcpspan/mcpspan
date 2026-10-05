@@ -175,7 +175,7 @@ internal static class Collector
                 _reporter = null;
                 _active = null;
                 CaptureParameterNames = false;
-            ServerVersion = null;
+                ServerVersion = null;
             }
 
             if (previous is not null)
@@ -261,12 +261,39 @@ internal sealed class Call
     /// <summary>Set when the call is seen to reach the tool's own code.</summary>
     public bool Reached { get; set; }
 
-    public void Succeeded() => Record(success: true, null, null, null);
+    /// <param name="response">The answer, to be measured (contract, 3.7); null when there was none.</param>
+    public void Succeeded(object? response = null) => Record(success: true, null, null, null, response);
 
-    public void Failed(string source, string? type = null, string? message = null) =>
-        Record(success: false, source, type, message);
+    public void Failed(string source, string? type = null, string? message = null, object? response = null) =>
+        Record(success: false, source, type, message, response);
 
-    private void Record(bool success, string? source, string? type, string? message)
+    /// <summary>The largest size an event carries; anything larger is sent as this (contract, 3.7).</summary>
+    public const long MaxResponseBytes = int.MaxValue;
+
+    /// <summary>
+    /// Size of an answer in bytes of its compact JSON, encoded as the MCP SDK encodes it, or null when it
+    /// cannot be. The JSON is counted and dropped; nothing of it is kept or sent.
+    /// </summary>
+    public static long? ResponseBytes(object? response)
+    {
+        if (response is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var size = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+                response, response.GetType(), ModelContextProtocol.McpJsonUtilities.DefaultOptions).LongLength;
+            return Math.Min(size, MaxResponseBytes);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private void Record(bool success, string? source, string? type, string? message, object? response)
     {
         try
         {
@@ -293,6 +320,7 @@ internal sealed class Call
                 SdkVersion = Version.Current,
                 SessionId = SessionId,
                 Parameters = Collector.CaptureParameterNames ? DescribedParameters ?? Parameters.Describe(Arguments) : null,
+                ResponseBytes = ResponseBytes(response),
             });
         }
         catch (Exception)

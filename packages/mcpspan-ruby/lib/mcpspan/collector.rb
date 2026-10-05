@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require "securerandom"
 
 module McpSpan
@@ -103,8 +104,23 @@ module McpSpan
         )
       end
 
-      # Builds the event for a finished call and queues it. It never blocks on the network.
-      def record(call, success:, source: nil, type: nil, message: nil)
+      # The largest size an event carries; anything larger is sent as this (contract, 3.7).
+      MAX_RESPONSE_BYTES = 2_147_483_647
+
+      # Size of an answer in bytes of its compact JSON (contract, 3.7), or nil when there is none or it cannot be
+      # encoded. The JSON is counted and dropped; nothing of it is kept or sent.
+      def response_bytes(response)
+        return nil if response.nil?
+
+        value = response.is_a?(Hash) || response.is_a?(Array) || response.is_a?(String) ? response : response.to_h
+        [JSON.generate(value).bytesize, MAX_RESPONSE_BYTES].min
+      rescue StandardError
+        nil
+      end
+
+      # Builds the event for a finished call and queues it. It never blocks on the network. `response` is the answer,
+      # when there was one, to be measured.
+      def record(call, success:, source: nil, type: nil, message: nil, response: nil)
         duration_ms = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - call.started) * 1000.0
         reporter = @reporter
         return if reporter.nil?
@@ -122,6 +138,7 @@ module McpSpan
           client_name: Text.client_name(call.client_name),
           client_version: Text.version(call.client_version),
           server_version: Text.version(call.server_version),
+          response_bytes: response_bytes(response),
           timestamp: call.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%LZ"),
           session_id: call.session_id,
           parameters: call.parameters,

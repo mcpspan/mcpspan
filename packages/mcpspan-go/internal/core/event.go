@@ -18,8 +18,10 @@ type Event struct {
 	ClientName   string  `json:"clientName,omitempty"`
 	// ClientVersion and ServerVersion are as the client and the server give
 	// themselves (contract, 3.6).
-	ClientVersion string            `json:"clientVersion,omitempty"`
-	ServerVersion string            `json:"serverVersion,omitempty"`
+	ClientVersion string `json:"clientVersion,omitempty"`
+	ServerVersion string `json:"serverVersion,omitempty"`
+	// ResponseBytes is the size of the answer, when there was one (contract, 3.7).
+	ResponseBytes *int64            `json:"responseBytes,omitempty"`
 	Timestamp     string            `json:"timestamp"`
 	SDKVersion    string            `json:"sdkVersion"`
 	SessionID     string            `json:"sessionId,omitempty"`
@@ -46,4 +48,4 @@ const (
 
 // Version is the SDK's own version, reported in every event and in the
 // User-Agent.
-const Version = "0.1.0"
+const Version = "0.2.0"

@@ -28,6 +28,7 @@ interface Details {
   parameters: { name: string; types: string[]; calls: number }[];
   callsWithParameters: number;
   sampled: boolean;
+  responseSizes: { measured: number; medianBytes: number; p95Bytes: number; maxBytes: number } | null;
 }
 
 beforeEach(async () => {
@@ -141,6 +142,29 @@ describe("a tool's own page", () => {
 
     expect(parameters).toEqual([]);
     expect(callsWithParameters).toBe(0);
+  });
+
+  it('says how large its answers were, over the calls that reported a size', async () => {
+    const sizes = [...Array.from({ length: 19 }, (_, i) => 1000 + i), 250_000];
+    await seedEvents(
+      account.serverId,
+      sizes.map((responseBytes) => ({ toolName: 'export_trip', responseBytes, occurredAt: ago(10) })),
+    );
+    // A call without a size (an older SDK, or an exception) is left out, and another tool's sizes are its own.
+    await seedEvents(account.serverId, [
+      { toolName: 'export_trip', occurredAt: ago(10) },
+      { toolName: 'get_weather', responseBytes: 9_999_999, occurredAt: ago(10) },
+    ]);
+
+    const details = await get<Details>('tool-details?toolName=export_trip');
+
+    expect(details.responseSizes).toEqual({ measured: 20, medianBytes: 1009, p95Bytes: 1018, maxBytes: 250_000 });
+  });
+
+  it('has no sizes to show when no call reported one', async () => {
+    const details = await get<Details>('tool-details?toolName=search');
+
+    expect(details.responseSizes).toBeNull();
   });
 
   it('needs to be told which tool', async () => {

@@ -23,9 +23,13 @@ and nothing ever leaves your machine.
 - **Response times that mean something.** Median and 95th percentile per tool,
   and the full distribution, so a cache hit and a slow path do not hide
   inside one average.
+- **Answer sizes.** How large each tool's answers are, typical and largest:
+  a tool that now and then returns megabytes fills the agent's context while
+  looking fine on every latency chart.
 - **Failures, told apart.** A handler that threw, a tool that answered with an
   error, arguments the server refused, and tools that agents asked for but
-  your server does not have.
+  your server does not have: which clients asked, the closest name you do
+  have, and what the agent did next.
 - **Sessions.** Each connection's calls, step by step, as the agent made them.
 - **Releases.** Every call carries the version of your server that answered
   it; the charts mark where each release began and compare it with the one

@@ -356,6 +356,7 @@ describe('getToolDetails', () => {
       parameters: [],
       callsWithParameters: 0,
       sampled: false,
+      responseSizes: null,
       messagesOffset: 0,
       messagesHaveMore: false,
       parametersOffset: 0,

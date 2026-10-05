@@ -43,6 +43,8 @@ export interface CallDetail extends CallRecord {
   /** When the API stored it, by its own clock, for the delay from the reporting machine. */
   receivedAt: string;
   sdkVersion: string;
+  /** Size of the answer in bytes, when the SDK measured one (from 0.2.0, and only for calls that answered). */
+  responseBytes: number | null;
   /** Names and JSON types of what was sent, when the SDK was asked to record them. */
   parameters: Record<string, string> | null;
 }
@@ -161,13 +163,18 @@ export async function getCall(serverId: string, id: string): Promise<CallDetail 
     const table = CALL_TABLES[kind];
 
     return `SELECT ${LIST_COLUMNS}, '${kind}' AS kind, ${table.name} AS tool_name,
-            received_at, sdk_version, parameters
+            received_at, sdk_version, parameters, response_bytes
      FROM ${table.raw}
      WHERE server_id = $1 AND id = $2`;
   });
 
   const result = await getPool().query<
-    CallRow & { received_at: Date; sdk_version: string; parameters: Record<string, string> | null }
+    CallRow & {
+      received_at: Date;
+      sdk_version: string;
+      parameters: Record<string, string> | null;
+      response_bytes: number | null;
+    }
   >(`${parts.join(' UNION ALL ')} LIMIT 1`, [serverId, id]);
 
   const row = result.rows[0];
@@ -177,6 +184,7 @@ export async function getCall(serverId: string, id: string): Promise<CallDetail 
     ...toRecord(row),
     receivedAt: row.received_at.toISOString(),
     sdkVersion: row.sdk_version,
+    responseBytes: row.response_bytes,
     parameters: row.parameters,
   };
 }

@@ -40,6 +40,11 @@ def ok() -> str:
 
 
 @server.tool
+def large() -> str:
+    return "x" * 100_000
+
+
+@server.tool
 def reported_error() -> ToolResult:
     return ToolResult(content="No flights found", is_error=True)
 

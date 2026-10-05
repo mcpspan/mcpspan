@@ -73,6 +73,11 @@ impl Adapter {
     }
 
     #[tool]
+    async fn large(&self) -> String {
+        "x".repeat(100_000)
+    }
+
+    #[tool]
     async fn reported_error(&self) -> Result<String, String> {
         Err("No flights found".into())
     }

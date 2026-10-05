@@ -210,7 +210,14 @@ fn settle(
     match answer {
         Ok(result) => {
             if let Some(outcome) = from_response(&result) {
-                collector::record(call, outcome);
+                // Only an answer the tool gave: arguments rmcp refused come back as a result too.
+                let size = match (&result, &outcome) {
+                    (Ok(CallToolResponse::Complete(answer)), Outcome::Success | Outcome::Result { .. }) => {
+                        collector::response_bytes(answer)
+                    }
+                    _ => None,
+                };
+                collector::record_answered(call, outcome, size);
             }
             result
         }

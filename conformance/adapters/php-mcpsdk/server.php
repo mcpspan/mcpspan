@@ -39,6 +39,7 @@ McpSdk::instrument($builder, [
 
 $builder
     ->addTool(static fn (): string => 'ok', 'ok')
+    ->addTool(static fn (): string => str_repeat('x', 100_000), 'large')
     ->addTool(static fn (): CallToolResult => CallToolResult::error([new TextContent('No flights found')]), 'reported_error')
     ->addTool(static function (): string {
         throw new ConformanceError('boom');

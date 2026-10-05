@@ -31,6 +31,6 @@ final class ConformanceServer extends Server
     protected function boot(): void
     {
         // Added once the server is instrumented.
-        array_push($this->tools, Ok::class, ReportedError::class, Throws::class, Typed::class, Excluded::class, Long::class);
+        array_push($this->tools, Ok::class, Large::class, ReportedError::class, Throws::class, Typed::class, Excluded::class, Long::class);
     }
 }

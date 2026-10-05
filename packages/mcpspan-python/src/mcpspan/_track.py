@@ -17,6 +17,7 @@ from ._failure import (
     describe_exception,
     is_error_result,
     is_input_required,
+    response_bytes,
     truncate,
 )
 from ._marks import is_marked, mark_excluded, mark_handler
@@ -127,27 +128,35 @@ class _Measurement:
                 self._call.interim = True
             return
 
+        size = response_bytes(result)
         if not is_error_result(result):
-            self._emit(success=True)
+            self._emit(success=True, size=size)
             return
 
         message = describe_error_result(result)
         self._emit(
             success=False,
-            errorSource="result",
-            **({"errorMessage": message} if message is not None else {}),
+            size=size,
+            outcome={
+                "errorSource": "result",
+                **({"errorMessage": message} if message is not None else {}),
+            },
         )
 
     def _fail(self, error: BaseException) -> None:
         error_type, message = describe_exception(error)
         self._emit(
             success=False,
-            errorSource="exception",
-            errorType=error_type,
-            **({"errorMessage": message} if message is not None else {}),
+            outcome={
+                "errorSource": "exception",
+                "errorType": error_type,
+                **({"errorMessage": message} if message is not None else {}),
+            },
         )
 
-    def _emit(self, *, success: bool, **outcome: str) -> None:
+    def _emit(
+        self, *, success: bool, size: int | None = None, outcome: dict[str, str] | None = None
+    ) -> None:
         if self._recorded:
             return
         self._recorded = True
@@ -165,7 +174,9 @@ class _Measurement:
                 timestamp=self._timestamp,
                 server_version=self._call.server_version if self._call is not None else None,
             )
-            event.update(outcome)  # type: ignore[typeddict-item]
+            event.update(outcome or {})  # type: ignore[typeddict-item]
+            if size is not None:
+                event["responseBytes"] = size
             self._sink(event)
         except Exception:
             # Recording a call must never disturb the call itself.
@@ -336,13 +347,15 @@ def record_call(
     timestamp: str,
     duration_ms: float,
     success: bool,
+    response: Any = None,
     **outcome: str,
 ) -> None:
     """Records a call measured outside a tracked function, with its outcome.
 
     For integrations that see a call whole from outside the tool, as
     FastMCP's middleware does. `outcome` holds the failure fields, in the
-    event's own spelling.
+    event's own spelling. `response` is the answer, when there was one, to be
+    measured (contract, 3.7).
     """
     sink = _sink
     if sink is None:
@@ -360,6 +373,9 @@ def record_call(
             server_version=call.server_version,
         )
         event.update(outcome)  # type: ignore[typeddict-item]
+        size = response_bytes(response) if response is not None else None
+        if size is not None:
+            event["responseBytes"] = size
         sink(event)
     except Exception:
         # Recording a call must never disturb the answer the client gets.

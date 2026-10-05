@@ -1,10 +1,12 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -39,6 +41,36 @@ type Outcome struct {
 	ErrorSource  string
 	ErrorType    string
 	ErrorMessage string
+	// Response is the answer the call returned, when it returned one, to be
+	// measured (contract, 3.7). Nil when there was none.
+	Response any
+}
+
+// MaxResponseBytes is the largest size an event carries; anything larger is
+// sent as this (contract, 3.7).
+const MaxResponseBytes = 2_147_483_647
+
+// ResponseBytes is the size of an answer in bytes of its compact JSON, or nil
+// when it cannot be encoded. The JSON is counted and dropped; nothing of it
+// is kept or sent. HTML characters are left as they are, as MCP SDKs send
+// them, rather than escaped as encoding/json does by default.
+func ResponseBytes(response any) *int64 {
+	if response == nil {
+		return nil
+	}
+	// A nil pointer in an interface is no answer either, not the four bytes of null.
+	if value := reflect.ValueOf(response); value.Kind() == reflect.Pointer && value.IsNil() {
+		return nil
+	}
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(response); err != nil {
+		return nil
+	}
+	// Encode ends with a newline that is not part of the value.
+	size := min(int64(buffer.Len()-1), MaxResponseBytes)
+	return &size
 }
 
 // Recording reports whether events are being collected, so an integration
@@ -83,6 +115,7 @@ func Record(call Call, outcome Outcome) {
 	if !outcome.Success {
 		event.ErrorMessage = outcome.ErrorMessage
 	}
+	event.ResponseBytes = ResponseBytes(outcome.Response)
 	if capture {
 		event.Parameters = DescribeParameters(call.Arguments)
 	}

@@ -143,6 +143,8 @@ export interface CallDetail extends CallRecord {
   /** When the API stored it, by its own clock. */
   receivedAt: string;
   sdkVersion: string;
+  /** Size of the answer in bytes; null when none was measured (an SDK before 0.2.0, or no answer). */
+  responseBytes: number | null;
   /** Names and JSON types of what was sent, when the SDK was asked to record them. */
   parameters: Record<string, string> | null;
 }
@@ -300,6 +302,8 @@ export interface ToolDetails {
   /** Calls read for parameters that had any. Zero means the server does not record them. */
   callsWithParameters: number;
   sampled: boolean;
+  /** How large its answers were; null when no call reported a size (SDKs before 0.2.0). */
+  responseSizes: { measured: number; medianBytes: number; p95Bytes: number; maxBytes: number } | null;
   messagesOffset: number;
   messagesHaveMore: boolean;
   parametersOffset: number;

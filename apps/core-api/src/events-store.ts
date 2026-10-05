@@ -96,23 +96,23 @@ async function insertInto(
        id, server_id, occurred_at, ${name}, duration_ms, success,
        error_source, error_type, error_message,
        client_type, client_name, sdk_version, parameters, session_id,
-       client_version, server_version
+       client_version, server_version, response_bytes
      )
      SELECT
        id, $1::uuid, occurred_at, name, duration_ms, success,
        error_source, error_type, error_message,
        client_type, client_name, sdk_version, parameters, session_id,
-       client_version, server_version
+       client_version, server_version, response_bytes
      FROM unnest(
        $2::uuid[], $3::timestamptz[], $4::text[], $5::double precision[], $6::boolean[],
        $7::text[], $8::text[], $9::text[],
        $10::text[], $11::text[], $12::text[], $13::jsonb[], $14::uuid[],
-       $15::text[], $16::text[]
+       $15::text[], $16::text[], $17::integer[]
      ) AS incoming (
        id, occurred_at, name, duration_ms, success,
        error_source, error_type, error_message,
        client_type, client_name, sdk_version, parameters, session_id,
-       client_version, server_version
+       client_version, server_version, response_bytes
      )
      ON CONFLICT DO NOTHING
      RETURNING id`,
@@ -133,6 +133,7 @@ async function insertInto(
       events.map((event) => event.sessionId ?? null),
       events.map((event) => event.clientVersion ?? null),
       events.map((event) => event.serverVersion ?? null),
+      events.map((event) => event.responseBytes ?? null),
     ],
   );
 

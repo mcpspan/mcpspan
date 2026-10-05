@@ -172,11 +172,12 @@ module McpSpan
       def __mcpspan_settled(call, state, result)
         # An interim result asking the client for input settles nothing; the call that follows it does.
         return if Instrumentation.interim?(result)
-        return Collector.record(call, success: true) unless result.is_a?(Hash) && result[:isError]
+        return Collector.record(call, success: true, response: result) unless result.is_a?(Hash) && result[:isError]
 
         # The gem refuses missing or invalid arguments with an error result, before the tool is called.
         if state.reached
-          Collector.record(call, success: false, source: Source::RESULT, message: Instrumentation.result_text(result))
+          Collector.record(call, success: false, source: Source::RESULT, message: Instrumentation.result_text(result),
+                                 response: result,)
         else
           Collector.record(call, success: false, source: Source::ARGUMENTS)
         end
@@ -204,9 +205,10 @@ module McpSpan
         if call
           hash = result.respond_to?(:to_h) ? result.to_h : {}
           if hash[:isError]
-            Collector.record(call, success: false, source: Source::RESULT, message: Instrumentation.result_text(hash))
+            Collector.record(call, success: false, source: Source::RESULT, message: Instrumentation.result_text(hash),
+                                   response: hash,)
           elsif !Instrumentation.interim?(result)
-            Collector.record(call, success: true)
+            Collector.record(call, success: true, response: hash)
           end
         end
         result

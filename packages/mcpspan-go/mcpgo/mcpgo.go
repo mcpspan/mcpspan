@@ -309,7 +309,9 @@ func recordReached(call core.Call, result *mcp.CallToolResult, err error) {
 		errorType, message := core.DescribeError(err)
 		core.Record(call, core.Outcome{ErrorSource: core.SourceException, ErrorType: errorType, ErrorMessage: message})
 	case result != nil && result.IsError:
-		core.Record(call, core.Outcome{ErrorSource: core.SourceResult, ErrorMessage: core.ResultText(texts(result))})
+		core.Record(call, core.Outcome{ErrorSource: core.SourceResult, ErrorMessage: core.ResultText(texts(result)), Response: result})
+	case result != nil:
+		core.Record(call, core.Outcome{Success: true, Response: result})
 	default:
 		core.Record(call, core.Outcome{Success: true})
 	}

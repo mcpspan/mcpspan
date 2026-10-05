@@ -42,6 +42,8 @@ final class Event
         public readonly ?string $kind = null,
         public readonly ?string $clientVersion = null,
         public readonly ?string $serverVersion = null,
+        /** Size of the answer, when there was one (contract, 3.7). */
+        public readonly ?int $responseBytes = null,
     ) {
     }
 
@@ -65,6 +67,7 @@ final class Event
             'clientName' => $this->clientName,
             'clientVersion' => $this->clientVersion,
             'serverVersion' => $this->serverVersion,
+            'responseBytes' => $this->responseBytes,
             'timestamp' => $this->timestamp,
             'sdkVersion' => McpSpan::VERSION,
             'sessionId' => $this->sessionId,

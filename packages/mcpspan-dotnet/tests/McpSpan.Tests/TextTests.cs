@@ -83,4 +83,25 @@ public sealed class TextTests
         Assert.DoesNotContain("secret", string.Join(",", described.Values), StringComparison.Ordinal);
         Assert.Null(Parameters.Describe(new Dictionary<string, System.Text.Json.JsonElement>()));
     }
+
+    [Fact]
+    public void Measures_an_answer_as_the_MCP_SDK_encodes_it()
+    {
+        var result = new ModelContextProtocol.Protocol.CallToolResult
+        {
+            Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = new string('x', 1000) }],
+        };
+        var encoded = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+            result, ModelContextProtocol.McpJsonUtilities.DefaultOptions);
+
+        Assert.Equal(encoded.LongLength, Call.ResponseBytes(result));
+        Assert.InRange(encoded.LongLength, 1000, 1100);
+    }
+
+    [Fact]
+    public void Has_no_size_for_no_answer_or_one_that_cannot_be_encoded()
+    {
+        Assert.Null(Call.ResponseBytes(null));
+        Assert.Null(Call.ResponseBytes(new Action(() => { })));
+    }
 }

@@ -1,6 +1,6 @@
 {
   "name": "mcpspan",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.",
   "keywords": [
     "mcp",

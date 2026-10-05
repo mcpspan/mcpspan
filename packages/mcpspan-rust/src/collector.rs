@@ -246,8 +246,24 @@ pub(crate) fn begin(
     })
 }
 
+/// The largest size an event carries; anything larger is sent as this (contract, 3.7).
+const MAX_RESPONSE_BYTES: u64 = 2_147_483_647;
+
+/// Size of an answer in bytes of its compact JSON, as rmcp writes it, or `None` when it cannot be written. The JSON
+/// is counted and dropped; nothing of it is kept or sent.
+pub(crate) fn response_bytes<T: serde::Serialize>(answer: &T) -> Option<u64> {
+    serde_json::to_vec(answer)
+        .ok()
+        .map(|json| (json.len() as u64).min(MAX_RESPONSE_BYTES))
+}
+
 /// Builds the event for a finished call and queues it. It never blocks on the network.
 pub(crate) fn record(call: Call, outcome: Outcome) {
+    record_answered(call, outcome, None);
+}
+
+/// As [`record`], for a call that answered: `response_bytes` is the answer's size (contract, 3.7).
+pub(crate) fn record_answered(call: Call, outcome: Outcome, response_bytes: Option<u64>) {
     let duration_ms = call.started.elapsed().as_secs_f64() * 1_000.0;
     let Some(reporter) = global().running.as_ref().map(|running| Arc::clone(&running.reporter)) else {
         return;
@@ -280,6 +296,7 @@ pub(crate) fn record(call: Call, outcome: Outcome) {
         client_name: text::client_name(call.client_name.as_deref()),
         client_version: text::version(call.client_version.as_deref()),
         server_version: text::version(call.server_version.as_deref()),
+        response_bytes,
         timestamp: transport::iso8601(call.timestamp),
         session_id: call.session_id,
         parameters: call.parameters,
@@ -289,6 +306,12 @@ pub(crate) fn record(call: Call, outcome: Outcome) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn measures_an_answer_as_compact_json() {
+        let answer = serde_json::json!({ "content": [{ "type": "text", "text": "Zażółć ✈️" }] });
+        assert_eq!(response_bytes(&answer), Some(answer.to_string().len() as u64));
+    }
 
     #[test]
     fn with_a_key_and_no_endpoint_collects_nothing_and_says_so_once() {

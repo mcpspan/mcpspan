@@ -64,7 +64,7 @@ beforeEach(async () => {
   account = await createAccount({ serverName: 'Flights & Co' });
 
   await seedEvents(account.serverId, [
-    { toolName: 'search', occurredAt: ago(180), parameters: { destination: 'string' } },
+    { toolName: 'search', occurredAt: ago(180), parameters: { destination: 'string' }, responseBytes: 48_213 },
     { toolName: 'search', occurredAt: ago(5) },
     {
       toolName: 'search',
@@ -92,6 +92,9 @@ describe('/v1/dashboard/export/calls', () => {
       /^attachment; filename="mcpspan-flights-co-calls-\d{4}-\d{2}-\d{2}-to-\d{4}-\d{2}-\d{2}\.csv"$/,
     );
     expect(records[0]).toContain('session_id');
+    // New columns go last, so scripts reading by position keep working.
+    expect(records[0]?.at(-1)).toBe('response_bytes');
+    expect(records[1]?.at(-1)).toBe('48213');
     expect(records.slice(1).map((record) => record[3])).toEqual([
       'search',
       'search',
@@ -133,7 +136,8 @@ describe('/v1/dashboard/export/calls', () => {
     const lines = (await response.text()).trim().split('\n').map((line) => JSON.parse(line));
 
     expect(response.headers.get('content-type')).toBe('application/x-ndjson; charset=utf-8');
-    expect(lines[0]).toMatchObject({ toolName: 'search', parameters: { destination: 'string' } });
+    expect(lines[0]).toMatchObject({ toolName: 'search', parameters: { destination: 'string' }, responseBytes: 48_213 });
+    expect(lines[1]).toMatchObject({ responseBytes: null });
     expect(lines).toHaveLength(3);
   });
 

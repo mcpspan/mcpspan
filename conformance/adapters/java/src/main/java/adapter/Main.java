@@ -70,6 +70,7 @@ public final class Main {
             .tools(
                 tool("early", NO_INPUT, () -> text("ok", false)),
                 tool("ok", NO_INPUT, () -> text("ok", false)),
+                tool("large", NO_INPUT, () -> text("x".repeat(100_000), false)),
                 tool("reported_error", NO_INPUT, () -> text("No flights found", true)),
                 tool("throws", NO_INPUT, () -> {
                     throw new ConformanceError("boom");

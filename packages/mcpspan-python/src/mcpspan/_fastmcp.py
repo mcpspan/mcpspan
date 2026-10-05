@@ -161,13 +161,14 @@ async def _measure_primitive(server: Any, context: Any, call_next: Any, kind: st
     except Exception:
         return await call_next(context)
 
-    def record(**outcome: str) -> None:
+    def record(response: Any = None, **outcome: str) -> None:
         record_call(
             name,
             call,
             timestamp=timestamp,
             duration_ms=_elapsed(started),
             success=not outcome,
+            response=response,
             kind=kind,
             **outcome,
         )
@@ -193,7 +194,7 @@ async def _measure_primitive(server: Any, context: Any, call_next: Any, kind: st
 
     if not is_input_required(result):
         with contextlib.suppress(Exception):
-            record()
+            record(result)
     return result
 
 
@@ -235,7 +236,14 @@ def _record_result(
         return
 
     if not is_error_result(result):
-        record_call(name, call, timestamp=timestamp, duration_ms=_elapsed(started), success=True)
+        record_call(
+            name,
+            call,
+            timestamp=timestamp,
+            duration_ms=_elapsed(started),
+            success=True,
+            response=result,
+        )
         return
 
     message = describe_error_result(result)
@@ -245,6 +253,7 @@ def _record_result(
         timestamp=timestamp,
         duration_ms=_elapsed(started),
         success=False,
+        response=result,
         errorSource="result",
         **({"errorMessage": message} if message is not None else {}),
     )

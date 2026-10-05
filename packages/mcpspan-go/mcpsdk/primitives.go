@@ -56,7 +56,7 @@ func measurePrimitive(ctx context.Context, server *mcp.Server, next mcp.MethodHa
 		}
 		result, err := next(ctx, method, req)
 		read, _ := result.(*mcp.ReadResourceResult)
-		settlePrimitive(call, exists, core.SourceUnknownResource, err, read != nil && read.InputRequests != nil)
+		settlePrimitive(call, exists, core.SourceUnknownResource, err, read != nil && read.InputRequests != nil, read)
 		return result, err
 
 	case *mcp.GetPromptRequest:
@@ -74,7 +74,7 @@ func measurePrimitive(ctx context.Context, server *mcp.Server, next mcp.MethodHa
 		}
 		result, err := next(ctx, method, req)
 		got, _ := result.(*mcp.GetPromptResult)
-		settlePrimitive(call, exists, core.SourceUnknownPrompt, err, got != nil && got.InputRequests != nil)
+		settlePrimitive(call, exists, core.SourceUnknownPrompt, err, got != nil && got.InputRequests != nil, got)
 		return result, err
 	}
 
@@ -100,7 +100,7 @@ func beginPrimitive(server *mcp.Server, req mcp.Request, kind, name string, argu
 	return call, true
 }
 
-func settlePrimitive(call core.Call, exists bool, unknown string, err error, interim bool) {
+func settlePrimitive(call core.Call, exists bool, unknown string, err error, interim bool, response any) {
 	defer func() { _ = recover() }()
 
 	switch {
@@ -112,7 +112,7 @@ func settlePrimitive(call core.Call, exists bool, unknown string, err error, int
 	case interim:
 		// An interim answer asking the client for more settles nothing; the retry does.
 	default:
-		core.Record(call, core.Outcome{Success: true})
+		core.Record(call, core.Outcome{Success: true, Response: response})
 	}
 }
 

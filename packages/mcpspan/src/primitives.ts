@@ -1,7 +1,7 @@
 import { clientFor, serverVersionOf } from './client.js';
 import { describeException } from './failure.js';
 import { sessionFor } from './session.js';
-import { isRecording, recordPrimitiveCall } from './track.js';
+import { isRecording, recordPrimitiveCall, responseBytes } from './track.js';
 
 /**
  * Resource reads and prompt gets (contract, 3.5).
@@ -133,7 +133,12 @@ export function watchPrimitive(handler: AnyFunction, server: object): AnyFunctio
     }
     if (resolved === undefined) return call();
 
-    const record = (outcome: { success: boolean; errorSource?: 'exception' | 'arguments' | 'unknown_resource' | 'unknown_prompt'; error?: unknown }): void => {
+    const record = (outcome: {
+      success: boolean;
+      errorSource?: 'exception' | 'arguments' | 'unknown_resource' | 'unknown_prompt';
+      error?: unknown;
+      responseBytes?: number | undefined;
+    }): void => {
       try {
         const exception = outcome.errorSource === 'exception' ? describeException(outcome.error) : undefined;
         recordPrimitiveCall({
@@ -149,6 +154,7 @@ export function watchPrimitive(handler: AnyFunction, server: object): AnyFunctio
           sessionId: typeof context === 'object' && context !== null ? sessionFor(server, context) : undefined,
           client: clientFor(server, typeof context === 'object' && context !== null ? context : undefined),
           serverVersion: serverVersionOf(server),
+          responseBytes: outcome.responseBytes,
         });
       } catch {
         // Looking at a call must never change it.
@@ -172,7 +178,7 @@ export function watchPrimitive(handler: AnyFunction, server: object): AnyFunctio
     // An interim answer asking the client for more settles nothing; the retry does.
     const interim =
       typeof result === 'object' && result !== null && (result as { resultType?: unknown }).resultType === 'input_required';
-    if (!interim) record({ success: true });
+    if (!interim) record({ success: true, responseBytes: responseBytes(result) });
 
     return result;
   };

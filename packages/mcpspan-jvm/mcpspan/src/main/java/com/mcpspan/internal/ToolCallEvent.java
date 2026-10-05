@@ -19,6 +19,7 @@ public record ToolCallEvent(
     String clientName,
     String clientVersion,
     String serverVersion,
+    Long responseBytes,
     String timestamp,
     String sdkVersion,
     String sessionId,
@@ -57,6 +58,9 @@ public record ToolCallEvent(
         Json.field(json, "clientName", clientName, false);
         Json.field(json, "clientVersion", clientVersion, false);
         Json.field(json, "serverVersion", serverVersion, false);
+        if (responseBytes != null) {
+            json.append(",\"responseBytes\":").append(responseBytes.longValue());
+        }
         Json.field(json, "timestamp", timestamp, false);
         Json.field(json, "sdkVersion", sdkVersion, false);
         Json.field(json, "sessionId", sessionId, false);

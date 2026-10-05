@@ -73,7 +73,7 @@ final class Primitives {
 
             String unknown = resource ? ToolCallEvent.UNKNOWN_RESOURCE : ToolCallEvent.UNKNOWN_PROMPT;
             return original.handle(exchange, params)
-                .doOnSuccess(result -> call.succeeded())
+                .doOnSuccess(result -> call.succeeded(Sizes.of(result)))
                 .doOnError(error -> {
                     if (exists) {
                         call.failedWithException(error);

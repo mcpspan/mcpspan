@@ -125,7 +125,7 @@ final class PrimitiveHandler implements RequestHandlerInterface
             if ($answer instanceof Response) {
                 // An interim result asking the client for input settles nothing; the request that follows it does.
                 if (!$answer->result instanceof InputRequiredResult) {
-                    Collector::record($call, true);
+                    Collector::record($call, true, response: $answer->result);
                 }
 
                 return;

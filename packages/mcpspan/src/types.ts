@@ -107,6 +107,12 @@ export interface ToolCallEvent {
    */
   serverVersion?: string;
 
+  /**
+   * Size of the answer, in bytes of compact JSON (contract, 3.7). Only when the
+   * call returned one; the content is counted, never kept.
+   */
+  responseBytes?: number;
+
   /** When the call started, as an ISO 8601 timestamp. */
   timestamp: string;
 

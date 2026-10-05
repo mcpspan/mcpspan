@@ -22,7 +22,7 @@ use McpSpan\Core\Text;
 final class McpSpan
 {
     /** The SDK's own version, reported with every event. */
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.2.0';
 
     /** @var array<string, true> */
     private static array $excluded = [];
@@ -123,7 +123,7 @@ final class McpSpan
                 throw $e;
             }
             if (null !== $call) {
-                Collector::record($call, true);
+                Collector::record($call, true, response: $result);
             }
 
             return $result;

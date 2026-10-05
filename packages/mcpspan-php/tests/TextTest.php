@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace McpSpan\Tests;
 
+use McpSpan\Core\Collector;
 use McpSpan\Core\Event;
 use McpSpan\Core\Text;
+use McpSpan\McpSpan;
 use PHPUnit\Framework\TestCase;
 
 final class TextTest extends TestCase
@@ -42,11 +44,20 @@ final class TextTest extends TestCase
     {
         $event = new Event('id', 't', 1.0, true, null, null, null, 'unknown', null, 'now', null, ['0' => 'string']);
 
-        self::assertSame('{"events":[{"id":"id","toolName":"t","durationMs":1.0,"success":true,"clientType":"unknown","timestamp":"now","sdkVersion":"0.1.0","parameters":{"0":"string"}}]}', Event::batch([$event->toArray()]));
+        self::assertSame('{"events":[{"id":"id","toolName":"t","durationMs":1.0,"success":true,"clientType":"unknown","timestamp":"now","sdkVersion":"'.McpSpan::VERSION.'","parameters":{"0":"string"}}]}', Event::batch([$event->toArray()]));
     }
 
     public function testMakesVersionFourUuids(): void
     {
         self::assertMatchesRegularExpression('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', Event::uuid());
+    }
+
+    public function testMeasuresAnAnswerAsTheSdksEncodeIt(): void
+    {
+        $answer = ['content' => [['type' => 'text', 'text' => 'Zażółć ✈️ / x']]];
+
+        self::assertSame(\strlen(json_encode($answer, \JSON_THROW_ON_ERROR)), Collector::responseBytes($answer));
+        self::assertNull(Collector::responseBytes(null));
+        self::assertNull(Collector::responseBytes(\NAN));
     }
 }

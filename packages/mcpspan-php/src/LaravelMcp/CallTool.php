@@ -105,7 +105,7 @@ final class CallTool extends LaravelCallTool
         try {
             $result = $response?->content['result'] ?? null;
             if (\is_array($result) && true !== ($result['isError'] ?? false)) {
-                Collector::record($call, true);
+                Collector::record($call, true, response: $result);
 
                 return;
             }
@@ -119,7 +119,7 @@ final class CallTool extends LaravelCallTool
 
                 return;
             }
-            Collector::record($call, false, Event::SOURCE_RESULT, null, self::text($result));
+            Collector::record($call, false, Event::SOURCE_RESULT, null, self::text($result), $result);
         } catch (\Throwable) {
         }
     }

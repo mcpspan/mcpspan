@@ -38,6 +38,7 @@ McpSpan.instrument(
 )
 
 server.define_tool(name: "ok") { |**| text("ok") }
+server.define_tool(name: "large") { |**| text("x" * 100_000) }
 server.define_tool(name: "reported_error") { |**| text("No flights found", error: true) }
 server.define_tool(name: "throws") { |**| raise ConformanceError, "boom" }
 server.define_tool(

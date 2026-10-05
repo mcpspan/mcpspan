@@ -87,6 +87,7 @@ describe('what reaches the database', () => {
       clientName: 'cursor-vscode',
       sdkVersion: '0.2.0',
       parameters: { destination: 'string' },
+      responseBytes: 48_213,
     });
 
     await post({ events: [sent] });
@@ -104,6 +105,7 @@ describe('what reaches the database', () => {
         client_name: 'cursor-vscode',
         sdk_version: '0.2.0',
         parameters: { destination: 'string' },
+        response_bytes: 48_213,
       }),
     ]);
   });
@@ -118,6 +120,7 @@ describe('what reaches the database', () => {
         error_message: null,
         client_name: null,
         parameters: null,
+        response_bytes: null,
       }),
     ]);
   });
@@ -218,6 +221,12 @@ describe('POST /v1/events with a body it cannot use', () => {
 
   it('refuses a batch with a broken event', async () => {
     const response = await post({ events: [event({ durationMs: -1 })] });
+
+    expect(response.status).toBe(400);
+  });
+
+  it.each([-1, 1.5, 2_147_483_648])('refuses a response size of %s', async (responseBytes) => {
+    const response = await post({ events: [event({ responseBytes })] });
 
     expect(response.status).toBe(400);
   });

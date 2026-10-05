@@ -114,7 +114,10 @@ export function parseHeaders(raw: string): Record<string, string> {
   return headers;
 }
 
-type AnyValue = { stringValue: string } | { arrayValue: { values: { stringValue: string }[] } };
+type AnyValue =
+  | { stringValue: string }
+  | { intValue: string }
+  | { arrayValue: { values: { stringValue: string }[] } };
 type KeyValue = { key: string; value: AnyValue };
 
 function attribute(key: string, value: string | string[] | undefined): KeyValue[] {
@@ -124,6 +127,11 @@ function attribute(key: string, value: string | string[] | undefined): KeyValue[
   }
 
   return [{ key, value: { stringValue: value } }];
+}
+
+/** An integer attribute; OTLP JSON carries 64-bit integers as strings. */
+function intAttribute(key: string, value: number | undefined): KeyValue[] {
+  return value === undefined ? [] : [{ key, value: { intValue: String(value) } }];
 }
 
 /**
@@ -265,6 +273,7 @@ export class OtelExporter {
               ...attribute('mcpspan.sdk.version', event.sdkVersion),
               ...attribute('mcpspan.server.version', event.serverVersion),
               ...attribute('mcpspan.client.version', event.clientVersion),
+              ...intAttribute('mcpspan.response.size', event.responseBytes),
               ...attribute('mcpspan.parameter.names', event.parameters ? Object.keys(event.parameters) : undefined),
             ],
             status: event.success ? { code: 0 } : { code: 2, ...(event.errorMessage ? { message: event.errorMessage } : {}) },

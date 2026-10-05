@@ -129,7 +129,13 @@ def _wrap_server_get_prompt(server: Any) -> None:
 
 
 def _record(
-    kind: str, name: str, call: CallState, timestamp: str, started: float, **outcome: str
+    kind: str,
+    name: str,
+    call: CallState,
+    timestamp: str,
+    started: float,
+    response: Any = None,
+    **outcome: str,
 ) -> None:
     record_call(
         name,
@@ -137,6 +143,7 @@ def _record(
         timestamp=timestamp,
         duration_ms=(time.perf_counter() - started) * 1000,
         success=not outcome,
+        response=response,
         kind=kind,
         **outcome,
     )
@@ -187,7 +194,7 @@ class _Measured:
         except BaseException as error:
             self._finish(error)
             raise
-        self._finish(None)
+        self._finish(None, content)
         return content
 
 
@@ -219,9 +226,9 @@ def _wrap_get_resource(server: Any, manager: Any) -> None:
         if resource is None or _is_interim(resource):
             return resource
 
-        def finish(error: BaseException | None) -> None:
+        def finish(error: BaseException | None, content: Any = None) -> None:
             if error is None:
-                _record("resource", name, call, timestamp, started)
+                _record("resource", name, call, timestamp, started, content)
             elif isinstance(error, Exception):
                 _record("resource", name, call, timestamp, started, **_exception(error))
 
@@ -313,7 +320,7 @@ class _MeasuredPrompt:
             _prompting.reset(token)
 
         if not _is_interim(result):
-            _record("prompt", name, call, self._timestamp, self._started)
+            _record("prompt", name, call, self._timestamp, self._started, result)
         return result
 
 

@@ -422,3 +422,43 @@ describe('track and the client that sent the call', () => {
     ]);
   });
 });
+
+describe('track measures the answer (contract, 3.7)', () => {
+  it('counts the bytes of the result as compact JSON, multi-byte characters included', async () => {
+    const result = toolResult('Zażółć gęślą jaźń ✈️');
+    await track('search', async () => result)();
+
+    expect(only().responseBytes).toBe(Buffer.byteLength(JSON.stringify(result), 'utf8'));
+  });
+
+  it('measures an error result too', () => {
+    track('search', () => toolResult('No flights found', true))();
+
+    expect(only().responseBytes).toBe(Buffer.byteLength(JSON.stringify(toolResult('No flights found', true))));
+  });
+
+  it('has nothing to measure when the handler threw', () => {
+    expect(() =>
+      track('search', () => {
+        throw new Error('down');
+      })(),
+    ).toThrow();
+
+    expect(only()).not.toHaveProperty('responseBytes');
+  });
+
+  it('records the call without a size when the answer cannot be encoded', () => {
+    const cyclic: Record<string, unknown> = { content: [] };
+    cyclic['self'] = cyclic;
+    track('search', () => cyclic)();
+
+    expect(only().success).toBe(true);
+    expect(only()).not.toHaveProperty('responseBytes');
+  });
+
+  it('sends the size and never the content', () => {
+    track('search', () => toolResult('secret-4412'))();
+
+    expect(JSON.stringify(only())).not.toContain('secret-4412');
+  });
+});

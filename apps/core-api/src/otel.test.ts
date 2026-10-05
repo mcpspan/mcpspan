@@ -91,7 +91,9 @@ function attributesOf(span: { attributes: { key: string; value: Record<string, u
       key,
       'stringValue' in value
         ? value['stringValue']
-        : (value['arrayValue'] as { values: { stringValue: string }[] }).values.map((item) => item.stringValue),
+        : 'intValue' in value
+          ? value['intValue']
+          : (value['arrayValue'] as { values: { stringValue: string }[] }).values.map((item) => item.stringValue),
     ]),
   );
 }
@@ -132,7 +134,12 @@ describe('a call as a span, named as the conventions for MCP servers name it', (
   it('describes a tool call, a read and a get by what they are', async () => {
     const { exporter, received } = capturing();
     const session = randomUUID();
-    const tool = call({ sessionId: session, clientName: 'Claude Desktop', parameters: { destination: 'string' } });
+    const tool = call({
+      sessionId: session,
+      clientName: 'Claude Desktop',
+      parameters: { destination: 'string' },
+      responseBytes: 48_213,
+    });
     exporter.record('server-a', [
       tool,
       call({ kind: 'resource', toolName: 'trips://{id}' }),
@@ -150,6 +157,7 @@ describe('a call as a span, named as the conventions for MCP servers name it', (
       'mcpspan.client.type': 'claude',
       'mcpspan.client.name': 'Claude Desktop',
       'mcpspan.sdk.version': '0.1.0',
+      'mcpspan.response.size': '48213',
       'mcpspan.parameter.names': ['destination'],
     });
     expect(toolSpan?.startTimeUnixNano).toBe(`${Date.parse('2026-09-17T10:00:00.000Z')}000000`);

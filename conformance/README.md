@@ -91,6 +91,7 @@ It registers these tools, with the SDK's ordinary instrumentation:
 | `typed` | `destination`: string, `passengers`: number, both required | Returns `ok`. |
 | `excluded` | `depth`: number | Returns `ok`, and is left out through the SDK's way of excluding a tool. |
 | `long_` followed by 295 `x` | none | Returns `ok`. Its name is longer than the API takes. |
+| `large` | none | Returns a text of 100,000 `x`, for the response size (contract, 3.7). |
 
 And these resources and prompts (contract, 3.5):
 

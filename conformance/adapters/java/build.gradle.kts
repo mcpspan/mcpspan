@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mcpspan:mcpspan-java-sdk:0.1.0")
+    implementation("com.mcpspan:mcpspan-java-sdk:0.2.0")
     implementation("io.modelcontextprotocol.sdk:mcp:2.0.1")
 }
 

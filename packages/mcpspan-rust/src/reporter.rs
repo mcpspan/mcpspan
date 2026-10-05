@@ -331,6 +331,7 @@ mod tests {
             client_name: None,
             client_version: None,
             server_version: None,
+            response_bytes: None,
             timestamp: "2026-01-01T00:00:00.000Z".into(),
             session_id: None,
             parameters: None,

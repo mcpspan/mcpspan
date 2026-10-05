@@ -18,6 +18,8 @@ internal sealed record ToolCallEvent
     [JsonPropertyName("clientName")] public string? ClientName { get; init; }
     [JsonPropertyName("clientVersion")] public string? ClientVersion { get; init; }
     [JsonPropertyName("serverVersion")] public string? ServerVersion { get; init; }
+    /// <summary>Size of the answer, when there was one (contract, 3.7).</summary>
+    [JsonPropertyName("responseBytes")] public long? ResponseBytes { get; init; }
     [JsonPropertyName("timestamp")] public required string Timestamp { get; init; }
     [JsonPropertyName("sdkVersion")] public required string SdkVersion { get; init; }
     [JsonPropertyName("sessionId")] public string? SessionId { get; init; }

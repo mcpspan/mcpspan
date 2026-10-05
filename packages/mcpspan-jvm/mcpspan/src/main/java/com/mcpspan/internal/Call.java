@@ -74,25 +74,35 @@ public final class Call {
 
     /** Records a success. */
     public void succeeded() {
-        record(true, null, null, null);
+        succeeded(null);
+    }
+
+    /** Records a success, with the size of its answer in bytes (contract, 3.7), or null when unmeasured. */
+    public void succeeded(Long responseBytes) {
+        record(true, null, null, null, responseBytes);
     }
 
     /** Records a result the tool marked as an error, with its text blocks. */
     public void failedWithResult(List<String> texts) {
-        record(false, ToolCallEvent.RESULT, null, Text.resultMessage(texts));
+        failedWithResult(texts, null);
+    }
+
+    /** Records a result the tool marked as an error, with its text blocks and the size of the result. */
+    public void failedWithResult(List<String> texts, Long responseBytes) {
+        record(false, ToolCallEvent.RESULT, null, Text.resultMessage(texts), responseBytes);
     }
 
     /** Records an exception the tool threw. */
     public void failedWithException(Throwable error) {
-        record(false, ToolCallEvent.EXCEPTION, Text.errorType(error), Text.errorMessage(error));
+        record(false, ToolCallEvent.EXCEPTION, Text.errorType(error), Text.errorMessage(error), null);
     }
 
     /** Records a call refused before any tool ran: no message, since it can name what was sent. */
     public void refused(String source) {
-        record(false, source, null, null);
+        record(false, source, null, null, null);
     }
 
-    private void record(boolean success, String source, String type, String message) {
+    private void record(boolean success, String source, String type, String message, Long responseBytes) {
         if (recorded) {
             return;
         }
@@ -114,6 +124,7 @@ public final class Call {
                 Clients.name(clientName),
                 Text.version(clientVersion),
                 Text.version(Collector.serverVersion() != null ? Collector.serverVersion() : serverVersion),
+                responseBytes,
                 timestamp,
                 Version.CURRENT,
                 sessionId,

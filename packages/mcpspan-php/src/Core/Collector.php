@@ -142,7 +142,30 @@ final class Collector
     }
 
     /** Builds the event for a finished call and queues it. It never blocks on the network. */
-    public static function record(Call $call, bool $success, ?string $source = null, ?string $type = null, ?string $message = null): void
+    /** The largest size an event carries; anything larger is sent as this (contract, 3.7). */
+    public const MAX_RESPONSE_BYTES = 2147483647;
+
+    /**
+     * Size of an answer in bytes of its JSON, encoded as the MCP SDKs encode it, or null when there is none or it
+     * cannot be encoded. The JSON is counted and dropped; nothing of it is kept or sent.
+     */
+    public static function responseBytes(mixed $response): ?int
+    {
+        if (null === $response) {
+            return null;
+        }
+        try {
+            return min(\strlen(json_encode($response, \JSON_THROW_ON_ERROR)), self::MAX_RESPONSE_BYTES);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Builds the event for a finished call and queues it. `$response` is the answer, when there was one, to be
+     * measured (contract, 3.7).
+     */
+    public static function record(Call $call, bool $success, ?string $source = null, ?string $type = null, ?string $message = null, mixed $response = null): void
     {
         $duration = (hrtime(true) - $call->started) / 1e6;
         $delivery = self::$delivery;
@@ -166,6 +189,7 @@ final class Collector
                 $call->kind,
                 Text::version($call->clientVersion),
                 Text::version($call->serverVersion),
+                self::responseBytes($response),
             );
             $delivery->record($event->toArray());
         } catch (\Throwable) {

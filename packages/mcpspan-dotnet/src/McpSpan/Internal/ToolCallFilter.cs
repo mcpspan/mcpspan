@@ -99,11 +99,11 @@ internal static class ToolCallFilter
             if (result?.IsError == true)
             {
                 call.Failed(ErrorSources.Result, message: Text.ResultMessage(
-                    result.Content.OfType<TextContentBlock>().Select(block => block.Text)));
+                    result.Content.OfType<TextContentBlock>().Select(block => block.Text)), response: result);
                 return;
             }
 
-            call.Succeeded();
+            call.Succeeded(result);
         }
         catch (Exception)
         {

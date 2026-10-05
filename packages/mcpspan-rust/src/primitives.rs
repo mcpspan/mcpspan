@@ -134,7 +134,11 @@ impl<S: ServerHandler> Instrumented<S> {
                         Err(error) => Some(exception(error)),
                     };
                     if let Some(outcome) = outcome {
-                        collector::record(call, outcome);
+                        let size = match &result {
+                            Ok(ReadResourceResponse::Complete(answer)) => collector::response_bytes(answer),
+                            _ => None,
+                        };
+                        collector::record_answered(call, outcome, size);
                     }
                 }
                 result
@@ -178,7 +182,11 @@ impl<S: ServerHandler> Instrumented<S> {
                         Err(error) => Some(exception(error)),
                     };
                     if let Some(outcome) = outcome {
-                        collector::record(call, outcome);
+                        let size = match &result {
+                            Ok(GetPromptResponse::Complete(answer)) => collector::response_bytes(answer),
+                            _ => None,
+                        };
+                        collector::record_answered(call, outcome, size);
                     }
                 }
                 result

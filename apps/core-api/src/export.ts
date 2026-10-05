@@ -36,6 +36,7 @@ const CALL_COLUMNS = [
   'kind',
   'server_version',
   'client_version',
+  'response_bytes',
 ] as const;
 
 interface CallRow {
@@ -58,6 +59,7 @@ interface CallRow {
   parameters: Record<string, string> | null;
   server_version: string | null;
   client_version: string | null;
+  response_bytes: number | null;
 }
 
 /**
@@ -185,6 +187,7 @@ function callValues(row: CallRow): (string | number | boolean | null)[] {
     row.kind,
     row.server_version,
     row.client_version,
+    row.response_bytes,
   ];
 }
 
@@ -207,6 +210,7 @@ function ndjsonLine(row: CallRow): string {
     parameters: row.parameters,
     serverVersion: row.server_version,
     clientVersion: row.client_version,
+    responseBytes: row.response_bytes,
   })}\n`;
 }
 

@@ -3,7 +3,7 @@ module github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpsdk
 go 1.25.0
 
 require (
-	github.com/mcpspan/mcpspan/packages/mcpspan-go v0.1.0
+	github.com/mcpspan/mcpspan/packages/mcpspan-go v0.2.0
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/yosida95/uritemplate/v3 v3.0.2
 )

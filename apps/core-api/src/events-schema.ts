@@ -67,6 +67,8 @@ export const toolCallEventSchema = z.object({
   // As the client and the server each give themselves in the handshake.
   clientVersion: z.string().max(LIMITS.version).optional(),
   serverVersion: z.string().max(LIMITS.version).optional(),
+  // Size of the answer in bytes (contract, 3.7); the content itself is never sent.
+  responseBytes: z.number().int().min(0).max(2_147_483_647).optional(),
 
   // Any valid instant is accepted, including implausible ones. This clock
   // belongs to the reporting machine and is sometimes wrong, and rejecting the

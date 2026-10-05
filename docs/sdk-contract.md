@@ -236,6 +236,29 @@ Where each SDK reads the server's own version:
 | Ruby | `MCP::Server#version` (the gem's default, `0.1.0`, is recorded) | |
 | PHP | the MCP SDK builder's private `serverInfo`; Laravel MCP's `$version` or `#[Version]` (its default, `0.0.1`, is recorded) | an MCP SDK server never given `setServerInfo`, announced as `dev` |
 
+### 3.7 Response size
+
+A tool that now and then answers with megabytes fills the client's context and
+looks fine on every latency chart. So an event SHOULD say how large the answer
+was: `responseBytes`, the length in bytes of the call's result (the JSON-RPC
+`result` the server sends back) encoded as compact UTF-8 JSON by the
+language's usual JSON encoder.
+
+- Only for a call that returned an answer: a success, or a failure the result
+  reported (`errorSource` `result`). Absent for exceptions and refusals, which
+  send an error rather than a result, and for answers that settle nothing yet
+  (an interim result asking the client for input, a task the client polls).
+- The size is all that is taken. The content is encoded to be counted and not
+  kept, read or sent; privacy (5) is unchanged.
+- Encoders differ a little between languages (escaping, an absent field against
+  a null one), so the same answer can count a few bytes apart in two SDKs. The
+  figure is for spotting an answer ten or a thousand times larger than usual,
+  not for billing.
+- It is what the client got, whatever wrote it: an SDK that adds the text again
+  as structured content (FastMCP does, for a tool typed as returning a string)
+  sends twice the bytes, and that is the size recorded.
+- Over 2,147,483,647 bytes it is sent as that number.
+
 ## 4. The event
 
 A batch is a JSON object with one field, `events`, an array of these:
@@ -254,6 +277,7 @@ A batch is a JSON object with one field, `events`, an array of these:
 | `clientName` | string | no | 200 characters | The client's own name, as sent (see 7). |
 | `clientVersion` | string | no | 100 characters | The client's own version, as sent (3.6). |
 | `serverVersion` | string | no | 100 characters | The version of the server that answered (3.6). |
+| `responseBytes` | integer | no | 0 to 2,147,483,647 | Size of the answer, in bytes (3.7). |
 | `timestamp` | string | yes | ISO 8601 with an offset | When the call started, by the reporting machine's clock. |
 | `sdkVersion` | string | yes | 1 to 50 characters | The SDK's own version. |
 | `sessionId` | UUID string | no | | See 8. |
@@ -285,6 +309,8 @@ A batch is a JSON object with one field, `events`, an array of these:
   text blocks are joined and cut to 200 characters: that text was written for
   a model to read and is the most likely to quote what the user asked, which
   is why it is kept shorter than an exception's.
+- An answer MAY be encoded to measure its size (3.7), and MUST then be
+  dropped: the size is all that leaves the process.
 - An SDK MUST NOT record anything that identifies a person: no IP address, no
   user identifier, no transport session identifier (see 8).
 - The address a client read MUST NOT be recorded, only the URI or template

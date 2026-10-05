@@ -51,7 +51,7 @@ internal static partial class PrimitiveFilters
                 throw;
             }
 
-            call.Succeeded();
+            call.Succeeded(result);
             return result;
         };
 
@@ -86,7 +86,7 @@ internal static partial class PrimitiveFilters
                 throw;
             }
 
-            call.Succeeded();
+            call.Succeeded(result);
             return result;
         };
 

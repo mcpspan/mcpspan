@@ -37,6 +37,7 @@ function buildServer() {
   instrument(server);
 
   server.registerTool('ok', {}, async () => text('ok'));
+  server.registerTool('large', {}, async () => text('x'.repeat(100_000)));
   server.registerTool('reported_error', {}, async () => ({
     ...text('No flights found'),
     isError: true,

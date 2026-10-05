@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 from typing import Any
 
 import pytest
@@ -255,3 +256,55 @@ def test_an_exception_that_cannot_be_printed_is_still_raised(events: list[ToolCa
 
     with pytest.raises(Unprintable):
         mcpspan.track("fail", fail)()
+
+
+def test_measures_the_answer_as_compact_json(events: list[ToolCallEvent]) -> None:
+    result = {"content": [{"type": "text", "text": "Zażółć gęślą jaźń ✈️"}]}
+
+    mcpspan.track("search", lambda: result)()
+
+    expected = json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    assert only(events)["responseBytes"] == len(expected)
+
+
+def test_measures_an_answer_marked_is_error_too(events: list[ToolCallEvent]) -> None:
+    mcpspan.track("search", lambda: {"content": [], "isError": True})()
+
+    assert only(events)["responseBytes"] == len('{"content":[],"isError":true}')
+
+
+def test_has_nothing_to_measure_when_the_function_raised(events: list[ToolCallEvent]) -> None:
+    def fail() -> None:
+        raise ConformanceError("boom")
+
+    with pytest.raises(ConformanceError):
+        mcpspan.track("fail", fail)()
+
+    assert "responseBytes" not in only(events)
+
+
+def test_records_without_a_size_what_cannot_be_encoded(events: list[ToolCallEvent]) -> None:
+    mcpspan.track("odd", lambda: object())()
+
+    assert only(events)["success"] is True
+    assert "responseBytes" not in only(events)
+
+
+def test_measures_a_model_by_wire_names_and_bytes_as_base64(events: list[ToolCallEvent]) -> None:
+    class Model:
+        def model_dump(self, **_: Any) -> dict[str, Any]:
+            return {"isError": False}
+
+    mcpspan.track("model", lambda: Model())()
+    mcpspan.track("blob", lambda: b"\x00\x01\x02\x03")()
+
+    assert [event["responseBytes"] for event in events] == [
+        len('{"isError":false}'),
+        len('"AAECAw=="'),
+    ]
+
+
+def test_sends_the_size_and_never_the_content(events: list[ToolCallEvent]) -> None:
+    mcpspan.track("search", lambda: "secret-4412")()
+
+    assert "secret-4412" not in json.dumps(only(events))

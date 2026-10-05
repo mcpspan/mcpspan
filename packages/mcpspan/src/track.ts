@@ -166,8 +166,11 @@ export function track<TArgs extends unknown[], TResult>(
         return;
       }
 
+      const size = responseBytes(value);
+      const measured = size === undefined ? {} : { responseBytes: size };
+
       if (!isErrorResult(value)) {
-        emit({ success: true });
+        emit({ success: true, ...measured });
         return;
       }
 
@@ -176,6 +179,7 @@ export function track<TArgs extends unknown[], TResult>(
         success: false,
         errorSource: 'result',
         ...(errorMessage !== undefined && { errorMessage }),
+        ...measured,
       });
     };
 
@@ -320,6 +324,8 @@ export function recordPrimitiveCall(call: {
   client: ClientInfo | undefined;
   /** The version the server gives itself. */
   serverVersion?: string | undefined;
+  /** Size of the answer, when there was one (contract, 3.7). */
+  responseBytes?: number | undefined;
 }): void {
   const active = sink;
   if (active === undefined) return;
@@ -341,6 +347,7 @@ export function recordPrimitiveCall(call: {
       timestamp: call.timestamp,
       sdkVersion: SDK_VERSION,
       ...(call.sessionId !== undefined && { sessionId: call.sessionId }),
+      ...(call.responseBytes !== undefined && { responseBytes: call.responseBytes }),
     });
   } catch {
     // Recording must never disturb the answer the client gets.
@@ -350,6 +357,24 @@ export function recordPrimitiveCall(call: {
 /** Whether anything is currently collecting, so callers can skip the work entirely. */
 export function isRecording(): boolean {
   return sink !== undefined;
+}
+
+/** The largest size an event carries; anything larger is sent as this (contract, 3.7). */
+const MAX_RESPONSE_BYTES = 2_147_483_647;
+
+/**
+ * Size of an answer, in bytes of its compact JSON (contract, 3.7), or undefined
+ * when it cannot be encoded. The JSON is counted and dropped: nothing of it is
+ * kept or sent.
+ */
+export function responseBytes(value: unknown): number | undefined {
+  try {
+    const json = JSON.stringify(value);
+    return json === undefined ? undefined : Math.min(Buffer.byteLength(json, 'utf8'), MAX_RESPONSE_BYTES);
+  } catch {
+    // A result with a cycle or a BigInt in it cannot be measured; the call is recorded without it.
+    return undefined;
+  }
 }
 
 /** A result the 2026-07-28 protocol calls interim: the tool needs more input first. */

@@ -24,4 +24,15 @@ class TextTest < Minitest::Test
     assert_nil(McpSpan::Text.describe_parameters({}))
     assert_equal(50, McpSpan::Text.describe_parameters((1..60).to_h { |i| ["p#{i}", i] }).size)
   end
+
+  def test_measures_an_answer_as_compact_json
+    answer = { content: [{ type: "text", text: "Zażółć ✈️" }] }
+
+    assert_equal(JSON.generate(answer).bytesize, McpSpan::Collector.response_bytes(answer))
+    # A response object the gem hands back is measured as the hash it turns into.
+    response = Struct.new(:content).new([])
+    assert_equal(JSON.generate({ content: [] }).bytesize, McpSpan::Collector.response_bytes(response))
+    assert_nil(McpSpan::Collector.response_bytes(nil))
+    assert_nil(McpSpan::Collector.response_bytes(Object.new))
+  end
 end

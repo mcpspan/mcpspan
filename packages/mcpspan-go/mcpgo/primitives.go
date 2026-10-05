@@ -56,8 +56,8 @@ func instrumentPrimitives(s *server.MCPServer, hooks *server.Hooks) {
 		name, variables := nameResource(s, ctx, request.Params.URI)
 		primitiveCalls.Store(request, &pendingPrimitive{call: beginPrimitive(s, ctx, request.Header != nil, core.KindResource, name, variables, request.Params.Meta)})
 	})
-	hooks.AddAfterReadResource(func(_ context.Context, _ any, request *mcp.ReadResourceRequest, _ *mcp.ReadResourceResult) {
-		settlePrimitive(request, nil, "")
+	hooks.AddAfterReadResource(func(_ context.Context, _ any, request *mcp.ReadResourceRequest, result *mcp.ReadResourceResult) {
+		settlePrimitive(request, nil, "", result)
 	})
 	hooks.AddBeforeGetPrompt(func(ctx context.Context, _ any, request *mcp.GetPromptRequest) {
 		defer func() { _ = recover() }()
@@ -70,8 +70,8 @@ func instrumentPrimitives(s *server.MCPServer, hooks *server.Hooks) {
 		}
 		primitiveCalls.Store(request, &pendingPrimitive{call: beginPrimitive(s, ctx, request.Header != nil, core.KindPrompt, request.Params.Name, arguments, request.Params.Meta)})
 	})
-	hooks.AddAfterGetPrompt(func(_ context.Context, _ any, request *mcp.GetPromptRequest, _ *mcp.GetPromptResult) {
-		settlePrimitive(request, nil, "")
+	hooks.AddAfterGetPrompt(func(_ context.Context, _ any, request *mcp.GetPromptRequest, result *mcp.GetPromptResult) {
+		settlePrimitive(request, nil, "", result)
 	})
 	hooks.AddOnError(func(_ context.Context, _ any, method mcp.MCPMethod, message any, err error) {
 		switch method {
@@ -81,7 +81,7 @@ func instrumentPrimitives(s *server.MCPServer, hooks *server.Hooks) {
 				if errors.Is(err, server.ErrResourceNotFound) {
 					unknown = schemeOf(request.Params.URI)
 				}
-				settlePrimitive(request, err, unknown)
+				settlePrimitive(request, err, unknown, nil)
 			}
 		case mcp.MethodPromptsGet:
 			if request, ok := message.(*mcp.GetPromptRequest); ok {
@@ -89,7 +89,7 @@ func instrumentPrimitives(s *server.MCPServer, hooks *server.Hooks) {
 				if errors.Is(err, server.ErrPromptNotFound) {
 					unknown = request.Params.Name
 				}
-				settlePrimitive(request, err, unknown)
+				settlePrimitive(request, err, unknown, nil)
 			}
 		}
 	})
@@ -115,7 +115,7 @@ func beginPrimitive(s *server.MCPServer, ctx context.Context, overHTTP bool, kin
 
 // settlePrimitive records a read or a get once the server has answered it.
 // unknown is the name to record it under when the server had no such thing.
-func settlePrimitive(request any, err error, unknown string) {
+func settlePrimitive(request any, err error, unknown string, response any) {
 	defer func() { _ = recover() }()
 
 	value, found := primitiveCalls.LoadAndDelete(request)
@@ -126,7 +126,7 @@ func settlePrimitive(request any, err error, unknown string) {
 
 	switch {
 	case err == nil:
-		core.Record(call, core.Outcome{Success: true})
+		core.Record(call, core.Outcome{Success: true, Response: response})
 	case unknown != "":
 		call.ToolName = unknown
 		call.Arguments = nil

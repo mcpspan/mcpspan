@@ -9,6 +9,7 @@ import { OutcomeBadge } from '@/components/outcome-badge';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardHeader } from '@/components/ui/card';
 import { ApiError, type CallDetail, getCall } from '@/lib/api';
+import { formatBytes } from '@/lib/diagnosis';
 import { clientLabel, errorSourceInfo, formatDuration, formatSpan, kindLabel } from '@/lib/format';
 import { withParams } from '@/lib/query';
 import { currentSession } from '@/lib/session';
@@ -160,6 +161,14 @@ function Detail({ call, carried }: { call: CallDetail; carried: Record<string, s
                 >
                   Every call in it
                 </Link>
+              ),
+            ],
+            [
+              'Answer size',
+              call.responseBytes === null ? (
+                <span className="text-ink-muted">Not measured</span>
+              ) : (
+                formatBytes(call.responseBytes)
               ),
             ],
             ['SDK', `mcpspan ${call.sdkVersion}`],

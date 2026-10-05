@@ -27,6 +27,10 @@ func ok(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return mcp.NewToolResultText("ok"), nil
 }
 
+func large(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return mcp.NewToolResultText(strings.Repeat("x", 100_000)), nil
+}
+
 func main() {
 	flush, _ := strconv.Atoi(os.Getenv("CONFORMANCE_FLUSH_MS"))
 	if flush == 0 {
@@ -46,6 +50,7 @@ func main() {
 	})
 
 	s.AddTool(mcp.NewTool("ok"), ok)
+	s.AddTool(mcp.NewTool("large"), large)
 	s.AddTool(mcp.NewTool("reported_error"), func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultError("No flights found"), nil
 	})

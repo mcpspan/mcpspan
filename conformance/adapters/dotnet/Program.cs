@@ -51,6 +51,9 @@ internal sealed class ConformanceTools
     [McpServerTool(Name = "ok")]
     public static string Ok() => "ok";
 
+    [McpServerTool(Name = "large")]
+    public static string Large() => new('x', 100_000);
+
     [McpServerTool(Name = "reported_error")]
     public static CallToolResult ReportedError() =>
         new() { IsError = true, Content = [new TextContentBlock { Text = "No flights found" }] };

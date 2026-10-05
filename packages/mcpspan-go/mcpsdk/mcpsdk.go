@@ -228,7 +228,7 @@ func record(call core.Call, reached bool, result *mcp.CallToolResult, err error)
 	}
 
 	if !result.IsError {
-		core.Record(call, core.Outcome{Success: true})
+		core.Record(call, core.Outcome{Success: true, Response: result})
 		return
 	}
 
@@ -244,7 +244,7 @@ func record(call core.Call, reached bool, result *mcp.CallToolResult, err error)
 		return
 	}
 
-	core.Record(call, core.Outcome{ErrorSource: core.SourceResult, ErrorMessage: core.ResultText(texts(result))})
+	core.Record(call, core.Outcome{ErrorSource: core.SourceResult, ErrorMessage: core.ResultText(texts(result)), Response: result})
 }
 
 // texts are the text blocks of a result, and nothing else.

@@ -243,10 +243,10 @@ final class Instrumentation {
                     }
                 }
             }
-            call.failedWithResult(texts);
+            call.failedWithResult(texts, Sizes.of(result));
         }
         else {
-            call.succeeded();
+            call.succeeded(Sizes.of(result));
         }
     }
 

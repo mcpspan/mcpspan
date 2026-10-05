@@ -141,7 +141,7 @@ module McpSpan
 
       def __mcpspan_succeeded(call, result)
         # An interim result asking the client for input settles nothing; the request that follows it does.
-        Collector.record(call, success: true) unless Instrumentation.interim?(result)
+        Collector.record(call, success: true, response: result) unless Instrumentation.interim?(result)
       rescue *Instrumentation::INTERNAL
         nil
       end

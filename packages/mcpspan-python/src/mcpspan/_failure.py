@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -108,3 +110,40 @@ def describe_exception(error: BaseException) -> tuple[str, str | None]:
         truncate(type(error).__name__, MAX_NAME_LENGTH),
         truncate(message, MAX_EXCEPTION_MESSAGE_LENGTH) if message else None,
     )
+
+
+MAX_RESPONSE_BYTES = 2_147_483_647
+"""The largest size an event carries; anything larger is sent as this (contract, 3.7)."""
+
+
+def response_bytes(result: Any) -> int | None:
+    """Size of an answer in bytes of its compact JSON (contract, 3.7), or None.
+
+    The JSON is counted and dropped; nothing of it is kept or sent. A model is
+    encoded as MCP sends it, by its wire names and without its empty fields;
+    bytes, as the base64 MCP carries them in. A result that cannot be encoded
+    is recorded without a size.
+    """
+    try:
+        if isinstance(result, (bytes, bytearray, memoryview)):
+            # A JSON string of base64: four characters for every three bytes, and the quotes.
+            size = 4 * ((len(bytes(result)) + 2) // 3) + 2
+        else:
+            text = json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=_encodable)
+            size = len(text.encode("utf-8"))
+        return min(size, MAX_RESPONSE_BYTES)
+    except Exception:
+        return None
+
+
+def _encodable(value: Any) -> Any:
+    """What json.dumps cannot take itself: models, base64 for bytes, otherwise refused."""
+    dump = getattr(value, "model_dump", None)
+    if callable(dump):
+        return dump(mode="json", by_alias=True, exclude_none=True)
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return base64.b64encode(bytes(value)).decode("ascii")
+    to_mcp = getattr(value, "to_mcp_result", None)
+    if callable(to_mcp):
+        return to_mcp()
+    raise TypeError(f"cannot measure {type(value).__name__}")

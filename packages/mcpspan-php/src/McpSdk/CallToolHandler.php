@@ -109,12 +109,12 @@ final class CallToolHandler implements RequestHandlerInterface
                 return;
             }
             if (!$result->isError) {
-                Collector::record($call, true);
+                Collector::record($call, true, response: $result);
 
                 return;
             }
             // A ToolCallException is how a tool reports its own error, as a result the model reads.
-            Collector::record($call, false, Event::SOURCE_RESULT, null, self::text($result));
+            Collector::record($call, false, Event::SOURCE_RESULT, null, self::text($result), $result);
         } catch (\Throwable) {
         }
     }

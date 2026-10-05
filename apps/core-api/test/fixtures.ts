@@ -111,6 +111,7 @@ export interface EventSeed {
   sessionId?: string;
   parameters?: Record<string, string>;
   serverVersion?: string;
+  responseBytes?: number;
   clientVersion?: string;
 }
 
@@ -129,8 +130,8 @@ export async function seedEvents(serverId: string, seeds: readonly EventSeed[]):
       `INSERT INTO ${table.raw} (
          id, server_id, occurred_at, ${table.name}, duration_ms, success,
          error_source, error_type, error_message, client_type, client_name, sdk_version,
-         session_id, parameters, server_version, client_version
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+         session_id, parameters, server_version, client_version, response_bytes
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
       [
         seed.id ?? randomUUID(),
         serverId,
@@ -148,6 +149,7 @@ export async function seedEvents(serverId: string, seeds: readonly EventSeed[]):
         seed.parameters === undefined ? null : JSON.stringify(seed.parameters),
         seed.serverVersion ?? null,
         seed.clientVersion ?? null,
+        seed.responseBytes ?? null,
       ],
     );
 

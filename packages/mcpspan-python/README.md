@@ -200,8 +200,9 @@ stay out of this as well.
 mode, not in debug.
 
 What is collected: the tool name, how long it took, whether it succeeded, the
-error type and a truncated message when it did not, which client called, and
-the SDK version. For a resource or a prompt, the same, under the name it was
+error type and a truncated message when it did not, how large the answer was
+in bytes (its size only, never its content), which client called, and the SDK
+version. For a resource or a prompt, the same, under the name it was
 registered with: never the address a client read, only its template or, for
 an address the server does not have, its scheme.
 
