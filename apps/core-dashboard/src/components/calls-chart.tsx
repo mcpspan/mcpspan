@@ -11,6 +11,8 @@ import {
   YAxis,
 } from 'recharts';
 
+import { useEffect, useRef, useState } from 'react';
+
 import { ChartData } from './chart-data';
 import { LocalTime } from './local-time';
 
@@ -54,15 +56,31 @@ export function CallsChart({
   definitionChanges?: { at: string }[];
 }) {
   const format = (value: string): string => formatTime(value, bucketSeconds);
+  const axis = timeAxis(points, bucketSeconds);
   const edits = editMarkersFor(points, bucketSeconds, definitionChanges);
+  // Each bucket at its middle, so a mark at the moment something changed falls between the buckets before and after.
+  const data = points.map((point) => ({ ...point, at: Date.parse(point.time) + axis.half }));
+  const formatAt = (at: number): string => format(new Date(at - axis.half).toISOString());
+
+  // How wide the plot is, so a version's label is left out where it would run into the one before it.
+  const frame = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const element = frame.current;
+    if (element === null) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(entry?.contentRect.width ?? 0));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const releases = labelled(markersFor(axis, versions), axis, width);
 
   return (
     <figure className="m-0">
       <Legend edited={edits.length > 0} />
 
-      <div className="h-64 w-full">
+      <div ref={frame} className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
             {/* A fill fading to nothing under each line: the volume reads as an
                 amount at a glance, and the line stays the exact value. */}
             <defs>
@@ -78,8 +96,12 @@ export function CallsChart({
             <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
 
             <XAxis
-              dataKey="time"
-              tickFormatter={format}
+              dataKey="at"
+              type="number"
+              scale="time"
+              domain={axis.domain}
+              ticks={axis.ticks}
+              tickFormatter={(at: number) => format(new Date(at).toISOString())}
               tick={{ fill: 'var(--color-ink-muted)', fontSize: 12 }}
               tickLine={false}
               axisLine={false}
@@ -94,33 +116,35 @@ export function CallsChart({
             />
 
             <Tooltip
-              content={<ChartTooltip format={format} />}
+              content={<ChartTooltip format={(label) => formatAt(Number(label))} />}
               cursor={{ stroke: 'var(--color-border)' }}
             />
 
             {/* Where a version began: a deploy explains a step in the line
-                better than anything else on the page. Placed on the bucket the
-                version's first call fell in. */}
-            {markersFor(points, bucketSeconds, versions).map((marker) => (
+                better than anything else on the page. Placed at its first
+                call, between the buckets before and after it. */}
+            {releases.map((marker) => (
               <ReferenceLine
                 key={marker.version}
-                x={marker.time}
+                x={marker.at}
                 stroke="var(--color-ink-muted)"
                 strokeDasharray="4 3"
-                label={{
-                  value: marker.version,
-                  position: 'insideTopLeft',
-                  fill: 'var(--color-ink-muted)',
-                  fontSize: 11,
-                }}
+                {...(marker.showLabel && {
+                  label: {
+                    value: marker.version,
+                    position: 'insideTopLeft',
+                    fill: 'var(--color-ink-muted)',
+                    fontSize: 11,
+                  },
+                })}
               />
             ))}
 
             {/* Where the tool's definition changed: dotted, and unlabelled, the
                 legend saying what it is, so no text lands on a line or on a
                 version's label. Several edits in one bucket are one mark. */}
-            {edits.map((time) => (
-              <ReferenceLine key={`edit-${time}`} x={time} stroke="var(--color-ink-muted)" strokeDasharray="1 3" />
+            {edits.map((at) => (
+              <ReferenceLine key={`edit-${at}`} x={at} stroke="var(--color-ink-muted)" strokeDasharray="1 3" />
             ))}
 
             {SERIES.map((series) => (
@@ -211,35 +235,80 @@ function ChartTooltip({ active, label, payload, format }: TooltipProps) {
   );
 }
 
-/** Each version on the bucket its first call fell in; one first seen before the chart starts has no mark. */
+interface TimeAxis {
+  /** From the first bucket's start to the last bucket's end. */
+  domain: [number, number];
+  /** Bucket starts, the labels the axis shows. */
+  ticks: number[];
+  /** Half a bucket, in milliseconds: how far a bucket's point sits from its start. */
+  half: number;
+  bucketMs: number;
+}
+
+function timeAxis(points: ChartPoint[], bucketSeconds: number): TimeAxis {
+  const bucketMs = bucketSeconds * 1000;
+  const starts = points.map((point) => Date.parse(point.time));
+  const first = starts[0] ?? 0;
+
+  return {
+    domain: [first, first + starts.length * bucketMs],
+    ticks: starts,
+    half: bucketMs / 2,
+    bucketMs,
+  };
+}
+
+/** Each version at the moment of its first call; one first seen outside the chart has no mark. */
 function markersFor(
-  points: ChartPoint[],
-  bucketSeconds: number,
+  axis: TimeAxis,
   versions: { version: string; firstSeenAt: string }[],
-): { version: string; time: string }[] {
-  const first = points[0];
-  if (first === undefined) return [];
-  const start = Date.parse(first.time);
-  const end = start + points.length * bucketSeconds * 1000;
+): { version: string; at: number }[] {
+  const [start, end] = axis.domain;
 
   return versions.flatMap((version) => {
     const at = Date.parse(version.firstSeenAt);
-    if (Number.isNaN(at) || at < start || at >= end) return [];
-    const bucket = points[Math.floor((at - start) / (bucketSeconds * 1000))];
-
-    return bucket === undefined ? [] : [{ version: version.version, time: bucket.time }];
+    return Number.isNaN(at) || at < start || at >= end ? [] : [{ version: version.version, at }];
   });
 }
 
-/** The buckets in which the definition changed, each once. */
-function editMarkersFor(points: ChartPoint[], bucketSeconds: number, changes: { at: string }[]): string[] {
-  const times = markersFor(
-    points,
-    bucketSeconds,
-    changes.map((change) => ({ version: change.at, firstSeenAt: change.at })),
-  ).map((marker) => marker.time);
+/**
+ * Which versions keep their label: one that would start before the previous
+ * label ends is left as a line alone; hovering the chart still says which bucket is which.
+ */
+function labelled(
+  markers: { version: string; at: number }[],
+  axis: TimeAxis,
+  width: number,
+): { version: string; at: number; showLabel: boolean }[] {
+  // The plot, without the value axis and the margins around it.
+  const plot = Math.max(width - 40, 1);
+  const [start, end] = axis.domain;
+  let freeFrom = -Infinity;
 
-  return [...new Set(times)];
+  return [...markers]
+    .sort((a, b) => a.at - b.at)
+    .map((marker) => {
+      const x = ((marker.at - start) / (end - start)) * plot;
+      const showLabel = width === 0 || x >= freeFrom;
+      // About 6.5 pixels a character at the label's 11px, and a gap.
+      if (showLabel) freeFrom = x + marker.version.length * 6.5 + 12;
+      return { ...marker, showLabel };
+    });
+}
+
+/** Each change at its moment; several in one bucket are one mark, at the first of them. */
+function editMarkersFor(points: ChartPoint[], bucketSeconds: number, changes: { at: string }[]): number[] {
+  const axis = timeAxis(points, bucketSeconds);
+  const byBucket = new Map<number, number>();
+  for (const marker of markersFor(
+    axis,
+    changes.map((change) => ({ version: change.at, firstSeenAt: change.at })),
+  )) {
+    const bucket = Math.floor((marker.at - axis.domain[0]) / axis.bucketMs);
+    if (!byBucket.has(bucket)) byBucket.set(bucket, marker.at);
+  }
+
+  return [...byBucket.values()];
 }
 
 const HOUR = 3_600;
