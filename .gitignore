@@ -57,3 +57,4 @@ packages/mcpspan-php/.phpunit.cache/
 conformance/adapters/php-*/vendor/
 conformance/adapters/php-*/composer.lock
 packages/mcpspan-php/.phpunit.result.cache
+private/demo/.state/
