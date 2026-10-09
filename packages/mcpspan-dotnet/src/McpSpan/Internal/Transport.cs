@@ -106,5 +106,5 @@ internal sealed class Transport : IDisposable
 /// <summary>The SDK's own version, reported with every event.</summary>
 internal static class Version
 {
-    public const string Current = "0.4.0";
+    public const string Current = "0.5.0";
 }

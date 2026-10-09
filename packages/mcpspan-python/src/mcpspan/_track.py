@@ -9,9 +9,10 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any, TypeVar, overload
 
+from ._arguments import invalid_arguments
 from ._call import CallState, current_call
 from ._client import ClientInfo, client_name, detect_client
-from ._definition import definition_of
+from ._definition import definition_of, schema_of
 from ._failure import (
     MAX_NAME_LENGTH,
     describe_error_result,
@@ -193,6 +194,15 @@ def _add_definition(event: ToolCallEvent) -> None:
     fingerprint = definition_of(event["toolName"])
     if fingerprint is not None:
         event["definitionHash"] = fingerprint
+
+
+def _add_invalid_arguments(event: ToolCallEvent, arguments: Any) -> None:
+    """Which declared arguments a refusal was over (contract, 3.10)."""
+    if event.get("kind", "tool") != "tool" or event.get("errorSource") != "arguments":
+        return
+    names = invalid_arguments(schema_of(event["toolName"]), arguments)
+    if names:
+        event["invalidArguments"] = [truncate(name, MAX_NAME_LENGTH) for name in names]
 
 
 def _add_repeat(event: ToolCallEvent, call: CallState | None) -> None:
@@ -396,6 +406,7 @@ def record_call(
             event["responseBytes"] = size
         _add_definition(event)
         _add_repeat(event, call)
+        _add_invalid_arguments(event, call.arguments)
         sink(event)
     except Exception:
         # Recording a call must never disturb the answer the client gets.

@@ -191,6 +191,9 @@ pub(crate) struct Call {
     pub session_id: Option<String>,
     /// The arguments were the previous call's to the same tool in this session (contract, 3.9).
     pub repeated: bool,
+    /// Which declared arguments fail the tool's schema, found as the call arrives, since the request is handed on;
+    /// sent only if the server refuses them (contract, 3.10).
+    pub invalid_arguments: Vec<String>,
     pub started: Instant,
     pub timestamp: SystemTime,
 }
@@ -244,6 +247,7 @@ pub(crate) fn begin(
         },
         session_id,
         repeated: false,
+        invalid_arguments: crate::definition::invalid_arguments_of(tool_name, arguments),
         started,
         timestamp,
     })
@@ -268,7 +272,11 @@ pub(crate) fn record(call: Call, outcome: Outcome) {
 /// As [`record`], for a call that answered: `response_bytes` is the answer's size (contract, 3.7).
 pub(crate) fn record_answered(call: Call, outcome: Outcome, response_bytes: Option<u64>) {
     let duration_ms = call.started.elapsed().as_secs_f64() * 1_000.0;
-    let Some(reporter) = global().running.as_ref().map(|running| Arc::clone(&running.reporter)) else {
+    let Some((reporter, capture_error_messages)) = global()
+        .running
+        .as_ref()
+        .map(|running| (Arc::clone(&running.reporter), running.settings.capture_error_messages))
+    else {
         return;
     };
 
@@ -294,7 +302,8 @@ pub(crate) fn record_answered(call: Call, outcome: Outcome, response_bytes: Opti
         success,
         error_source,
         error_type: error_type.map(|kind| text::truncate(&kind, text::MAX_NAME)),
-        error_message: error_message.filter(|message| !message.is_empty()),
+        // The text of a failure, unless the developer chose to send none (contract, 5).
+        error_message: error_message.filter(|message| capture_error_messages && !message.is_empty()),
         client_type: text::client_type(call.client_name.as_deref()),
         client_name: text::client_name(call.client_name.as_deref()),
         client_version: text::version(call.client_version.as_deref()),
@@ -307,6 +316,14 @@ pub(crate) fn record_answered(call: Call, outcome: Outcome, response_bytes: Opti
             None
         },
         repeated: call.kind.is_none() && call.repeated,
+        invalid_arguments: if call.kind.is_none() && error_source == Some(crate::event::source::ARGUMENTS) {
+            call.invalid_arguments
+                .iter()
+                .map(|name| text::truncate(name, text::MAX_NAME))
+                .collect()
+        } else {
+            Vec::new()
+        },
         timestamp: transport::iso8601(call.timestamp),
         session_id: call.session_id,
         parameters: call.parameters,

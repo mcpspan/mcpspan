@@ -25,6 +25,7 @@ public final class McpSpanOptions {
     private final Integer maxBatchSize;
     private final Integer maxQueueSize;
     private final boolean captureParameterNames;
+    private final boolean captureErrorMessages;
     private final String serverVersion;
 
     private McpSpanOptions(Builder builder) {
@@ -37,6 +38,7 @@ public final class McpSpanOptions {
         this.maxBatchSize = builder.maxBatchSize;
         this.maxQueueSize = builder.maxQueueSize;
         this.captureParameterNames = builder.captureParameterNames;
+        this.captureErrorMessages = builder.captureErrorMessages;
         this.serverVersion = builder.serverVersion;
     }
 
@@ -81,6 +83,14 @@ public final class McpSpanOptions {
     public boolean captureParameterNames() { return captureParameterNames; }
 
     /**
+     * Sends the text of a failure: what a tool returned as an error, cut to 200 characters, or an exception's message,
+     * cut to 500. On by default, since that text is usually what says why a call failed. Turn it off when your tools
+     * can fail with text you would not send anywhere, as one that runs commands or reads files might quote a path or a
+     * token. Failures are still recorded, with where they came from and the exception's type.
+     */
+    public boolean captureErrorMessages() { return captureErrorMessages; }
+
+    /**
      * The version calls are recorded under: a release, a tag, a commit. Falls back to
      * {@code MCPSPAN_SERVER_VERSION}, then to the version the server gives itself ({@code serverInfo}), which is
      * usually all that is needed. The dashboard marks where each one began.
@@ -93,6 +103,7 @@ public final class McpSpanOptions {
             return false;
         }
         return debug == o.debug && flushOnExit == o.flushOnExit && captureParameterNames == o.captureParameterNames
+            && captureErrorMessages == o.captureErrorMessages
             && Objects.equals(apiKey, o.apiKey) && Objects.equals(endpoint, o.endpoint)
             && onDiagnostic == o.onDiagnostic && Objects.equals(flushInterval, o.flushInterval)
             && Objects.equals(maxBatchSize, o.maxBatchSize) && Objects.equals(maxQueueSize, o.maxQueueSize)
@@ -102,7 +113,7 @@ public final class McpSpanOptions {
     @Override
     public int hashCode() {
         return Objects.hash(apiKey, endpoint, debug, flushOnExit, flushInterval, maxBatchSize, maxQueueSize,
-            captureParameterNames, serverVersion);
+            captureParameterNames, captureErrorMessages, serverVersion);
     }
 
     /** Builds {@link McpSpanOptions}. */
@@ -117,6 +128,7 @@ public final class McpSpanOptions {
         private Integer maxBatchSize;
         private Integer maxQueueSize;
         private boolean captureParameterNames;
+        private boolean captureErrorMessages = true;
         private String serverVersion;
 
         private Builder() {
@@ -148,6 +160,9 @@ public final class McpSpanOptions {
 
         /** See {@link McpSpanOptions#captureParameterNames()}. */
         public Builder captureParameterNames(boolean value) { this.captureParameterNames = value; return this; }
+
+        /** See {@link McpSpanOptions#captureErrorMessages()}. */
+        public Builder captureErrorMessages(boolean value) { this.captureErrorMessages = value; return this; }
 
         /** See {@link McpSpanOptions#serverVersion()}. */
         public Builder serverVersion(String value) { this.serverVersion = value; return this; }

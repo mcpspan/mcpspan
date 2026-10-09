@@ -38,6 +38,7 @@ const CALL_COLUMNS = [
   'client_version',
   'response_bytes',
   'repeated',
+  'invalid_arguments',
 ] as const;
 
 interface CallRow {
@@ -62,6 +63,7 @@ interface CallRow {
   client_version: string | null;
   response_bytes: number | null;
   repeated: boolean | null;
+  invalid_arguments: string[] | null;
 }
 
 /**
@@ -191,6 +193,7 @@ function callValues(row: CallRow): (string | number | boolean | null)[] {
     row.client_version,
     row.response_bytes,
     row.repeated === true,
+    row.invalid_arguments === null ? null : JSON.stringify(row.invalid_arguments),
   ];
 }
 
@@ -215,6 +218,7 @@ function ndjsonLine(row: CallRow): string {
     clientVersion: row.client_version,
     responseBytes: row.response_bytes,
     repeated: row.repeated === true,
+    invalidArguments: row.invalid_arguments,
   })}\n`;
 }
 

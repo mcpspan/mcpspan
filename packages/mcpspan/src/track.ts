@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { currentCall } from './call.js';
-import { definitionOf } from './definition.js';
+import { invalidArguments } from './arguments.js';
+import { definitionOf, schemaOf } from './definition.js';
 import { type ClientInfo, clientName, detectClient } from './client.js';
 import {
   describeErrorResult,
@@ -304,6 +305,7 @@ export function recordRefusedCall(refused: {
       // A tool the server has, whose arguments it refused: often the schema is why.
       ...(refused.errorSource === 'unknown_tool' ? {} : definition(refused.toolName)),
       ...(refused.repeated === true && { repeated: true }),
+      ...(refused.errorSource === 'arguments' ? refusedNames(refused.toolName, refused.arguments) : {}),
     });
   } catch {
     // Recording a refusal must never disturb the answer the client gets.
@@ -365,6 +367,12 @@ export function recordPrimitiveCall(call: {
 /** Whether anything is currently collecting, so callers can skip the work entirely. */
 export function isRecording(): boolean {
   return sink !== undefined;
+}
+
+/** Which declared arguments a refusal was over (contract, 3.10), as event fields. */
+function refusedNames(toolName: string, args: unknown): { invalidArguments?: string[] } {
+  const names = invalidArguments(schemaOf(toolName), args).map((name) => truncate(name, MAX_TOOL_NAME_LENGTH));
+  return names.length === 0 ? {} : { invalidArguments: names };
 }
 
 /** The fingerprint of a tool as last listed (contract, 3.8), as event fields. */

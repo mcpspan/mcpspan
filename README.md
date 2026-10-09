@@ -27,9 +27,9 @@ and nothing ever leaves your machine.
   a tool that now and then returns megabytes fills the agent's context while
   looking fine on every latency chart.
 - **Failures, told apart.** A handler that threw, a tool that answered with an
-  error, arguments the server refused, and tools that agents asked for but
-  your server does not have: which clients asked, the closest name you do
-  have, and what the agent did next.
+  error, arguments the server refused and which of them were wrong, and tools
+  that agents asked for but your server does not have: which clients asked,
+  the closest name you do have, and what the agent did next.
 - **Sessions.** Each connection's calls, step by step, as the agent made them,
   with the calls an agent repeated with the same arguments marked: a loop
   that looks fine one call at a time.
@@ -44,7 +44,8 @@ and nothing ever leaves your machine.
   see, and forwarding to OpenTelemetry for Grafana, Datadog, Honeycomb and the
   like.
 - **Private by design.** Parameter values never leave your server's process,
-  and nothing is sent anywhere you did not set up yourself.
+  and nothing is sent anywhere you did not set up yourself. Error messages,
+  which a tool that runs commands can fill with anything, can be turned off.
 
 <table>
   <tr>

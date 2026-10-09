@@ -53,5 +53,6 @@ class ToolCallEvent(_RequiredEventFields, total=False):
     responseBytes: int
     definitionHash: str
     repeated: bool
+    invalidArguments: list[str]
     sessionId: str
     parameters: dict[str, str]

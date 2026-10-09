@@ -16,6 +16,24 @@ fn listed() -> &'static Mutex<HashMap<String, String>> {
     LISTED.get_or_init(Mutex::default)
 }
 
+/// Each tool's input schema as last listed, to tell which arguments a refusal was over (contract, 3.10).
+fn schemas() -> &'static Mutex<HashMap<String, Value>> {
+    static SCHEMAS: OnceLock<Mutex<HashMap<String, Value>>> = OnceLock::new();
+    SCHEMAS.get_or_init(Mutex::default)
+}
+
+/// Which declared arguments fail the tool's input schema as last listed (contract, 3.10); empty when no listing
+/// in this process named the tool.
+pub(crate) fn invalid_arguments_of(tool_name: &str, arguments: Option<&serde_json::Map<String, Value>>) -> Vec<String> {
+    let Ok(schemas) = schemas().lock() else {
+        return Vec::new();
+    };
+    schemas
+        .get(tool_name)
+        .map(|schema| crate::arguments::invalid_arguments(schema, arguments))
+        .unwrap_or_default()
+}
+
 /// The latest fingerprint listed for a tool, or `None` when no listing in this process named it.
 pub(crate) fn definition_of(tool_name: &str) -> Option<String> {
     listed().lock().ok()?.get(tool_name).cloned()
@@ -32,6 +50,9 @@ pub(crate) fn note_listing(tools: &[rmcp::model::Tool]) {
             && let Ok(mut listed) = listed().lock()
         {
             listed.insert(name.to_owned(), hash);
+        }
+        if let Ok(mut schemas) = schemas().lock() {
+            schemas.insert(name.to_owned(), wire.get("inputSchema").cloned().unwrap_or(Value::Null));
         }
     }
 }

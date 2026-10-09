@@ -140,6 +140,7 @@ public final class Call {
                 // A tool the server has, refused arguments included: often the schema is why.
                 kind == null && !ToolCallEvent.UNKNOWN_TOOL.equals(source) ? Definitions.of(toolName) : null,
                 kind == null && repeated ? Boolean.TRUE : null,
+                kind == null && ToolCallEvent.ARGUMENTS.equals(source) ? refusedNames() : null,
                 timestamp,
                 Version.CURRENT,
                 sessionId,
@@ -149,5 +150,11 @@ public final class Call {
         catch (RuntimeException ignored) {
             // Recording a call must never disturb the call itself.
         }
+    }
+
+    /** Which declared arguments a refusal was over (contract, 3.10), or null when none were found. */
+    private java.util.List<String> refusedNames() {
+        java.util.List<String> names = ArgumentChecks.invalid(Definitions.schemaOf(toolName), arguments);
+        return names.isEmpty() ? null : names.stream().map(name -> Text.truncate(name, Text.MAX_NAME)).toList();
     }
 }

@@ -31,6 +31,7 @@ interface Details {
   responseSizes: { measured: number; medianBytes: number; p95Bytes: number; maxBytes: number } | null;
   definitionChanges: { at: string }[];
   repeats: { repeated: number; of: number };
+  refusedArguments: { refused: number; unnamed: number; arguments: { name: string; calls: number }[] };
 }
 
 beforeEach(async () => {
@@ -204,6 +205,36 @@ describe("a tool's own page", () => {
     const { repeats } = await get<Details>('tool-details?toolName=export_trip');
 
     expect(repeats).toEqual({ repeated: 2, of: 3 });
+  });
+
+  it('counts which declared arguments refusals were over, and the refusals that named none', async () => {
+    const refused = { success: false, errorSource: 'arguments' };
+    await seedEvents(account.serverId, [
+      { toolName: 'book_flight', occurredAt: ago(10), ...refused, invalidArguments: ['passengers'] },
+      { toolName: 'book_flight', occurredAt: ago(9), ...refused, invalidArguments: ['date', 'passengers'] },
+      { toolName: 'book_flight', occurredAt: ago(8), ...refused },
+      { toolName: 'book_flight', occurredAt: ago(7) },
+      { toolName: 'search_flights', occurredAt: ago(7), ...refused, invalidArguments: ['passengers'] },
+    ]);
+
+    const { refusedArguments } = await get<Details>('tool-details?toolName=book_flight');
+
+    expect(refusedArguments).toEqual({
+      refused: 3,
+      unnamed: 1,
+      arguments: [
+        { name: 'passengers', calls: 2 },
+        { name: 'date', calls: 1 },
+      ],
+    });
+  });
+
+  it('counts nothing for a tool no call was refused for', async () => {
+    await seedEvents(account.serverId, [{ toolName: 'ok', occurredAt: ago(5) }]);
+
+    const { refusedArguments } = await get<Details>('tool-details?toolName=ok');
+
+    expect(refusedArguments).toEqual({ refused: 0, unnamed: 0, arguments: [] });
   });
 
   it('needs to be told which tool', async () => {

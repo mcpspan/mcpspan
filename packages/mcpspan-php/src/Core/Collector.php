@@ -26,7 +26,7 @@ final class Collector
     private const MAX_EVENTS_PER_REQUEST = 1_000;
 
     public const SETTINGS = [
-        'apiKey', 'endpoint', 'captureParameterNames', 'serverVersion', 'debug', 'onDiagnostic', 'flushOnExit', 'flushInterval',
+        'apiKey', 'endpoint', 'captureParameterNames', 'captureErrorMessages', 'serverVersion', 'debug', 'onDiagnostic', 'flushOnExit', 'flushInterval',
         'maxBatchSize', 'maxQueueSize',
     ];
 
@@ -162,6 +162,18 @@ final class Collector
     }
 
     /**
+     * Which declared arguments a refusal was over (contract, 3.10), or null when none were found.
+     *
+     * @return list<string>|null
+     */
+    private static function refusedNames(Call $call): ?array
+    {
+        $names = ArgumentChecks::invalid(Definitions::schemaOf($call->toolName), $call->arguments);
+
+        return [] === $names ? null : array_map(static fn (string $name): string => Text::truncate($name, Text::MAX_NAME), $names);
+    }
+
+    /**
      * Builds the event for a finished call and queues it. `$response` is the answer, when there was one, to be
      * measured (contract, 3.7).
      */
@@ -180,7 +192,8 @@ final class Collector
                 $success,
                 $source,
                 null === $type ? null : Text::truncate($type, Text::MAX_NAME),
-                null === $message || '' === $message ? null : $message,
+                // The text of a failure, unless the developer chose to send none (contract, 5).
+                null === $message || '' === $message || !(self::$settings['captureErrorMessages'] ?? true) ? null : $message,
                 Text::clientType($call->clientName),
                 Text::clientName($call->clientName),
                 self::timestamp($call->timestamp),
@@ -193,6 +206,7 @@ final class Collector
                 // A tool the server has, refused arguments included: often the schema is why.
                 null === $call->kind && Event::SOURCE_UNKNOWN_TOOL !== $source ? Definitions::of($call->toolName) : null,
                 null === $call->kind && $call->repeated ? true : null,
+                null === $call->kind && Event::SOURCE_ARGUMENTS === $source ? self::refusedNames($call) : null,
             );
             $delivery->record($event->toArray());
         } catch (\Throwable) {
@@ -322,6 +336,7 @@ final class Collector
             'apiKey' => self::firstSet($settings['apiKey'] ?? null, getenv('MCPSPAN_API_KEY')),
             'endpoint' => self::firstSet($settings['endpoint'] ?? null, getenv('MCPSPAN_ENDPOINT')),
             'captureParameterNames' => (bool) ($settings['captureParameterNames'] ?? false),
+            'captureErrorMessages' => (bool) ($settings['captureErrorMessages'] ?? true),
             'serverVersion' => self::firstSet($settings['serverVersion'] ?? null, getenv('MCPSPAN_SERVER_VERSION')),
             'debug' => $debug,
             'onDiagnostic' => $callback,

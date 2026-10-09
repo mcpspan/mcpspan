@@ -21,6 +21,7 @@ configure({
   endpoint: process.env.MCPSPAN_ENDPOINT,
   flushIntervalMs: Number(process.env.CONFORMANCE_FLUSH_MS ?? 200),
   captureParameterNames: process.env.CONFORMANCE_CAPTURE_PARAMETERS === '1',
+  captureErrorMessages: process.env.CONFORMANCE_CAPTURE_ERROR_MESSAGES !== '0',
 });
 
 function buildServer() {

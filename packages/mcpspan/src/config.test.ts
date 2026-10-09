@@ -265,6 +265,58 @@ describe('configure and parameter capture', () => {
   });
 });
 
+describe('configure and error messages', () => {
+  function deliveredEvent(): Record<string, unknown> {
+    const body = JSON.parse((batches()[0]?.[1] as RequestInit).body as string) as {
+      events: Record<string, unknown>[];
+    };
+    return body.events[0] as Record<string, unknown>;
+  }
+
+  it('sends the text of a failure by default', async () => {
+    configure({ apiKey: 'key-123' });
+
+    expect(() =>
+      track('run', () => {
+        throw new Error('cannot read /home/me/.aws/credentials');
+      })(),
+    ).toThrow();
+    await shutdown();
+
+    expect(deliveredEvent()['errorMessage']).toBe('cannot read /home/me/.aws/credentials');
+  });
+
+  it('leaves the text out when told to, and keeps how the call failed', async () => {
+    configure({ apiKey: 'key-123', captureErrorMessages: false });
+
+    expect(() =>
+      track('run', () => {
+        throw new TypeError('cannot read /home/me/.aws/credentials');
+      })(),
+    ).toThrow();
+    await shutdown();
+
+    const event = deliveredEvent();
+    expect(event).toMatchObject({ success: false, errorSource: 'exception', errorType: 'TypeError' });
+    expect(event).not.toHaveProperty('errorMessage');
+    expect((batches()[0]?.[1] as RequestInit).body).not.toContain('credentials');
+  });
+
+  it('counts a change of the setting as a new configuration', async () => {
+    configure({ apiKey: 'key-123', captureErrorMessages: false });
+    configure({ apiKey: 'key-123' });
+
+    expect(() =>
+      track('run', () => {
+        throw new Error('boom');
+      })(),
+    ).toThrow();
+    await shutdown();
+
+    expect(deliveredEvent()['errorMessage']).toBe('boom');
+  });
+});
+
 describe('configure and diagnostics', () => {
   it('sends diagnostics to the callback instead of stderr', async () => {
     const messages: string[] = [];

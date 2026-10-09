@@ -14,6 +14,8 @@ module McpSpan
                 "\t" => "\\t", }.freeze
 
     @listed = {}
+    # Each tool's input schema as last listed, to tell which arguments a refusal was over (contract, 3.10).
+    @schemas = {}
     @lock = Mutex.new
 
     class << self
@@ -22,13 +24,21 @@ module McpSpan
         @lock.synchronize { @listed[tool_name] }
       end
 
+      # The latest input schema listed for a tool, or nil when no listing in this process named it.
+      def schema_of(tool_name)
+        @lock.synchronize { @schemas[tool_name] }
+      end
+
       # Notes every tool in a listing, in whatever key style the gem keeps them. Never raises.
       def note(tools)
         JSON.parse(JSON.generate(Array(tools))).each do |tool|
           next unless tool.is_a?(Hash) && tool["name"].is_a?(String)
 
           fingerprint = hash(tool)
-          @lock.synchronize { @listed[tool["name"]] = fingerprint } if fingerprint
+          @lock.synchronize do
+            @listed[tool["name"]] = fingerprint if fingerprint
+            @schemas[tool["name"]] = tool["inputSchema"]
+          end
         end
       rescue StandardError
         nil
@@ -36,7 +46,10 @@ module McpSpan
 
       # For tests: forgets every listing.
       def forget
-        @lock.synchronize { @listed.clear }
+        @lock.synchronize do
+          @listed.clear
+          @schemas.clear
+        end
       end
 
       # The first 16 hex characters of the SHA-256 of the tool's name, title, description and input schema, as

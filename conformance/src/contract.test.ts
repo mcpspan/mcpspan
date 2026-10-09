@@ -44,6 +44,7 @@ const EVENT_FIELDS = new Set([
   'responseBytes',
   'definitionHash',
   'repeated',
+  'invalidArguments',
   'timestamp',
   'sdkVersion',
   'sessionId',
@@ -505,6 +506,31 @@ describe('3.9 Repeated calls', () => {
   });
 });
 
+describe('3.10 Which arguments were refused', () => {
+  it('names the declared arguments a refusal was over, and never a value', async () => {
+    const connection = await start();
+    await connection.client.listTools();
+    await run(connection, [
+      { name: 'typed', arguments: { destination: 'secret-4412', passengers: 'two' } },
+      { name: 'typed', arguments: { passengers: 2 } },
+      { name: 'typed', arguments: { destination: 'WAW', passengers: 2 } },
+    ]);
+
+    const typed = events().filter((event) => event['toolName'] === 'typed');
+    expect(typed.map((event) => event['errorSource'])).toEqual(['arguments', 'arguments', undefined]);
+    expect(typed.map((event) => event['invalidArguments'])).toEqual([['passengers'], ['destination'], undefined]);
+    expect(ingest.requests.some((request) => request.raw.includes('secret-4412'))).toBe(false);
+  });
+
+  it('names nothing on a call that was not refused for its arguments', async () => {
+    const connection = await start();
+    await connection.client.listTools();
+    await run(connection, [{ name: 'reported_error' }, { name: 'no_such_tool', arguments: { passengers: 'two' } }]);
+
+    for (const event of events()) expect(event).not.toHaveProperty('invalidArguments');
+  });
+});
+
 describe('4. The event', () => {
   it('carries every required field, well formed, and nothing else', async () => {
     await run(await start({ clientName: 'claude-code' }), [
@@ -572,6 +598,18 @@ describe('5. Privacy', () => {
     expect(accepted?.['parameters']).toEqual({ destination: 'string', passengers: 'number' });
     expect(refused?.['parameters']).toEqual({ dest: 'string', passengers: 'string' });
     expect(ingest.requests.some((request) => /secret-/.test(request.raw))).toBe(false);
+  });
+
+  it('sends no error message when told not to, and still says how each call failed', async () => {
+    const connection = await start({ captureErrorMessages: false });
+    await connection.client.readResource({ uri: 'broken://status' }).catch(() => undefined);
+    await run(connection, [{ name: 'reported_error' }, { name: 'throws' }]);
+
+    expect(only('reported_error')).toMatchObject({ success: false, errorSource: 'result' });
+    expect(only('throws')).toMatchObject({ success: false, errorSource: 'exception', errorType: EXCEPTION_TYPE });
+    expect(only('broken://status')).toMatchObject({ success: false, errorSource: 'exception' });
+    for (const event of events()) expect(event).not.toHaveProperty('errorMessage');
+    expect(ingest.requests.some((request) => /No flights found|boom/.test(request.raw))).toBe(false);
   });
 });
 

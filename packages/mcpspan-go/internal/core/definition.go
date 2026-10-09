@@ -21,6 +21,9 @@ import (
 var (
 	listedMu sync.RWMutex
 	listed   = map[string]string{}
+	// Each tool's input schema as last listed, to tell which arguments a
+	// refusal was over (contract, 3.10).
+	schemas = map[string]any{}
 )
 
 // DefinitionOf is the latest fingerprint listed for a tool, or "" when no
@@ -29,6 +32,14 @@ func DefinitionOf(toolName string) string {
 	listedMu.RLock()
 	defer listedMu.RUnlock()
 	return listed[toolName]
+}
+
+// SchemaOf is the latest input schema listed for a tool, or nil when no
+// listing in this process named it.
+func SchemaOf(toolName string) any {
+	listedMu.RLock()
+	defer listedMu.RUnlock()
+	return schemas[toolName]
 }
 
 // NoteListing notes every tool in a listing: anything that encodes to a JSON
@@ -58,6 +69,7 @@ func NoteListing(tools any) {
 		if fingerprint, ok := DefinitionHash(tool); ok {
 			listed[name] = fingerprint
 		}
+		schemas[name] = tool["inputSchema"]
 	}
 }
 
@@ -66,6 +78,7 @@ func ForgetListings() {
 	listedMu.Lock()
 	defer listedMu.Unlock()
 	listed = map[string]string{}
+	schemas = map[string]any{}
 }
 
 // DefinitionHash is the first 16 hex characters of the SHA-256 of the tool's

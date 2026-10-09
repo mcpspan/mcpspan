@@ -98,6 +98,8 @@ export async function connect(options: {
   apiKey?: string;
   clientName?: string;
   captureParameters?: boolean;
+  /** Off to check that no event carries an error message (5). On unless said otherwise, as the SDKs default. */
+  captureErrorMessages?: boolean;
   flushMs?: number;
   /** Given to the SDK as MCPSPAN_SERVER_VERSION, which wins over the server's own (3.6). */
   serverVersion?: string;
@@ -108,6 +110,7 @@ export async function connect(options: {
     ...(options.endpoint === undefined ? {} : { MCPSPAN_ENDPOINT: options.endpoint }),
     CONFORMANCE_FLUSH_MS: String(options.flushMs ?? 200),
     CONFORMANCE_CAPTURE_PARAMETERS: options.captureParameters === true ? '1' : '0',
+    CONFORMANCE_CAPTURE_ERROR_MESSAGES: options.captureErrorMessages === false ? '0' : '1',
     ...(options.apiKey === undefined ? {} : { MCPSPAN_API_KEY: options.apiKey }),
     ...(options.serverVersion === undefined ? {} : { MCPSPAN_SERVER_VERSION: options.serverVersion }),
   };

@@ -140,23 +140,26 @@ async function insertInto(
        id, server_id, occurred_at, ${name}, duration_ms, success,
        error_source, error_type, error_message,
        client_type, client_name, sdk_version, parameters, session_id,
-       client_version, server_version, response_bytes, repeated
+       client_version, server_version, response_bytes, repeated, invalid_arguments
      )
      SELECT
        id, $1::uuid, occurred_at, name, duration_ms, success,
        error_source, error_type, error_message,
        client_type, client_name, sdk_version, parameters, session_id,
-       client_version, server_version, response_bytes, repeated
+       client_version, server_version, response_bytes, repeated,
+       -- Passed as JSON: unnest would flatten an array of arrays into one.
+       CASE WHEN invalid_arguments IS NULL THEN NULL
+            ELSE ARRAY(SELECT jsonb_array_elements_text(invalid_arguments)) END
      FROM unnest(
        $2::uuid[], $3::timestamptz[], $4::text[], $5::double precision[], $6::boolean[],
        $7::text[], $8::text[], $9::text[],
        $10::text[], $11::text[], $12::text[], $13::jsonb[], $14::uuid[],
-       $15::text[], $16::text[], $17::integer[], $18::boolean[]
+       $15::text[], $16::text[], $17::integer[], $18::boolean[], $19::jsonb[]
      ) AS incoming (
        id, occurred_at, name, duration_ms, success,
        error_source, error_type, error_message,
        client_type, client_name, sdk_version, parameters, session_id,
-       client_version, server_version, response_bytes, repeated
+       client_version, server_version, response_bytes, repeated, invalid_arguments
      )
      ON CONFLICT DO NOTHING
      RETURNING id`,
@@ -180,6 +183,12 @@ async function insertInto(
       events.map((event) => event.responseBytes ?? null),
       // True or nothing: a false sent by some SDK means what nothing means.
       events.map((event) => (event.repeated === true ? true : null)),
+      // Only on a tool call refused for its arguments, and only when there are any (contract, 3.10).
+      events.map((event) =>
+        kind === 'tool' && event.errorSource === 'arguments' && event.invalidArguments?.length
+          ? JSON.stringify(event.invalidArguments)
+          : null,
+      ),
     ],
   );
 

@@ -55,6 +55,15 @@ type Config struct {
 	// by name and JSON type. Off by default; values are never read.
 	CaptureParameterNames bool
 
+	// OmitErrorMessages leaves out the text of a failure: what a tool returned
+	// as an error, cut to 200 characters, or an error's message, cut to 500.
+	// That text is sent by default, since it is usually what says why a call
+	// failed. Set this when your tools can fail with text you would not send
+	// anywhere, as one that runs commands or reads files might quote a path or
+	// a token. Failures are still recorded, with where they came from and the
+	// error's type.
+	OmitErrorMessages bool
+
 	// ServerVersion is the version calls are recorded under: a release, a tag,
 	// a commit. Falls back to MCPSPAN_SERVER_VERSION, then to the version the
 	// server gives itself (the Implementation it was built with), which is
@@ -95,6 +104,7 @@ func settings(config Config) core.Settings {
 		MaxBatchSize:          config.MaxBatchSize,
 		MaxQueueSize:          config.MaxQueueSize,
 		CaptureParameterNames: config.CaptureParameterNames,
+		OmitErrorMessages:     config.OmitErrorMessages,
 		ServerVersion:         config.ServerVersion,
 	}
 }

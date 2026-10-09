@@ -319,6 +319,52 @@ call to the same tool in the same session (8).
   counted as its own repeat.
 - `repeated` is absent rather than false on any other call.
 
+### 3.10 Which arguments were refused
+
+A refusal of arguments says that an agent got a tool's input wrong, not
+where. So a call refused with `errorSource` `arguments` SHOULD carry
+`invalidArguments`: the names of the top-level arguments that did not match
+the tool's input schema. Twenty-nine refusals of `book_flight`, all of them
+`passengers`, point at one sentence of its description.
+
+- The SDK finds them itself, checking the arguments as the client sent them
+  against the `inputSchema` of the tool's latest listing (3.8). It does not
+  read the server's refusal: each validation library words it differently,
+  and some quote the value back.
+- Only a name the schema declares is ever sent: a key of its `properties`,
+  or a name in its `required`. An argument the schema does not have is
+  never named, since its name came from the client and could be anything,
+  a value included. Values are read in the process and never leave it.
+- A name is reported when it is in `required` and absent from the arguments,
+  or present with a value that fails its property's schema. A schema fails a
+  value under these checks only (a schema of `false` fails every value, one
+  of `true` none):
+  - `type`, one name or a list of them: `string`, `number` (any number),
+    `integer` (a number with no fraction, `2.0` included), `boolean`,
+    `object`, `array`, `null`. A boolean is not a number.
+  - `enum` and `const`: the value equals one of the listed values, or the
+    one given, compared by canonical JSON (3.8).
+  - On a number: `minimum`, `maximum`, and `exclusiveMinimum` and
+    `exclusiveMaximum` given as numbers.
+  - On a string: `minLength` and `maxLength`, counted in code points. On an
+    array: `minItems` and `maxItems`.
+  - On an object: `required`, and `properties`, each present property
+    checked against its own schema. On an array: `items` given as one
+    schema, each element checked against it.
+  Nothing else is checked: not `$ref`, `anyOf`, `oneOf`, `allOf`, `not`,
+  `pattern`, `format` or `additionalProperties`, and not a keyword whose
+  value is not of the kind it takes. What is not checked never fails, so an
+  SDK can name fewer arguments than were wrong, never one that was right.
+- Arguments that are absent or `null` are checked as an empty object;
+  arguments that are not an object give no names.
+- Names are sorted as keys are in 3.8, at most 20 are sent, and each is cut
+  to 200 characters. When the checks find nothing, because the refusal was
+  over something they leave out or because no listing in this process named
+  the tool, the field is absent and the call is still recorded as refused.
+- Every SDK MUST find the same names for the same schema and arguments,
+  checked by the cases in `conformance/argument-checks.json`.
+- Only on tool calls refused with `errorSource` `arguments`.
+
 ## 4. The event
 
 A batch is a JSON object with one field, `events`, an array of these:
@@ -332,7 +378,7 @@ A batch is a JSON object with one field, `events`, an array of these:
 | `success` | boolean | yes | | |
 | `errorSource` | string | when `success` is false | 50 characters | `result`, `exception`, `arguments` or `unknown_tool`; `unknown_resource` or `unknown_prompt` for 3.5. MUST be absent on success. |
 | `errorType` | string | no | 200 characters | For `exception`: the error's class or kind, such as `TypeError`. |
-| `errorMessage` | string | no | see below | For `result`: the text of the result, 200 characters at most. For `exception`: the error's message, 500 at most. Absent for refused calls. |
+| `errorMessage` | string | no | see below | For `result`: the text of the result, 200 characters at most. For `exception`: the error's message, 500 at most. Absent for refused calls, and on every event when the developer turned off capturing error messages (5). |
 | `clientType` | string | yes | 1 to 50 characters | One of the values in 7. |
 | `clientName` | string | no | 200 characters | The client's own name, as sent (see 7). |
 | `clientVersion` | string | no | 100 characters | The client's own version, as sent (3.6). |
@@ -340,6 +386,7 @@ A batch is a JSON object with one field, `events`, an array of these:
 | `responseBytes` | integer | no | 0 to 2,147,483,647 | Size of the answer, in bytes (3.7). |
 | `definitionHash` | string | no | 64 characters | The tool's definition, as listed, fingerprinted (3.8). |
 | `repeated` | boolean | no | | `true` when the call's arguments are the previous call's to the same tool in the same session (3.9); absent otherwise. |
+| `invalidArguments` | array of strings | no | 20 entries, each 1 to 200 characters | Which top-level arguments of a refused call did not match the tool's schema, by the names the schema declares (3.10). |
 | `timestamp` | string | yes | ISO 8601 with an offset | When the call started, by the reporting machine's clock. |
 | `sdkVersion` | string | yes | 1 to 50 characters | The SDK's own version. |
 | `sessionId` | UUID string | no | | See 8. |
@@ -371,8 +418,20 @@ A batch is a JSON object with one field, `events`, an array of these:
   text blocks are joined and cut to 200 characters: that text was written for
   a model to read and is the most likely to quote what the user asked, which
   is why it is kept shorter than an exception's.
+- Error messages are sent by default, cut as 4 sets out, and MUST NOT be
+  sent at all when the developer turns capturing them off: then no event
+  carries `errorMessage`, whatever wrote it. A tool that runs commands or
+  reads files can fail with text that quotes a path, a token or a line of
+  configuration, and a developer who knows their tools do that needs one
+  switch rather than a promise to be careful. Everything else about a
+  failure is still sent: that it failed, its `errorSource`, and its
+  `errorType`, which is the name of a class or kind, not text. Leaving it on
+  by default keeps what most servers need to see why a call failed; the
+  README says how to turn it off and why one might.
 - An answer MAY be encoded to measure its size (3.7), and MUST then be
   dropped: the size is all that leaves the process.
+- Arguments MAY be checked against the tool's schema to tell which were
+  refused (3.10), and only the names the schema declares are sent.
 - Arguments MAY be digested to tell a repeated call (3.9), and the digest
   MUST stay in the process: only whether the call repeated the previous one
   is sent.
@@ -689,12 +748,17 @@ everywhere, named in the language's own case:
 | endpoint | `MCPSPAN_ENDPOINT`; none, and nothing is collected without it |
 | server version | `MCPSPAN_SERVER_VERSION`, then the version the server gives itself |
 | capture parameter names | off |
+| capture error messages | on |
 | debug | off |
 | on diagnostic | none; implies debug |
 | flush on exit | on, where the language can run code as a process ends; absent where it cannot (Go, Rust) |
 | flush interval | 5 seconds, in the language's own unit of time |
 | max batch size | 100 |
 | max queue size | 10,000 |
+
+Where a setting's default is on and the language gives an unset field its
+zero value, as Go does a `bool`, the setting is named the other way round,
+so that leaving it unset keeps the default: `OmitErrorMessages`.
 
 ### 13.3 Shape
 

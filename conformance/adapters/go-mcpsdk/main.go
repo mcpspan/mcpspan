@@ -60,6 +60,7 @@ func main() {
 		Endpoint:              os.Getenv("MCPSPAN_ENDPOINT"),
 		FlushInterval:         time.Duration(flush) * time.Millisecond,
 		CaptureParameterNames: os.Getenv("CONFORMANCE_CAPTURE_PARAMETERS") == "1",
+		OmitErrorMessages:     os.Getenv("CONFORMANCE_CAPTURE_ERROR_MESSAGES") == "0",
 	})
 
 	mcp.AddTool(server, &mcp.Tool{Name: "ok"}, ok)

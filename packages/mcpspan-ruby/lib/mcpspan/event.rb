@@ -7,7 +7,7 @@ module McpSpan
   Event = Struct.new(
     :id, :kind, :tool_name, :duration_ms, :success, :error_source, :error_type, :error_message,
     :client_type, :client_name, :client_version, :server_version, :response_bytes, :definition_hash, :repeated,
-    :timestamp, :session_id, :parameters,
+    :invalid_arguments, :timestamp, :session_id, :parameters,
     keyword_init: true,
   ) do
     # The event as the API takes it, leaving absent fields out rather than sending them as null.
@@ -28,6 +28,7 @@ module McpSpan
         responseBytes: response_bytes,
         definitionHash: definition_hash,
         repeated: repeated,
+        invalidArguments: invalid_arguments,
         timestamp: timestamp,
         sdkVersion: VERSION,
         sessionId: session_id,

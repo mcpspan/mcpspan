@@ -20,6 +20,9 @@ internal static class Definitions
 {
     private static readonly ConcurrentDictionary<string, string> Listed = new(StringComparer.Ordinal);
 
+    /// <summary>Each tool's input schema as last listed, to tell which arguments a refusal was over (contract, 3.10).</summary>
+    private static readonly ConcurrentDictionary<string, JsonNode?> Schemas = new(StringComparer.Ordinal);
+
     private static readonly string[] Hashed = ["name", "title", "description", "inputSchema"];
 
     /// <summary>The filter that notes every listing.</summary>
@@ -38,6 +41,9 @@ internal static class Definitions
     /// <summary>The latest fingerprint listed for a tool, or null when no listing in this process named it.</summary>
     public static string? Of(string toolName) => Listed.TryGetValue(toolName, out var hash) ? hash : null;
 
+    /// <summary>The latest input schema listed for a tool, or null when no listing in this process named it.</summary>
+    public static JsonNode? SchemaOf(string toolName) => Schemas.TryGetValue(toolName, out var schema) ? schema : null;
+
     /// <summary>Notes every tool in a listing. Never throws.</summary>
     public static void Note(IEnumerable<Tool>? tools)
     {
@@ -51,6 +57,11 @@ internal static class Definitions
                 {
                     Listed[tool.Name] = hash;
                 }
+
+                if (wire is not null && tool.Name is not null)
+                {
+                    Schemas[tool.Name] = wire["inputSchema"];
+                }
             }
         }
         catch (Exception)
@@ -60,7 +71,11 @@ internal static class Definitions
     }
 
     /// <summary>For tests: forgets every listing.</summary>
-    public static void Forget() => Listed.Clear();
+    public static void Forget()
+    {
+        Listed.Clear();
+        Schemas.Clear();
+    }
 
     /// <summary>
     /// The first 16 hex characters of the SHA-256 of the tool's name, title, description and input schema, as

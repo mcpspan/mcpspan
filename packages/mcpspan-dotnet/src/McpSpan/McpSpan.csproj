@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>McpSpan</RootNamespace>
     <PackageId>McpSpan</PackageId>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <Authors>Kacper Zatoń</Authors>
     <Description>Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.</Description>
     <PackageTags>mcp;model-context-protocol;analytics;telemetry;observability;monitoring;metrics;mcp-server;tool-calls;ai-agents</PackageTags>

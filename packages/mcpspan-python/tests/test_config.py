@@ -140,3 +140,37 @@ def test_with_a_key_and_no_endpoint_collects_nothing_and_says_so_once(
     assert not is_collecting()
     assert said == [_config.NO_ENDPOINT]
     assert "MCPSPAN_ENDPOINT" in said[0]
+
+
+def _failed_call(**settings: object) -> dict[str, object]:
+    """Configures with the settings, makes one call that raises, and returns its event."""
+    ingest = Ingest()
+    mcpspan.configure(api_key="k", endpoint=ingest.url, **settings)  # type: ignore[arg-type]
+
+    @mcpspan.track("run")
+    def run() -> None:
+        raise PermissionError("cannot read /home/me/.aws/credentials")
+
+    with pytest.raises(PermissionError):
+        run()
+    mcpspan.shutdown()
+    ingest.server.shutdown()
+
+    events: list[dict[str, object]] = [
+        event for request in ingest.requests for event in request["body"]["events"]
+    ]
+    assert len(events) == 1
+    return events[0]
+
+
+def test_sends_the_text_of_a_failure_by_default() -> None:
+    assert _failed_call()["errorMessage"] == "cannot read /home/me/.aws/credentials"
+
+
+def test_leaves_the_text_out_when_told_to_and_keeps_how_the_call_failed() -> None:
+    event = _failed_call(capture_error_messages=False)
+
+    assert event["success"] is False
+    assert event["errorSource"] == "exception"
+    assert event["errorType"] == "PermissionError"
+    assert "errorMessage" not in event

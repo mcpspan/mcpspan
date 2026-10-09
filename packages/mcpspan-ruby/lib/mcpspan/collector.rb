@@ -14,13 +14,14 @@ module McpSpan
     MAX_EVENTS_PER_REQUEST = 1_000
 
     SETTINGS = %i[
-      api_key endpoint capture_parameter_names server_version debug on_diagnostic flush_on_exit flush_interval
-      max_batch_size max_queue_size
+      api_key endpoint capture_parameter_names capture_error_messages server_version debug on_diagnostic
+      flush_on_exit flush_interval max_batch_size max_queue_size
     ].freeze
 
     # What an integration knows about one call as it starts. A kind of nil is a tool call.
+    # `arguments` are kept as sent, by reference, only to tell which a refusal was over (contract, 3.10).
     Call = Struct.new(:tool_name, :parameters, :client_name, :client_version, :server_version, :session_id, :started,
-                      :timestamp, :kind, :repeated, keyword_init: true,)
+                      :timestamp, :kind, :repeated, :arguments, keyword_init: true,)
 
     @lock = Mutex.new
     @reporter = nil
@@ -101,6 +102,7 @@ module McpSpan
           started: started,
           timestamp: timestamp,
           kind: kind,
+          arguments: arguments,
         )
       end
 
@@ -123,8 +125,11 @@ module McpSpan
       def record(call, success:, source: nil, type: nil, message: nil, response: nil)
         duration_ms = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - call.started) * 1000.0
         reporter = @reporter
-        return if reporter.nil?
+        settings = @settings
+        return if reporter.nil? || settings.nil?
 
+        # The text of a failure, unless the developer chose to send none (contract, 5).
+        message = nil unless settings[:capture_error_messages]
         reporter.record(Event.new(
           id: SecureRandom.uuid,
           kind: call.kind,
@@ -142,12 +147,19 @@ module McpSpan
           # A tool the server has, refused arguments included: often the schema is why.
           definition_hash: call.kind.nil? && source != Source::UNKNOWN_TOOL ? Definitions.of(call.tool_name) : nil,
           repeated: call.kind.nil? && call.repeated ? true : nil,
+          invalid_arguments: call.kind.nil? && source == Source::ARGUMENTS ? refused_names(call) : nil,
           timestamp: call.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%LZ"),
           session_id: call.session_id,
           parameters: call.parameters,
         ))
       rescue StandardError
         nil
+      end
+
+      # Which declared arguments a refusal was over (contract, 3.10), or nil when none were found.
+      def refused_names(call)
+        names = ArgumentChecks.invalid(Definitions.schema_of(call.tool_name), call.arguments)
+        names.empty? ? nil : names.map { |name| Text.truncate(name, Text::MAX_NAME) }
       end
 
       # For tests: forgets that the missing endpoint was already mentioned.
@@ -212,6 +224,7 @@ module McpSpan
           api_key: first_set(settings[:api_key], ENV.fetch("MCPSPAN_API_KEY", nil)),
           endpoint: first_set(settings[:endpoint], ENV.fetch("MCPSPAN_ENDPOINT", nil)),
           capture_parameter_names: settings[:capture_parameter_names] ? true : false,
+          capture_error_messages: settings.fetch(:capture_error_messages, true) ? true : false,
           server_version: first_set(settings[:server_version], ENV.fetch("MCPSPAN_SERVER_VERSION", nil)),
           debug: debug,
           on_diagnostic: on_diagnostic,

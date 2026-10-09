@@ -3,4 +3,4 @@
 The single source of truth: the package metadata reads it from here.
 """
 
-SDK_VERSION = "0.4.0"
+SDK_VERSION = "0.5.0"

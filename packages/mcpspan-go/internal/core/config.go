@@ -27,6 +27,7 @@ type Settings struct {
 	MaxBatchSize          int
 	MaxQueueSize          int
 	CaptureParameterNames bool
+	OmitErrorMessages     bool
 	ServerVersion         string
 
 	// For tests: delivery goes here instead of over HTTP.
@@ -40,6 +41,7 @@ var (
 	// configuration arriving again.
 	active        *resolved
 	captureParams bool
+	omitMessages  bool
 	serverVersion string
 	// Whether NoEndpoint has been said in this process: once is enough.
 	saidNoEndpoint bool
@@ -52,6 +54,7 @@ type resolved struct {
 	interval         time.Duration
 	batch, queue     int
 	capture          bool
+	omitMessages     bool
 	serverVersion    string
 }
 
@@ -75,7 +78,7 @@ func Configure(settings Settings) {
 		return
 	}
 	previous := current
-	current, active, captureParams, serverVersion = nil, nil, false, ""
+	current, active, captureParams, omitMessages, serverVersion = nil, nil, false, false, ""
 	mu.Unlock()
 
 	if previous != nil {
@@ -118,7 +121,7 @@ func Configure(settings Settings) {
 	})
 
 	mu.Lock()
-	current, active, captureParams, serverVersion = r, next, next.capture, next.serverVersion
+	current, active, captureParams, omitMessages, serverVersion = r, next, next.capture, next.omitMessages, next.serverVersion
 	mu.Unlock()
 
 	// In the background: startup does not wait for the network.
@@ -134,6 +137,8 @@ func resolve(settings Settings, debug bool) *resolved {
 		batch:    DefaultMaxBatchSize,
 		queue:    DefaultMaxQueueSize,
 		capture:  settings.CaptureParameterNames,
+		// Sent by default; the setting is the other way round so that its zero value is the default.
+		omitMessages: settings.OmitErrorMessages,
 		// The setting, then the environment; the server's own is read per call.
 		serverVersion: firstNonEmpty(settings.ServerVersion, os.Getenv("MCPSPAN_SERVER_VERSION")),
 	}
@@ -176,7 +181,7 @@ func Shutdown(ctx context.Context) {
 
 	mu.Lock()
 	previous := current
-	current, active, captureParams, serverVersion = nil, nil, false, ""
+	current, active, captureParams, omitMessages, serverVersion = nil, nil, false, false, ""
 	mu.Unlock()
 
 	if previous != nil {
@@ -202,11 +207,11 @@ func configuredServerVersion() string {
 	return serverVersion
 }
 
-func running() (*reporter, bool) {
+func running() (*reporter, bool, bool) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	return current, captureParams
+	return current, captureParams, omitMessages
 }
 
 // UseSender points delivery at a function, for tests in other packages of

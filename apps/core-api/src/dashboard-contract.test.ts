@@ -359,6 +359,7 @@ describe('getToolDetails', () => {
       responseSizes: null,
       definitionChanges: [],
       repeats: { repeated: 0, of: 1 },
+      refusedArguments: { refused: 0, unnamed: 0, arguments: [] },
       messagesOffset: 0,
       messagesHaveMore: false,
       parametersOffset: 0,

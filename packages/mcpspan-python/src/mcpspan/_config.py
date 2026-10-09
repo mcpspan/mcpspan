@@ -9,6 +9,7 @@ from typing import Any
 
 from ._reporter import EventReporter
 from ._track import set_capture_parameter_names, set_event_sink, set_server_version
+from ._types import ToolCallEvent
 
 NO_ENDPOINT = (
     "mcpspan: an API key is set but no endpoint, so nothing is collected. "
@@ -64,6 +65,7 @@ def configure(
     max_batch_size: int | None = None,
     max_queue_size: int | None = None,
     capture_parameter_names: bool = False,
+    capture_error_messages: bool = True,
     server_version: str | None = None,
 ) -> None:
     """Starts collecting, or stops if there is nothing to collect with.
@@ -81,6 +83,11 @@ def configure(
       while delivery fails (10,000).
     - `capture_parameter_names`: record which parameters a tool was called
       with, by name and type. Off by default; values are never read.
+    - `capture_error_messages`: send the text of a failure, cut short. On by
+      default, since it is usually what says why a call failed; turn it off
+      when a tool can fail with text you would not send anywhere, such as a
+      path or a token. Failures are still recorded, with where they came from
+      and the exception's type.
     - `server_version`: the version to record calls under, a release or a
       commit; falls back to `MCPSPAN_SERVER_VERSION`, then to the version the
       server gives itself. The dashboard marks where each version began.
@@ -105,6 +112,7 @@ def configure(
             max_batch_size=max_batch_size,
             max_queue_size=max_queue_size,
             capture_parameter_names=capture_parameter_names,
+            capture_error_messages=capture_error_messages,
             server_version=server_version,
         )
     except Exception as error:
@@ -123,6 +131,7 @@ def _configure(
     max_batch_size: int | None,
     max_queue_size: int | None,
     capture_parameter_names: bool,
+    capture_error_messages: bool,
     server_version: str | None,
 ) -> None:
     global _reporter, _active, _said_no_endpoint
@@ -139,6 +148,7 @@ def _configure(
         max_batch_size,
         max_queue_size,
         capture_parameter_names,
+        capture_error_messages,
         version,
     )
 
@@ -195,7 +205,9 @@ def _configure(
         _active = (settings, on_diagnostic)
         set_capture_parameter_names(capture_parameter_names)
         set_server_version(version)
-        set_event_sink(reporter.record)
+        set_event_sink(
+            reporter.record if capture_error_messages else _without_error_message(reporter.record)
+        )
 
         if flush_on_exit:
             _install_exit_hook()
@@ -203,6 +215,18 @@ def _configure(
 
         # In the background: startup does not wait for the network.
         reporter.start()
+
+
+def _without_error_message(
+    record: Callable[[ToolCallEvent], None],
+) -> Callable[[ToolCallEvent], None]:
+    """Records events less the text of their failure (contract, 5)."""
+
+    def strip(event: ToolCallEvent) -> None:
+        event.pop("errorMessage", None)
+        record(event)
+
+    return strip
 
 
 def _stop_collecting() -> None:

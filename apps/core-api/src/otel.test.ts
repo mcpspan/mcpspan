@@ -195,6 +195,18 @@ describe('a call as a span, named as the conventions for MCP servers name it', (
     ]);
   });
 
+  it('names the declared arguments a refusal was over, and only on a refusal of arguments', async () => {
+    const { exporter, received } = capturing();
+    exporter.record('server-a', [
+      call({ success: false, errorSource: 'arguments', invalidArguments: ['date', 'passengers'] }),
+      call({ success: false, errorSource: 'result', invalidArguments: ['date'] }),
+    ]);
+    await exporter.flushSpans();
+
+    const spans = spansOf(received);
+    expect(spans.map((span) => attributesOf(span)['mcpspan.arguments.invalid'])).toEqual([['date', 'passengers'], undefined]);
+  });
+
   it('names each server as a service of its own', async () => {
     const { exporter, received } = capturing();
     exporter.record('server-a', [call()]);

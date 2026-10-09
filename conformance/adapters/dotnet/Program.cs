@@ -27,6 +27,7 @@ builder.Services.AddMcpServer(options => options.ServerInfo = new() { Name = "co
         Endpoint = Environment.GetEnvironmentVariable("MCPSPAN_ENDPOINT"),
         FlushInterval = TimeSpan.FromMilliseconds(flushMs),
         CaptureParameterNames = Environment.GetEnvironmentVariable("CONFORMANCE_CAPTURE_PARAMETERS") == "1",
+        CaptureErrorMessages = Environment.GetEnvironmentVariable("CONFORMANCE_CAPTURE_ERROR_MESSAGES") != "0",
     })
     .WithTools<ConformanceTools>()
     .WithTools([new LongNamedTool()])

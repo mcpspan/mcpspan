@@ -60,6 +60,7 @@ public final class Main {
                 .endpoint(System.getenv("MCPSPAN_ENDPOINT"))
                 .flushInterval(Duration.ofMillis(flushMs))
                 .captureParameterNames("1".equals(System.getenv("CONFORMANCE_CAPTURE_PARAMETERS")))
+                .captureErrorMessages(!"0".equals(System.getenv("CONFORMANCE_CAPTURE_ERROR_MESSAGES")))
                 .build());
 
         McpServer.sync(transport)

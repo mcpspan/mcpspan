@@ -170,6 +170,14 @@ because the validation text can quote back what the agent sent.
   `server.WithInputSchemaValidation()`. Without it, nothing is refused and
   there is nothing to record.
 
+For a refusal of arguments, the SDK also says which ones. It checks what the
+agent sent against the input schema your server listed, in your process, and
+records the top-level arguments that did not match, by the names the schema
+declares, so the tool's page can show that 29 refusals were all `passengers`.
+Values are never sent, and neither is a name the agent made up. It works from
+the latest `tools/list` your server answered in the same process; a refusal
+before any listing names nothing.
+
 ## Privacy
 
 **Parameter values never leave your process.** Not by default, not in any
@@ -181,7 +189,9 @@ in bytes (its size only, never its content), whether it repeated the previous
 call's arguments to the same tool in its session (compared in your process;
 the arguments, or any digest of them, never leave it), a fingerprint of the
 tool's definition as your server lists it (its name, title, description and
-input schema, hashed, so the dashboard can mark when you changed it), which
+input schema, hashed, so the dashboard can mark when you changed it), for a call your
+server refused for its arguments the names of those that did not match the
+tool's schema (never what was sent), which
 client called, and the SDK version. For a resource or a prompt, the same, under the name it was
 registered with: never the address a client read, only its template or, for
 an address the server does not have, its scheme.
@@ -197,6 +207,18 @@ vocabulary, as the client sent them. Knowing `search_flights` is always
 called with `destination` and never with `departure_date` tells you your
 tool description is not landing. Knowing which destination tells you nothing
 you needed, and puts your users' data somewhere it does not belong.
+
+Error messages are sent, cut short, because they are usually what says why a
+call failed. If your tools can fail with text you would not send anywhere, as
+a tool that runs commands or reads files might quote a path or a token, leave
+them out:
+
+```go
+mcpsdk.Instrument(server, mcpspan.Config{OmitErrorMessages: true})
+```
+
+Every failure is still recorded, with where it came from and the error's
+type. Only the text is left out.
 
 ## Self-hosting
 
@@ -234,6 +256,7 @@ Fields of `mcpspan.Config`, given to `Instrument` or `mcpspan.Configure`.
 | `APIKey` | `MCPSPAN_API_KEY` | Identifies your server. Without it, nothing is collected. |
 | `Endpoint` | `MCPSPAN_ENDPOINT`; none | Your mcpspan installation. Nothing is collected without it. |
 | `CaptureParameterNames` | `false` | Records parameter names and types, never values. |
+| `OmitErrorMessages` | `false` | Leaves out the text of a failure, which is otherwise sent cut short. Failures are still recorded, with where they came from. |
 | `ServerVersion` | `MCPSPAN_SERVER_VERSION`, then the server's own | The version to record calls under: a release, a tag, a commit. |
 | `Debug` | `false` | Writes delivery diagnostics to standard error. |
 | `OnDiagnostic` | - | Receives diagnostics instead. Implies `Debug`. |
@@ -243,6 +266,8 @@ Fields of `mcpspan.Config`, given to `Instrument` or `mcpspan.Configure`.
 
 There is no `FlushOnExit`, as there is in the other SDKs: Go has no way to
 run code as a program ends, which is what `defer mcpspan.Shutdown` is for.
+`OmitErrorMessages` is the other SDKs' "capture error messages" the other way
+round, so that leaving it unset keeps the default.
 
 Configuring again with the same settings changes nothing, so a server built
 per request can pass them every time.

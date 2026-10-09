@@ -48,6 +48,12 @@ final class Event
         public readonly ?string $definitionHash = null,
         /** True when the arguments were the previous call's to the same tool in this session (contract, 3.9). */
         public readonly ?bool $repeated = null,
+        /**
+         * For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10).
+         *
+         * @var list<string>|null
+         */
+        public readonly ?array $invalidArguments = null,
     ) {
     }
 
@@ -74,6 +80,7 @@ final class Event
             'responseBytes' => $this->responseBytes,
             'definitionHash' => $this->definitionHash,
             'repeated' => $this->repeated,
+            'invalidArguments' => $this->invalidArguments,
             'timestamp' => $this->timestamp,
             'sdkVersion' => McpSpan::VERSION,
             'sessionId' => $this->sessionId,

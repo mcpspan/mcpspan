@@ -168,6 +168,14 @@ checking to the tool, with `$request->validate()`, so there a call refused
 with Laravel's `ValidationException` is the refusal: a type Laravel documents
 for exactly that.
 
+For a refusal of arguments, the SDK also says which ones. It checks what the
+agent sent against the input schema your server listed, in your process, and
+records the top-level arguments that did not match, by the names the schema
+declares, so the tool's page can show that 29 refusals were all `passengers`.
+Values are never sent, and neither is a name the agent made up. It works from
+the latest `tools/list` your server answered in the same process; a refusal
+before any listing names nothing.
+
 ## Privacy
 
 **Parameter values never leave your process.** Not by default, not in any
@@ -179,7 +187,9 @@ in bytes (its size only, never its content), whether it repeated the previous
 call's arguments to the same tool in its session (compared in your process;
 the arguments, or any digest of them, never leave it), a fingerprint of the
 tool's definition as your server lists it (its name, title, description and
-input schema, hashed, so the dashboard can mark when you changed it), which
+input schema, hashed, so the dashboard can mark when you changed it), for a call your
+server refused for its arguments the names of those that did not match the
+tool's schema (never what was sent), which
 client called, and the SDK version. For a resource or a prompt, the same, under the name it was
 registered with: never the address a client read, only its template or, for
 an address the server does not have, its scheme.
@@ -195,6 +205,19 @@ vocabulary, as the client sent them. Knowing `search_flights` is always
 called with `destination` and never with `departure_date` tells you your tool
 description is not landing. Knowing which destination tells you nothing you
 needed, and puts your users' data somewhere it does not belong.
+
+Error messages are sent, cut short, because they are usually what says why a
+call failed. If your tools can fail with text you would not send anywhere, as
+a tool that runs commands or reads files might quote a path or a token, turn
+them off:
+
+```php
+McpSpan::configure(['captureErrorMessages' => false]);
+```
+
+On Laravel MCP, `MCPSPAN_CAPTURE_ERROR_MESSAGES=false` in `.env` does the
+same. Every failure is still recorded, with where it came from and the
+exception's class. Only the text is left out.
 
 ## Self-hosting
 
@@ -243,6 +266,7 @@ Keys of the array given to `McpSpan::configure`, `McpSdk::instrument` or
 | `apiKey` | `MCPSPAN_API_KEY` | Identifies your server. Without it, nothing is collected. |
 | `endpoint` | `MCPSPAN_ENDPOINT`; none | Your mcpspan installation. Nothing is collected without it. |
 | `captureParameterNames` | `false` | Records parameter names and types, never values. |
+| `captureErrorMessages` | `true` | Sends the text of a failure, cut short. Off sends that it failed and how, without the text. |
 | `serverVersion` | `MCPSPAN_SERVER_VERSION`, then the server's own | The version to record calls under: a release, a tag, a commit. |
 | `debug` | `false` | Writes delivery diagnostics to standard error. |
 | `onDiagnostic` | - | Receives diagnostics instead. Implies `debug`. |

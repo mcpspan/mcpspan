@@ -151,6 +151,22 @@ public sealed class ServerTests
     }
 
     [Fact]
+    public async Task Sends_no_error_message_when_told_not_to_and_still_says_how_each_call_failed()
+    {
+        await using var captured = new Captured(new McpSpanOptions { CaptureErrorMessages = false });
+        await using (var connection = await Connection.OpenAsync(b => b.WithTools<FlightTools>().WithMcpSpan()))
+        {
+            await connection.CallAsync("reported_error");
+            await connection.CallAsync("throws");
+        }
+
+        var events = ByTool(await captured.DeliveredAsync());
+        Assert.Equal(("result", null), (events["reported_error"].ErrorSource, events["reported_error"].ErrorMessage));
+        Assert.Equal(("exception", "BookingException", null),
+            (events["throws"].ErrorSource, events["throws"].ErrorType, events["throws"].ErrorMessage));
+    }
+
+    [Fact]
     public async Task Records_refused_calls_without_a_message()
     {
         await using var captured = new Captured();

@@ -35,6 +35,7 @@ $builder = Server::builder()
 McpSdk::instrument($builder, [
     'flushInterval' => ((int) (getenv('CONFORMANCE_FLUSH_MS') ?: 200)) / 1000,
     'captureParameterNames' => '1' === getenv('CONFORMANCE_CAPTURE_PARAMETERS'),
+    'captureErrorMessages' => '0' !== getenv('CONFORMANCE_CAPTURE_ERROR_MESSAGES'),
 ]);
 
 $builder

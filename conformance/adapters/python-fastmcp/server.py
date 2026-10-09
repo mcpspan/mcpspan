@@ -31,6 +31,7 @@ mcpspan.instrument(
     endpoint=os.environ.get("MCPSPAN_ENDPOINT"),
     flush_interval=int(os.environ.get("CONFORMANCE_FLUSH_MS", "200")) / 1000,
     capture_parameter_names=os.environ.get("CONFORMANCE_CAPTURE_PARAMETERS") == "1",
+    capture_error_messages=os.environ.get("CONFORMANCE_CAPTURE_ERROR_MESSAGES") != "0",
 )
 
 

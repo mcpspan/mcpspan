@@ -277,6 +277,10 @@ export class OtelExporter {
               ...intAttribute('mcpspan.response.size', event.responseBytes),
               ...attribute('mcpspan.tool.definition', event.definitionHash),
               ...(event.repeated === true ? [{ key: 'mcpspan.call.repeated', value: { boolValue: true } }] : []),
+              ...attribute(
+                'mcpspan.arguments.invalid',
+                event.errorSource === 'arguments' && event.invalidArguments?.length ? event.invalidArguments : undefined,
+              ),
               ...attribute('mcpspan.parameter.names', event.parameters ? Object.keys(event.parameters) : undefined),
             ],
             status: event.success ? { code: 0 } : { code: 2, ...(event.errorMessage ? { message: event.errorMessage } : {}) },

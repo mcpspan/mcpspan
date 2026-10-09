@@ -35,6 +35,7 @@ McpSpan.instrument(
   server,
   flush_interval: Integer(ENV.fetch("CONFORMANCE_FLUSH_MS", "200")) / 1000.0,
   capture_parameter_names: ENV["CONFORMANCE_CAPTURE_PARAMETERS"] == "1",
+  capture_error_messages: ENV["CONFORMANCE_CAPTURE_ERROR_MESSAGES"] != "0",
 )
 
 server.define_tool(name: "ok") { |**| text("ok") }

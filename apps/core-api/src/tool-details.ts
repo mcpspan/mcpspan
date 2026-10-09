@@ -72,7 +72,18 @@ export interface ToolDetails {
    * session (contract, 3.9), out of the calls read: an agent looping.
    */
   repeats: { repeated: number; of: number };
+  /**
+   * Calls refused for their arguments among those read, and which declared
+   * arguments they were refused over (contract, 3.10), commonest first. A
+   * refusal can name several arguments, so the counts can add up to more than
+   * `refused`; `unnamed` are refusals the SDK named none for, as SDKs from
+   * before 0.5.0 never do.
+   */
+  refusedArguments: { refused: number; unnamed: number; arguments: { name: string; calls: number }[] };
 }
+
+/** Arguments named on one page. */
+const MAX_REFUSED_ARGUMENTS = 20;
 
 /**
  * What the per-tool page adds to the figures the overview already has.
@@ -93,7 +104,7 @@ export async function getToolDetails(
     parameters: { offset: 0, limit: MAX_PARAMETERS },
   },
 ): Promise<ToolDetails> {
-  const [failures, messages, parameters, sampled, sizes, changes, repeats] = await Promise.all([
+  const [failures, messages, parameters, sampled, sizes, changes, repeats, refusedArguments] = await Promise.all([
     failureShares(serverId, toolName, range),
     failureMessages(serverId, toolName, range, maxScanned, pages.messages),
     parameterUse(serverId, toolName, range, maxScanned, pages.parameters),
@@ -101,6 +112,7 @@ export async function getToolDetails(
     responseSizes(serverId, toolName, range, maxScanned),
     definitionChanges(serverId, toolName, range),
     repeatedCalls(serverId, toolName, range, maxScanned),
+    refusedArgumentNames(serverId, toolName, range, maxScanned),
   ]);
 
   return {
@@ -114,6 +126,51 @@ export async function getToolDetails(
     responseSizes: sizes,
     definitionChanges: changes,
     repeats,
+    refusedArguments,
+  };
+}
+
+/** Which declared arguments refusals were over, among the newest calls in the window, read as the other lists are. */
+async function refusedArgumentNames(
+  serverId: string,
+  toolName: string,
+  range: TimeRange,
+  maxScanned: number,
+): Promise<ToolDetails['refusedArguments']> {
+  const result = await getPool().query<{ name: string | null; calls: string; refused: string; unnamed: string }>(
+    `WITH newest AS (
+       SELECT error_source, invalid_arguments
+       FROM tool_calls
+       WHERE server_id = $1 AND tool_name = $2 AND occurred_at >= $3 AND occurred_at < $4
+       ORDER BY occurred_at DESC
+       LIMIT $5
+     ),
+     refusals AS (
+       SELECT invalid_arguments FROM newest WHERE error_source = 'arguments'
+     ),
+     totals AS (
+       SELECT count(*) AS refused, count(*) FILTER (WHERE invalid_arguments IS NULL) AS unnamed FROM refusals
+     ),
+     named AS (
+       SELECT name, count(*) AS calls
+       FROM refusals, unnest(invalid_arguments) AS name
+       GROUP BY name
+       ORDER BY calls DESC, name
+       LIMIT $6
+     )
+     SELECT named.name, named.calls, totals.refused, totals.unnamed
+     FROM totals LEFT JOIN named ON true
+     ORDER BY named.calls DESC NULLS LAST, named.name`,
+    [serverId, toolName, range.from, range.to, maxScanned, MAX_REFUSED_ARGUMENTS],
+  );
+  const first = result.rows[0];
+
+  return {
+    refused: Number(first?.refused ?? 0),
+    unnamed: Number(first?.unnamed ?? 0),
+    arguments: result.rows
+      .filter((row) => row.name !== null)
+      .map((row) => ({ name: row.name as string, calls: Number(row.calls) })),
   };
 }
 

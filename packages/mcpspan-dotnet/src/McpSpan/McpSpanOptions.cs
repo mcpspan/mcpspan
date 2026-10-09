@@ -37,6 +37,14 @@ public sealed record McpSpanOptions
     public bool CaptureParameterNames { get; init; }
 
     /// <summary>
+    /// Sends the text of a failure: what a tool returned as an error, cut to 200 characters, or an exception's
+    /// message, cut to 500. On by default, since that text is usually what says why a call failed. Turn it off when
+    /// your tools can fail with text you would not send anywhere, as one that runs commands or reads files might
+    /// quote a path or a token. Failures are still recorded, with where they came from and the exception's type.
+    /// </summary>
+    public bool CaptureErrorMessages { get; init; } = true;
+
+    /// <summary>
     /// The version calls are recorded under: a release, a tag, a commit. Falls back to
     /// <c>MCPSPAN_SERVER_VERSION</c>, then to the version the server gives itself (<c>ServerInfo</c>), which is
     /// usually all that is needed. The dashboard marks where each one began.

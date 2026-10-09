@@ -32,6 +32,7 @@ pub struct Options {
     pub(crate) api_key: Option<String>,
     pub(crate) endpoint: Option<String>,
     pub(crate) capture_parameter_names: bool,
+    pub(crate) capture_error_messages: bool,
     pub(crate) server_version: Option<String>,
     pub(crate) debug: bool,
     pub(crate) on_diagnostic: Option<Diagnostic>,
@@ -46,6 +47,7 @@ impl Default for Options {
             api_key: None,
             endpoint: None,
             capture_parameter_names: false,
+            capture_error_messages: true,
             server_version: None,
             debug: false,
             on_diagnostic: None,
@@ -74,6 +76,15 @@ impl Options {
     /// default.
     pub fn capture_parameter_names(mut self, capture: bool) -> Self {
         self.capture_parameter_names = capture;
+        self
+    }
+
+    /// Sends the text of a failure: what a tool returned as an error, cut to 200 characters, or an error's message,
+    /// cut to 500. On by default, since that text is usually what says why a call failed. Turn it off when your
+    /// tools can fail with text you would not send anywhere, as one that runs commands or reads files might quote a
+    /// path or a token. Failures are still recorded, with where they came from and the error's kind.
+    pub fn capture_error_messages(mut self, capture: bool) -> Self {
+        self.capture_error_messages = capture;
         self
     }
 
@@ -122,6 +133,7 @@ impl fmt::Debug for Options {
             .field("api_key", &self.api_key.as_ref().map(|_| "<set>"))
             .field("endpoint", &self.endpoint)
             .field("capture_parameter_names", &self.capture_parameter_names)
+            .field("capture_error_messages", &self.capture_error_messages)
             .field("server_version", &self.server_version)
             .field("debug", &self.debug)
             .field("on_diagnostic", &self.on_diagnostic.as_ref().map(|_| "<set>"))
@@ -138,6 +150,7 @@ pub(crate) struct Resolved {
     pub api_key: String,
     pub endpoint: String,
     pub capture: bool,
+    pub capture_error_messages: bool,
     /// Empty when the server's own version is the one to record.
     pub server_version: String,
     pub debug: bool,
@@ -158,6 +171,7 @@ impl PartialEq for Resolved {
             && self.api_key == other.api_key
             && self.endpoint == other.endpoint
             && self.capture == other.capture
+            && self.capture_error_messages == other.capture_error_messages
             && self.server_version == other.server_version
             && self.debug == other.debug
             && self.flush_interval == other.flush_interval
@@ -209,6 +223,7 @@ impl Resolved {
             // Empty when there is none; there is no default.
             endpoint: first_set([options.endpoint.clone(), env("MCPSPAN_ENDPOINT")]),
             capture: options.capture_parameter_names,
+            capture_error_messages: options.capture_error_messages,
             server_version: first_set([options.server_version.clone(), env("MCPSPAN_SERVER_VERSION")]),
             debug,
             on_diagnostic: options.on_diagnostic.clone(),

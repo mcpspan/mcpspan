@@ -49,6 +49,8 @@ export interface CallDetail extends CallRecord {
   responseBytes: number | null;
   /** Names and JSON types of what was sent, when the SDK was asked to record them. */
   parameters: Record<string, string> | null;
+  /** For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10). */
+  invalidArguments: string[] | null;
 }
 
 const LIST_COLUMNS = `id, occurred_at, duration_ms, success, error_source, error_type, error_message,
@@ -166,7 +168,7 @@ export async function getCall(serverId: string, id: string): Promise<CallDetail 
     const table = CALL_TABLES[kind];
 
     return `SELECT ${LIST_COLUMNS}, '${kind}' AS kind, ${table.name} AS tool_name,
-            received_at, sdk_version, parameters, response_bytes
+            received_at, sdk_version, parameters, response_bytes, invalid_arguments
      FROM ${table.raw}
      WHERE server_id = $1 AND id = $2`;
   });
@@ -177,6 +179,7 @@ export async function getCall(serverId: string, id: string): Promise<CallDetail 
       sdk_version: string;
       parameters: Record<string, string> | null;
       response_bytes: number | null;
+      invalid_arguments: string[] | null;
     }
   >(`${parts.join(' UNION ALL ')} LIMIT 1`, [serverId, id]);
 
@@ -189,6 +192,7 @@ export async function getCall(serverId: string, id: string): Promise<CallDetail 
     sdkVersion: row.sdk_version,
     responseBytes: row.response_bytes,
     parameters: row.parameters,
+    invalidArguments: row.invalid_arguments,
   };
 }
 

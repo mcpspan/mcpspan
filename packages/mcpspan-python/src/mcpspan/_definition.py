@@ -17,6 +17,10 @@ from typing import Any
 
 _listed: dict[str, str] = {}
 
+# Each tool's input schema as last listed, to tell which arguments a refusal
+# was over (contract, 3.10).
+_schemas: dict[str, Any] = {}
+
 _HASHED = ("name", "title", "description", "inputSchema")
 
 _ESCAPES = {
@@ -35,6 +39,11 @@ def definition_of(tool_name: str) -> str | None:
     return _listed.get(tool_name)
 
 
+def schema_of(tool_name: str) -> Any:
+    """The latest input schema listed for a tool, if any listing in this process named it."""
+    return _schemas.get(tool_name)
+
+
 def note_listing(tools: Iterable[Any]) -> None:
     """Notes every tool in a listing: wire dicts, or models of them. Never raises."""
     with contextlib.suppress(Exception):
@@ -46,11 +55,13 @@ def note_listing(tools: Iterable[Any]) -> None:
             fingerprint = definition_hash(wire)
             if fingerprint is not None:
                 _listed[name] = fingerprint
+            _schemas[name] = wire.get("inputSchema")
 
 
 def forget_listings() -> None:
     """For tests: forgets every listing."""
     _listed.clear()
+    _schemas.clear()
 
 
 def definition_hash(tool: Mapping[str, Any]) -> str | None:

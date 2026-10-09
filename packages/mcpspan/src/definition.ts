@@ -13,9 +13,17 @@ import { createHash } from 'node:crypto';
 
 const listed = new Map<string, string>();
 
+/** Each tool's input schema as last listed, to tell which arguments a refusal was over (contract, 3.10). */
+const schemas = new Map<string, unknown>();
+
 /** The latest fingerprint listed for a tool, if any listing in this process named it. */
 export function definitionOf(toolName: string): string | undefined {
   return listed.get(toolName);
+}
+
+/** The latest input schema listed for a tool, if any listing in this process named it. */
+export function schemaOf(toolName: string): unknown {
+  return schemas.get(toolName);
 }
 
 /** Notes every tool in an answer to `tools/list`. Never throws. */
@@ -29,6 +37,7 @@ export function noteListing(result: unknown): void {
       if (typeof name !== 'string') continue;
       const hash = definitionHash(tool as Record<string, unknown>);
       if (hash !== undefined) listed.set(name, hash);
+      schemas.set(name, (tool as { inputSchema?: unknown }).inputSchema);
     }
   } catch {
     // A listing that cannot be read leaves the fingerprints as they were.
@@ -38,6 +47,7 @@ export function noteListing(result: unknown): void {
 /** For tests: forgets every listing. */
 export function forgetListings(): void {
   listed.clear();
+  schemas.clear();
 }
 
 /**

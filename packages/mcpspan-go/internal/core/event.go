@@ -26,11 +26,14 @@ type Event struct {
 	DefinitionHash string `json:"definitionHash,omitempty"`
 	// Repeated is true when the arguments were the previous call's to the
 	// same tool in this session (contract, 3.9), and absent otherwise.
-	Repeated   bool              `json:"repeated,omitempty"`
-	Timestamp  string            `json:"timestamp"`
-	SDKVersion string            `json:"sdkVersion"`
-	SessionID  string            `json:"sessionId,omitempty"`
-	Parameters map[string]string `json:"parameters,omitempty"`
+	Repeated bool `json:"repeated,omitempty"`
+	// InvalidArguments names, for refused arguments, which ones did not match
+	// the tool's schema (contract, 3.10).
+	InvalidArguments []string          `json:"invalidArguments,omitempty"`
+	Timestamp        string            `json:"timestamp"`
+	SDKVersion       string            `json:"sdkVersion"`
+	SessionID        string            `json:"sessionId,omitempty"`
+	Parameters       map[string]string `json:"parameters,omitempty"`
 }
 
 // Error sources, as the contract names them.
@@ -53,4 +56,4 @@ const (
 
 // Version is the SDK's own version, reported in every event and in the
 // User-Agent.
-const Version = "0.4.0"
+const Version = "0.5.0"

@@ -16,13 +16,13 @@ use McpSpan\Core\Text;
  * collected and nothing is sent. Parameter values never leave the process.
  *
  * Settings: `apiKey` (else MCPSPAN_API_KEY), `endpoint`, your mcpspan installation (else MCPSPAN_ENDPOINT; no
- * default, and nothing is collected without it), `captureParameterNames`, `debug`, `onDiagnostic`, `flushOnExit`, `flushInterval` (seconds),
+ * default, and nothing is collected without it), `captureParameterNames`, `captureErrorMessages` (on unless false), `debug`, `onDiagnostic`, `flushOnExit`, `flushInterval` (seconds),
  * `maxBatchSize`, `maxQueueSize`. Nothing here throws over a setting.
  */
 final class McpSpan
 {
     /** The SDK's own version, reported with every event. */
-    public const VERSION = '0.4.0';
+    public const VERSION = '0.5.0';
 
     /** @var array<string, true> */
     private static array $excluded = [];

@@ -24,6 +24,7 @@ def instrument(
     max_batch_size: int | None = None,
     max_queue_size: int | None = None,
     capture_parameter_names: bool | None = None,
+    capture_error_messages: bool | None = None,
     server_version: str | None = None,
 ) -> S:
     """Measures every tool on an MCP server, and returns the server.
@@ -56,6 +57,7 @@ def instrument(
             "max_batch_size": max_batch_size,
             "max_queue_size": max_queue_size,
             "capture_parameter_names": capture_parameter_names,
+            "capture_error_messages": capture_error_messages,
             "server_version": server_version,
         }.items()
         if value is not None

@@ -8,5 +8,6 @@ return [
     'apiKey' => env('MCPSPAN_API_KEY'),
     'endpoint' => env('MCPSPAN_ENDPOINT'),
     'captureParameterNames' => (bool) env('MCPSPAN_CAPTURE_PARAMETER_NAMES', false),
+    'captureErrorMessages' => (bool) env('MCPSPAN_CAPTURE_ERROR_MESSAGES', true),
     'debug' => (bool) env('MCPSPAN_DEBUG', false),
 ];

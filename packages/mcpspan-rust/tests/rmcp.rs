@@ -186,6 +186,27 @@ async fn records_the_servers_own_version_and_the_clients() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn sends_no_error_message_when_told_not_to_and_still_says_how_each_call_failed() {
+    let _serial = serial();
+    let ingest = Ingest::start();
+    let guard = mcpspan::configure(options(&ingest).capture_error_messages(false));
+
+    let (connection, serving) = connect(mcpspan::instrument(Flights::new()), "cursor").await;
+    call(&connection, "reported_error", json!({})).await;
+    call(&connection, "throws", json!({})).await;
+    leave(connection, serving).await;
+    drop(guard);
+
+    let reported = ingest.only("reported_error");
+    assert_eq!(reported["errorSource"], "result");
+    assert!(reported.get("errorMessage").is_none());
+    let thrown = ingest.only("throws");
+    assert_eq!(thrown["errorSource"], "exception");
+    assert_eq!(thrown["errorType"], "InternalError");
+    assert!(thrown.get("errorMessage").is_none());
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_server_version_set_for_the_sdk_wins_over_the_servers_own() {
     let _serial = serial();
     let ingest = Ingest::start();

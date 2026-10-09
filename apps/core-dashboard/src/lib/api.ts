@@ -149,6 +149,8 @@ export interface CallDetail extends CallRecord {
   responseBytes: number | null;
   /** Names and JSON types of what was sent, when the SDK was asked to record them. */
   parameters: Record<string, string> | null;
+  /** For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10). */
+  invalidArguments: string[] | null;
 }
 
 export interface CallList {
@@ -310,6 +312,11 @@ export interface ToolDetails {
   definitionChanges: { at: string }[];
   /** Calls that repeated the previous call's arguments in their session, out of the calls read. */
   repeats: { repeated: number; of: number };
+  /**
+   * Calls refused for their arguments, and which declared arguments they were
+   * refused over, commonest first; `unnamed` refusals named none (SDKs before 0.5.0).
+   */
+  refusedArguments: { refused: number; unnamed: number; arguments: { name: string; calls: number }[] };
   messagesOffset: number;
   messagesHaveMore: boolean;
   parametersOffset: number;

@@ -52,6 +52,20 @@ class InstrumentTest < Minitest::Test
     assert_match(/\A\h{8}-\h{4}-4\h{3}-\h{4}-\h{12}\z/, events.first[:sessionId])
   end
 
+  def test_sends_no_error_message_when_told_not_to_and_still_says_how_each_call_failed
+    capture(capture_error_messages: false)
+    session = connect(McpSpan.instrument(server))
+
+    call(session, "no_flights")
+    call(session, "book_flight")
+    delivered
+
+    assert_equal("result", @capture.only("no_flights")[:errorSource])
+    thrown = @capture.only("book_flight")
+    assert_equal(%w[exception BookingError], [thrown[:errorSource], thrown[:errorType]])
+    assert(@capture.events.none? { |event| event.key?(:errorMessage) })
+  end
+
   def test_measures_tools_added_after_instrumenting
     capture
     instrumented = McpSpan.instrument(server([]))

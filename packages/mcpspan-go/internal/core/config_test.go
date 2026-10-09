@@ -103,6 +103,29 @@ func TestRecordsParametersOnlyWhenAsked(t *testing.T) {
 	}
 }
 
+func TestSendsErrorMessagesUnlessTold(t *testing.T) {
+	for _, omit := range []bool{false, true} {
+		reset(t)
+		sent := &recorder{}
+		Configure(UseSender(Settings{APIKey: "k", FlushInterval: time.Hour, OmitErrorMessages: omit}, sent.send))
+
+		Record(Begin("run"), Outcome{
+			ErrorSource:  SourceException,
+			ErrorType:    "*fs.PathError",
+			ErrorMessage: "open /home/me/.aws/credentials: permission denied",
+		})
+		Shutdown(context.Background())
+
+		event := onlyEvent(t, sent)
+		if event.Success || event.ErrorSource != SourceException || event.ErrorType != "*fs.PathError" {
+			t.Fatalf("omit %v: failure not recorded as it was: %+v", omit, event)
+		}
+		if got, want := event.ErrorMessage != "", !omit; got != want {
+			t.Fatalf("omit %v: message sent %v, want %v", omit, got, want)
+		}
+	}
+}
+
 // onlyEvent is the one event delivered, whichever batch it came in: the
 // announcement runs on its own and may arrive before it or after.
 func onlyEvent(t *testing.T, sent *recorder) Event {
@@ -164,7 +187,7 @@ func TestWithAKeyAndNoEndpointNothingIsCollectedAndItIsSaidOnce(t *testing.T) {
 	Configure(settings)
 	Configure(settings)
 
-	if running, _ := running(); running != nil {
+	if running, _, _ := running(); running != nil {
 		t.Error("collecting with nowhere to send")
 	}
 	if len(said) != 1 || said[0] != NoEndpoint {

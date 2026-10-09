@@ -7,6 +7,7 @@ require_relative "mcpspan/transport"
 require_relative "mcpspan/reporter"
 require_relative "mcpspan/collector"
 require_relative "mcpspan/definitions"
+require_relative "mcpspan/argument_checks"
 require_relative "mcpspan/repeats"
 require_relative "mcpspan/instrumentation"
 require_relative "mcpspan/primitives"
@@ -19,8 +20,9 @@ require_relative "mcpspan/primitives"
 # Without an API key nothing is collected and nothing is sent. Parameter values never leave the process.
 #
 # Settings: +api_key+ (else +MCPSPAN_API_KEY+), +endpoint+, your mcpspan installation (else +MCPSPAN_ENDPOINT+; no
-# default, and nothing is collected without it), +capture_parameter_names+, +debug+, +on_diagnostic+,
-# +flush_on_exit+, +flush_interval+ (seconds), +max_batch_size+, +max_queue_size+. Nothing here raises over a setting.
+# default, and nothing is collected without it), +capture_parameter_names+, +capture_error_messages+ (on unless
+# false), +debug+, +on_diagnostic+, +flush_on_exit+, +flush_interval+ (seconds), +max_batch_size+, +max_queue_size+.
+# Nothing here raises over a setting.
 module McpSpan
   @excluded_names = Set.new
 

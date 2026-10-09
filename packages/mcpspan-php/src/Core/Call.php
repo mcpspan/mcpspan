@@ -29,12 +29,16 @@ final class Call
     /** The arguments were the previous call's to the same tool in this session (contract, 3.9). */
     public bool $repeated = false;
 
+    /** The arguments as sent, kept only to tell which a refusal was over (contract, 3.10). */
+    public mixed $arguments = null;
+
     /**
      * Compares the arguments, as the client sent them, with the previous call's to the same tool in this session,
      * once, as the request arrives; unless the call continues an earlier one.
      */
     public function compareArguments(mixed $arguments, bool $continues = false): void
     {
+        $this->arguments = $arguments;
         if (null !== $this->sessionId && null === $this->kind && !$continues) {
             $this->repeated = Repeats::note($this->sessionId, $this->toolName, $arguments);
         }

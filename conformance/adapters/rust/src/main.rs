@@ -168,12 +168,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|ms| ms.parse().ok())
         .unwrap_or(200);
     let capture = std::env::var("CONFORMANCE_CAPTURE_PARAMETERS").as_deref() == Ok("1");
+    let messages = std::env::var("CONFORMANCE_CAPTURE_ERROR_MESSAGES").as_deref() != Ok("0");
 
     // The key and the endpoint come from MCPSPAN_API_KEY and MCPSPAN_ENDPOINT.
     let _mcpspan = mcpspan::configure(
         mcpspan::Options::default()
             .flush_interval(Duration::from_millis(flush_ms))
-            .capture_parameter_names(capture),
+            .capture_parameter_names(capture)
+            .capture_error_messages(messages),
     );
 
     let server = mcpspan::instrument(Adapter {

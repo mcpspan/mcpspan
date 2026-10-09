@@ -20,6 +20,7 @@ public final class Collector {
     private static volatile Reporter reporter;
     private static Settings active;
     private static volatile boolean captureParameterNames;
+    private static volatile boolean captureErrorMessages = true;
     private static volatile String serverVersion;
     private static boolean exitHookInstalled;
     private static boolean saidNoEndpoint;
@@ -29,12 +30,13 @@ public final class Collector {
 
     private record Settings(String apiKey, String endpoint, boolean debug, Consumer<String> onDiagnostic,
                             boolean flushOnExit, Duration flushInterval, int maxBatchSize, int maxQueueSize,
-                            boolean captureParameterNames, String serverVersion) {
+                            boolean captureParameterNames, boolean captureErrorMessages, String serverVersion) {
 
         @Override
         public boolean equals(Object other) {
             return other instanceof Settings o && debug == o.debug && flushOnExit == o.flushOnExit
-                && captureParameterNames == o.captureParameterNames && maxBatchSize == o.maxBatchSize
+                && captureParameterNames == o.captureParameterNames
+                && captureErrorMessages == o.captureErrorMessages && maxBatchSize == o.maxBatchSize
                 && maxQueueSize == o.maxQueueSize && Objects.equals(apiKey, o.apiKey)
                 && Objects.equals(endpoint, o.endpoint) && onDiagnostic == o.onDiagnostic
                 && flushInterval.equals(o.flushInterval) && Objects.equals(serverVersion, o.serverVersion);
@@ -102,6 +104,7 @@ public final class Collector {
             Math.min(positive(options.maxBatchSize(), Reporter.DEFAULT_MAX_BATCH_SIZE, "maxBatchSize", debug), 1_000),
             positive(options.maxQueueSize(), Reporter.DEFAULT_MAX_QUEUE_SIZE, "maxQueueSize", debug),
             options.captureParameterNames(),
+            options.captureErrorMessages(),
             firstNonEmpty(options.serverVersion(), System.getenv("MCPSPAN_SERVER_VERSION")));
 
         Reporter previous;
@@ -152,6 +155,7 @@ public final class Collector {
             reporter = next;
             active = settings;
             captureParameterNames = settings.captureParameterNames();
+            captureErrorMessages = settings.captureErrorMessages();
             serverVersion = settings.serverVersion();
             if (settings.flushOnExit() && !exitHookInstalled) {
                 // Runs as the JVM shuts down. It changes nothing about how or when the JVM exits.
@@ -188,7 +192,8 @@ public final class Collector {
     public static void record(ToolCallEvent event) {
         Reporter current = reporter;
         if (current != null) {
-            current.record(event);
+            // The text of a failure, unless the developer chose to send none (contract, 5).
+            current.record(captureErrorMessages || event.errorMessage() == null ? event : event.withoutErrorMessage());
         }
     }
 

@@ -1,5 +1,6 @@
 package com.mcpspan.internal;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,10 +23,18 @@ public record ToolCallEvent(
     Long responseBytes,
     String definitionHash,
     Boolean repeated,
+    List<String> invalidArguments,
     String timestamp,
     String sdkVersion,
     String sessionId,
     Map<String, String> parameters) {
+
+    /** The same event, less the text of its failure. */
+    public ToolCallEvent withoutErrorMessage() {
+        return new ToolCallEvent(id, kind, toolName, durationMs, success, errorSource, errorType, null, clientType,
+            clientName, clientVersion, serverVersion, responseBytes, definitionHash, repeated, invalidArguments,
+            timestamp, sdkVersion, sessionId, parameters);
+    }
 
     /** How a failed call announced itself, as the contract names it. */
     public static final String RESULT = "result";
@@ -66,6 +75,16 @@ public record ToolCallEvent(
         }
         if (responseBytes != null) {
             json.append(",\"responseBytes\":").append(responseBytes.longValue());
+        }
+        if (invalidArguments != null && !invalidArguments.isEmpty()) {
+            json.append(",\"invalidArguments\":[");
+            for (int i = 0; i < invalidArguments.size(); i++) {
+                if (i > 0) {
+                    json.append(',');
+                }
+                Json.string(json, invalidArguments.get(i));
+            }
+            json.append(']');
         }
         Json.field(json, "timestamp", timestamp, false);
         Json.field(json, "sdkVersion", sdkVersion, false);

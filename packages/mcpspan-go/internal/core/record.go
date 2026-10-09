@@ -79,7 +79,7 @@ func ResponseBytes(response any) *int64 {
 // Recording reports whether events are being collected, so an integration
 // can skip all of its work when they are not.
 func Recording() bool {
-	r, _ := running()
+	r, _, _ := running()
 	return r != nil
 }
 
@@ -88,7 +88,7 @@ func Recording() bool {
 func Record(call Call, outcome Outcome) {
 	defer func() { _ = recover() }()
 
-	r, capture := running()
+	r, capture, omitMessages := running()
 	if r == nil {
 		return
 	}
@@ -115,7 +115,8 @@ func Record(call Call, outcome Outcome) {
 		ErrorType:     outcome.ErrorType,
 	}
 
-	if !outcome.Success {
+	// The text of a failure, unless the developer chose to send none (contract, 5).
+	if !outcome.Success && !omitMessages {
 		event.ErrorMessage = outcome.ErrorMessage
 	}
 	event.ResponseBytes = ResponseBytes(outcome.Response)
@@ -125,6 +126,11 @@ func Record(call Call, outcome Outcome) {
 	}
 	if call.Kind == "" && call.Repeated {
 		event.Repeated = true
+	}
+	if call.Kind == "" && outcome.ErrorSource == SourceArguments {
+		for _, name := range InvalidArguments(SchemaOf(call.ToolName), call.Arguments) {
+			event.InvalidArguments = append(event.InvalidArguments, Truncate(name, MaxNameLength))
+		}
 	}
 	if capture {
 		event.Parameters = DescribeParameters(call.Arguments)

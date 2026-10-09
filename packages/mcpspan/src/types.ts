@@ -115,6 +115,8 @@ export interface ToolCallEvent {
 
   /** The tool's definition as last listed, fingerprinted (contract, 3.8). */
   definitionHash?: string;
+  /** For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10). */
+  invalidArguments?: string[];
 
   /** The arguments are the previous call's to the same tool in this session (contract, 3.9). */
   repeated?: boolean;

@@ -19,6 +19,9 @@ public final class Definitions {
 
     private static final Map<String, String> LISTED = new ConcurrentHashMap<>();
 
+    /** Each tool's input schema as last listed, to tell which arguments a refusal was over (contract, 3.10). */
+    private static final Map<String, Object> SCHEMAS = new ConcurrentHashMap<>();
+
     private static final List<String> HASHED = List.of("name", "title", "description", "inputSchema");
 
     private Definitions() {
@@ -29,6 +32,11 @@ public final class Definitions {
         return toolName == null ? null : LISTED.get(toolName);
     }
 
+    /** The latest input schema listed for a tool, or null when no listing in this process named it. */
+    public static Object schemaOf(String toolName) {
+        return toolName == null ? null : SCHEMAS.get(toolName);
+    }
+
     /** Notes one listed tool, in the wire's spelling as plain maps, lists and values. Never throws. */
     public static void note(Map<?, ?> tool) {
         try {
@@ -36,6 +44,13 @@ public final class Definitions {
                 String hash = hash(tool);
                 if (hash != null) {
                     LISTED.put(name, hash);
+                }
+                Object schema = tool.get("inputSchema");
+                if (schema != null) {
+                    SCHEMAS.put(name, schema);
+                }
+                else {
+                    SCHEMAS.remove(name);
                 }
             }
         }
@@ -47,6 +62,7 @@ public final class Definitions {
     /** For tests: forgets every listing. */
     public static void forget() {
         LISTED.clear();
+        SCHEMAS.clear();
     }
 
     /**

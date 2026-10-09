@@ -2,6 +2,7 @@ package com.mcpspan.internal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mcpspan.McpSpan;
@@ -9,6 +10,7 @@ import com.mcpspan.McpSpanOptions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.AfterEach;
@@ -69,5 +71,28 @@ class CollectorTest {
             .maxBatchSize(0).debug(true).onDiagnostic(note -> { }).build());
 
         assertTrue(McpSpan.isCollecting());
+    }
+
+    @Test
+    void sendsTheTextOfAFailureUnlessToldNotTo() {
+        assertEquals("cannot read /home/me/.aws/credentials", deliveredMessage(true));
+        assertNull(deliveredMessage(false));
+    }
+
+    private static String deliveredMessage(boolean captureErrorMessages) {
+        List<ToolCallEvent> sent = new CopyOnWriteArrayList<>();
+        Collector.useSender(sent::addAll);
+        McpSpan.configure(McpSpanOptions.builder().apiKey("k").captureErrorMessages(captureErrorMessages).build());
+
+        Collector.record(new ToolCallEvent("8f0e2b0c-6d2a-4c1e-9a43-1f5b0c7d9e21", null, "run", 1.0, false,
+            ToolCallEvent.EXCEPTION, "java.nio.file.AccessDeniedException", "cannot read /home/me/.aws/credentials",
+            "other", null, null, null, null, null, null, null, "2026-10-09T00:00:00.000Z", "test", null, null));
+        McpSpan.shutdown();
+
+        assertEquals(1, sent.size());
+        ToolCallEvent event = sent.get(0);
+        assertEquals(ToolCallEvent.EXCEPTION, event.errorSource());
+        assertEquals("java.nio.file.AccessDeniedException", event.errorType());
+        return event.errorMessage();
     }
 }

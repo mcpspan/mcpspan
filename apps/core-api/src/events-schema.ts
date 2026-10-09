@@ -73,6 +73,8 @@ export const toolCallEventSchema = z.object({
   definitionHash: z.string().max(64).optional(),
   // The arguments were the previous call's to the same tool in the session (contract, 3.9).
   repeated: z.boolean().optional(),
+  // For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10).
+  invalidArguments: z.array(z.string().min(1).max(200)).max(20).optional(),
 
   // Any valid instant is accepted, including implausible ones. This clock
   // belongs to the reporting machine and is sometimes wrong, and rejecting the

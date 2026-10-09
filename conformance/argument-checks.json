@@ -1,0 +1,841 @@
+{
+  "_about": "Tool input schemas, arguments as a client sent them, and the top-level argument names every SDK must find refused (contract, 3.10). Only a name the schema declares is ever named.",
+  "cases": [
+    {
+      "case": "arguments that match the schema",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "destination",
+          "passengers"
+        ]
+      },
+      "arguments": {
+        "destination": "LIS",
+        "passengers": [
+          "Ada",
+          "Alan"
+        ]
+      },
+      "invalid": []
+    },
+    {
+      "case": "a count where the schema wants a list of names",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "destination",
+          "passengers"
+        ]
+      },
+      "arguments": {
+        "destination": "LIS",
+        "passengers": 2
+      },
+      "invalid": [
+        "passengers"
+      ]
+    },
+    {
+      "case": "a required argument left out",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "destination",
+          "passengers"
+        ]
+      },
+      "arguments": {
+        "passengers": [
+          "Ada"
+        ]
+      },
+      "invalid": [
+        "destination"
+      ]
+    },
+    {
+      "case": "no arguments at all, as null",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "destination",
+          "passengers"
+        ]
+      },
+      "arguments": null,
+      "invalid": [
+        "destination",
+        "passengers"
+      ]
+    },
+    {
+      "case": "arguments that are not an object give no names",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "destination",
+          "passengers"
+        ]
+      },
+      "arguments": [
+        "LIS",
+        2
+      ],
+      "invalid": []
+    },
+    {
+      "case": "an argument the schema does not have is never named",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "destination",
+          "passengers"
+        ],
+        "additionalProperties": false
+      },
+      "arguments": {
+        "destination": "LIS",
+        "passengers": [
+          "Ada"
+        ],
+        "secret-4412": true
+      },
+      "invalid": []
+    },
+    {
+      "case": "a name in required that properties do not describe is still the schema's",
+      "schema": {
+        "type": "object",
+        "required": [
+          "date"
+        ]
+      },
+      "arguments": {},
+      "invalid": [
+        "date"
+      ]
+    },
+    {
+      "case": "every type, each matched",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "integer"
+          },
+          "price": {
+            "type": "number"
+          },
+          "window": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "null"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "filters": {
+            "type": "object"
+          }
+        }
+      },
+      "arguments": {
+        "seats": 2,
+        "price": 19.5,
+        "window": false,
+        "note": null,
+        "tags": [],
+        "filters": {}
+      },
+      "invalid": []
+    },
+    {
+      "case": "an integer may be written with a zero fraction",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "integer"
+          },
+          "price": {
+            "type": "number"
+          },
+          "window": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "null"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "filters": {
+            "type": "object"
+          }
+        }
+      },
+      "arguments": {
+        "seats": 2.0
+      },
+      "invalid": []
+    },
+    {
+      "case": "a fraction is not an integer",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "integer"
+          },
+          "price": {
+            "type": "number"
+          },
+          "window": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "null"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "filters": {
+            "type": "object"
+          }
+        }
+      },
+      "arguments": {
+        "seats": 2.5
+      },
+      "invalid": [
+        "seats"
+      ]
+    },
+    {
+      "case": "a boolean is not a number",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "integer"
+          },
+          "price": {
+            "type": "number"
+          },
+          "window": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "null"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "filters": {
+            "type": "object"
+          }
+        }
+      },
+      "arguments": {
+        "price": true,
+        "seats": false
+      },
+      "invalid": [
+        "price",
+        "seats"
+      ]
+    },
+    {
+      "case": "an array is not an object, nor an object an array",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "integer"
+          },
+          "price": {
+            "type": "number"
+          },
+          "window": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "null"
+          },
+          "tags": {
+            "type": "array"
+          },
+          "filters": {
+            "type": "object"
+          }
+        }
+      },
+      "arguments": {
+        "filters": [],
+        "tags": {}
+      },
+      "invalid": [
+        "filters",
+        "tags"
+      ]
+    },
+    {
+      "case": "a list of types",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "return": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "arguments": {
+        "return": null
+      },
+      "invalid": []
+    },
+    {
+      "case": "a value no listed type allows",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "return": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "arguments": {
+        "return": 7
+      },
+      "invalid": [
+        "return"
+      ]
+    },
+    {
+      "case": "enum and const, matched, an object among them",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "cabin": {
+            "enum": [
+              "economy",
+              "business",
+              {
+                "class": "first"
+              }
+            ]
+          },
+          "currency": {
+            "const": "EUR"
+          }
+        }
+      },
+      "arguments": {
+        "cabin": {
+          "class": "first"
+        },
+        "currency": "EUR"
+      },
+      "invalid": []
+    },
+    {
+      "case": "enum and const, missed",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "cabin": {
+            "enum": [
+              "economy",
+              "business",
+              {
+                "class": "first"
+              }
+            ]
+          },
+          "currency": {
+            "const": "EUR"
+          }
+        }
+      },
+      "arguments": {
+        "cabin": "premium",
+        "currency": "USD"
+      },
+      "invalid": [
+        "cabin",
+        "currency"
+      ]
+    },
+    {
+      "case": "numbers within their bounds, an old-style boolean bound ignored",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9
+          },
+          "hours": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 24
+          },
+          "legacy": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        }
+      },
+      "arguments": {
+        "seats": 9,
+        "hours": 23.5,
+        "legacy": 0
+      },
+      "invalid": []
+    },
+    {
+      "case": "numbers out of their bounds",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9
+          },
+          "hours": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 24
+          },
+          "legacy": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          }
+        }
+      },
+      "arguments": {
+        "seats": 0,
+        "hours": 24
+      },
+      "invalid": [
+        "hours",
+        "seats"
+      ]
+    },
+    {
+      "case": "lengths counted in code points, a character outside the BMP is one",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "emoji": {
+            "type": "string",
+            "maxLength": 1
+          },
+          "legs": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2
+          }
+        }
+      },
+      "arguments": {
+        "code": "LIS",
+        "emoji": "🛫",
+        "legs": [
+          "LIS-WAW"
+        ]
+      },
+      "invalid": []
+    },
+    {
+      "case": "lengths out of their bounds",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "emoji": {
+            "type": "string",
+            "maxLength": 1
+          },
+          "legs": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2
+          }
+        }
+      },
+      "arguments": {
+        "code": "LISB",
+        "legs": []
+      },
+      "invalid": [
+        "code",
+        "legs"
+      ]
+    },
+    {
+      "case": "nested objects and arrays that match",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "age": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "email"
+            ]
+          }
+        }
+      },
+      "arguments": {
+        "passengers": [
+          {
+            "name": "Ada",
+            "age": 36
+          }
+        ],
+        "contact": {
+          "email": "a@example.com"
+        }
+      },
+      "invalid": []
+    },
+    {
+      "case": "a problem deep inside names the top-level argument it is in",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "age": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "email"
+            ]
+          }
+        }
+      },
+      "arguments": {
+        "passengers": [
+          {
+            "name": "Ada"
+          },
+          {
+            "age": -1
+          }
+        ],
+        "contact": {}
+      },
+      "invalid": [
+        "contact",
+        "passengers"
+      ]
+    },
+    {
+      "case": "what is not checked never fails",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "format": "iata"
+          },
+          "when": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "ref": {
+            "$ref": "#/$defs/x"
+          },
+          "not": {
+            "not": {
+              "type": "string"
+            }
+          },
+          "all": {
+            "allOf": [
+              {
+                "type": "integer"
+              }
+            ]
+          }
+        }
+      },
+      "arguments": {
+        "code": "lisbon",
+        "when": true,
+        "ref": 5,
+        "not": "x",
+        "all": "x"
+      },
+      "invalid": []
+    },
+    {
+      "case": "a keyword whose value is not of the kind it takes is not checked",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": "3"
+          },
+          "seats": {
+            "type": 7
+          },
+          "legs": {
+            "type": "array",
+            "items": [
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "pick": {
+            "enum": "economy"
+          }
+        },
+        "required": "code"
+      },
+      "arguments": {
+        "code": "L",
+        "seats": "two",
+        "legs": [
+          1
+        ],
+        "pick": "business"
+      },
+      "invalid": []
+    },
+    {
+      "case": "a schema of false fails every value, one of true none",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "never": false,
+          "always": true
+        }
+      },
+      "arguments": {
+        "never": null,
+        "always": {
+          "x": 1
+        }
+      },
+      "invalid": [
+        "never"
+      ]
+    },
+    {
+      "case": "names sorted by their characters, capitals first",
+      "schema": {
+        "type": "object",
+        "required": [
+          "passengers",
+          "Date",
+          "destination",
+          "aisle"
+        ]
+      },
+      "arguments": {},
+      "invalid": [
+        "Date",
+        "aisle",
+        "destination",
+        "passengers"
+      ]
+    },
+    {
+      "case": "at most twenty names",
+      "schema": {
+        "type": "object",
+        "required": [
+          "a24",
+          "a23",
+          "a22",
+          "a21",
+          "a20",
+          "a19",
+          "a18",
+          "a17",
+          "a16",
+          "a15",
+          "a14",
+          "a13",
+          "a12",
+          "a11",
+          "a10",
+          "a09",
+          "a08",
+          "a07",
+          "a06",
+          "a05",
+          "a04",
+          "a03",
+          "a02",
+          "a01",
+          "a00"
+        ]
+      },
+      "arguments": {},
+      "invalid": [
+        "a00",
+        "a01",
+        "a02",
+        "a03",
+        "a04",
+        "a05",
+        "a06",
+        "a07",
+        "a08",
+        "a09",
+        "a10",
+        "a11",
+        "a12",
+        "a13",
+        "a14",
+        "a15",
+        "a16",
+        "a17",
+        "a18",
+        "a19"
+      ]
+    }
+  ]
+}

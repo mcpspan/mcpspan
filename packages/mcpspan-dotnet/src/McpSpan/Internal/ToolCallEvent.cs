@@ -24,6 +24,8 @@ internal sealed record ToolCallEvent
     [JsonPropertyName("definitionHash")] public string? DefinitionHash { get; init; }
     /// <summary>True when the arguments were the previous call's to the same tool in this session (contract, 3.9).</summary>
     [JsonPropertyName("repeated")] public bool? Repeated { get; init; }
+    /// <summary>For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10).</summary>
+    [JsonPropertyName("invalidArguments")] public IReadOnlyList<string>? InvalidArguments { get; init; }
     [JsonPropertyName("timestamp")] public required string Timestamp { get; init; }
     [JsonPropertyName("sdkVersion")] public required string SdkVersion { get; init; }
     [JsonPropertyName("sessionId")] public string? SessionId { get; init; }

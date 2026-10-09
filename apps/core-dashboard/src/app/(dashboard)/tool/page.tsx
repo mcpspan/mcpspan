@@ -206,6 +206,16 @@ export default async function ToolPage({
             </Card>
           </div>
 
+          {details instanceof ApiError || details.refusedArguments.refused === 0 ? null : (
+            <Card id="invalid-arguments">
+              <CardHeader
+                title="Which arguments were invalid"
+                hint={`${formatCount(details.refusedArguments.refused)} calls refused before the tool ran`}
+              />
+              <InvalidArguments refused={details.refusedArguments} />
+            </Card>
+          )}
+
           <Card id="parameters">
             <CardHeader
               title="Parameters agents send"
@@ -234,6 +244,29 @@ export default async function ToolPage({
         </>
       )}
     </main>
+  );
+}
+
+function InvalidArguments({ refused }: { refused: ToolDetails['refusedArguments'] }) {
+  return (
+    <>
+      {refused.arguments.length === 0 ? null : (
+        <Facts
+          rows={refused.arguments.map(({ name, calls }) => [
+            name,
+            `${formatCount(calls)} ${calls === 1 ? 'call' : 'calls'}`,
+          ])}
+        />
+      )}
+      <p className="mt-3 text-sm text-ink-muted">
+        {refused.arguments.length === 0
+          ? 'None of these refusals named an argument. '
+          : 'The argument agents get wrong most is usually one whose description leaves room for the wrong shape. '}
+        {refused.unnamed === 0
+          ? null
+          : `${formatCount(refused.unnamed)} ${refused.unnamed === 1 ? 'refusal' : 'refusals'} named none: refused for a rule the SDK does not check, such as a pattern, or sent by an SDK before 0.5.0.`}
+      </p>
+    </>
   );
 }
 

@@ -1,5 +1,6 @@
 import { EventReporter, type ReporterOptions } from './reporter.js';
 import { setCaptureParameterNames, setEventSink, setServerVersion } from './track.js';
+import type { ToolCallEvent } from './types.js';
 
 /**
  * Said when there is a key and nowhere to send: somebody meant to collect.
@@ -82,6 +83,18 @@ export interface McpspanConfig {
    * `departureDate`, which usually means a tool description is not landing.
    */
   captureParameterNames?: boolean;
+
+  /**
+   * Sends the text of a failure: what a tool returned with `isError`, cut to
+   * 200 characters, or an exception's message, cut to 500.
+   *
+   * On by default, since that text is usually what says why a call failed.
+   * Turn it off when your tools can fail with something you would not send
+   * anywhere, as one that runs commands or reads files might quote a path or
+   * a token. Every failure is still recorded, with where it came from and
+   * the exception's type; only the text is left out.
+   */
+  captureErrorMessages?: boolean;
 }
 
 let reporter: EventReporter | undefined;
@@ -167,7 +180,8 @@ export function configure(config: McpspanConfig = {}): void {
   active = { settings, onDiagnostic: config.onDiagnostic };
   setCaptureParameterNames(config.captureParameterNames ?? false);
   setServerVersion(firstNonEmpty(config.serverVersion, process.env['MCPSPAN_SERVER_VERSION']));
-  setEventSink((event) => reporter?.record(event));
+  const captureErrorMessages = config.captureErrorMessages ?? true;
+  setEventSink((event) => reporter?.record(captureErrorMessages ? event : withoutErrorMessage(event)));
 
   if (config.flushOnExit ?? true) installExitHook();
 
@@ -242,8 +256,16 @@ function describeSettings(config: McpspanConfig): string {
     config.maxBatchSize ?? null,
     config.maxQueueSize ?? null,
     config.captureParameterNames ?? false,
+    config.captureErrorMessages ?? true,
     firstNonEmpty(config.serverVersion, process.env['MCPSPAN_SERVER_VERSION']) ?? null,
   ]);
+}
+
+/** The event as it is, less the text of its failure (contract, 5). */
+function withoutErrorMessage(event: ToolCallEvent): ToolCallEvent {
+  if (event.errorMessage === undefined) return event;
+  const { errorMessage: _left, ...rest } = event;
+  return rest;
 }
 
 function firstNonEmpty(...values: (string | undefined)[]): string | undefined {

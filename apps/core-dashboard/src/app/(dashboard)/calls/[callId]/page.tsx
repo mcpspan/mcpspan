@@ -1,5 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 import { Copyable } from '@/components/copyable';
 import { Facts } from '@/components/facts';
@@ -166,6 +167,12 @@ function Detail({ call, carried }: { call: CallDetail; carried: Record<string, s
             ...(call.repeated
               ? [['Repeated', 'Same arguments as this tool\'s call before it in the session'] as [string, string]]
               : []),
+            ...(call.invalidArguments === null
+              ? []
+              : [['Invalid arguments', <span className="font-mono text-xs">{call.invalidArguments.join(', ')}</span>] as [
+                  string,
+                  ReactNode,
+                ]]),
             [
               'Answer size',
               call.responseBytes === null ? (

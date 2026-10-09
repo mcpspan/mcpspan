@@ -74,6 +74,7 @@ It reads its configuration from the environment:
 | `MCPSPAN_ENDPOINT` | Pass to the SDK as the endpoint. The suite's fake ingest API. |
 | `CONFORMANCE_FLUSH_MS` | The SDK's delivery interval, in milliseconds. Usually 200. |
 | `CONFORMANCE_CAPTURE_PARAMETERS` | `1` to turn on recording parameter names and types, `0` to leave it off. |
+| `CONFORMANCE_CAPTURE_ERROR_MESSAGES` | `0` to turn off sending error messages, `1` to leave the SDK's default, which sends them. |
 | `MCPSPAN_SERVER_VERSION` | Read by the SDK itself, not by the adapter. Set in the case that checks it wins over the server's own version (contract, 3.6). |
 
 The server names itself `conformance`, version `1.0.0`, the way the MCP SDK

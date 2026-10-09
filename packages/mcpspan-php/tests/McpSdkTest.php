@@ -136,6 +136,24 @@ final class McpSdkTest extends TestCase
         return (string) $this->post($server, ['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $params], ['Mcp-Session-Id' => $session])->getBody();
     }
 
+    public function testSendsNoErrorMessageWhenToldNotToAndStillSaysHowEachCallFailed(): void
+    {
+        $this->capture(['captureErrorMessages' => false]);
+        $server = McpSdk::instrument($this->builder())->build();
+        $session = $this->connect($server, 'claude-code');
+
+        $this->call($server, $session, 'no_flights');
+        $this->call($server, $session, 'book_flight');
+        $events = $this->delivered();
+
+        self::assertSame('result', $this->capture->only('no_flights')['errorSource']);
+        $thrown = $this->capture->only('book_flight');
+        self::assertSame(['exception', 'BookingError'], [$thrown['errorSource'], $thrown['errorType']]);
+        foreach ($events as $event) {
+            self::assertArrayNotHasKey('errorMessage', $event);
+        }
+    }
+
     public function testRecordsReadsAndGetsByWhatTheServerRegistered(): void
     {
         $this->capture(['captureParameterNames' => true]);

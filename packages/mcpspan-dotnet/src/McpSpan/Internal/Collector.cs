@@ -30,12 +30,15 @@ internal static class Collector
         int MaxBatchSize,
         int MaxQueueSize,
         bool CaptureParameterNames,
+        bool CaptureErrorMessages,
         string? ServerVersion);
 
     /// <summary>Whether a key is configured and calls are being recorded.</summary>
     public static bool Collecting => Volatile.Read(ref _reporter) is not null;
 
     public static bool CaptureParameterNames { get; private set; }
+
+    private static bool _captureErrorMessages = true;
 
     /// <summary>The version every call is recorded under when one was set, whatever the server gives itself.</summary>
     public static string? ServerVersion { get; private set; }
@@ -80,6 +83,7 @@ internal static class Collector
             Math.Min(Positive(options.MaxBatchSize, Reporter.DefaultMaxBatchSize, "MaxBatchSize", debug), 1_000),
             Positive(options.MaxQueueSize, Reporter.DefaultMaxQueueSize, "MaxQueueSize", debug),
             options.CaptureParameterNames,
+            options.CaptureErrorMessages,
             FirstNonEmpty(options.ServerVersion, Environment.GetEnvironmentVariable("MCPSPAN_SERVER_VERSION")));
 
         Reporter? previous;
@@ -149,6 +153,7 @@ internal static class Collector
             _reporter = reporter;
             _active = settings;
             CaptureParameterNames = settings.CaptureParameterNames;
+            _captureErrorMessages = settings.CaptureErrorMessages;
             ServerVersion = settings.ServerVersion;
 
             if (settings.FlushOnExit && !_exitHookInstalled)
@@ -191,7 +196,9 @@ internal static class Collector
         }
     }
 
-    public static void Record(ToolCallEvent item) => Volatile.Read(ref _reporter)?.Record(item);
+    public static void Record(ToolCallEvent item) =>
+        // The text of a failure, unless the developer chose to send none (contract, 5).
+        Volatile.Read(ref _reporter)?.Record(_captureErrorMessages ? item : item with { ErrorMessage = null });
 
     private static void OnProcessExit(object? sender, EventArgs e)
     {
@@ -296,6 +303,13 @@ internal sealed class Call
         }
     }
 
+    /// <summary>Which declared arguments a refusal was over (contract, 3.10), or null when none were found.</summary>
+    private List<string>? RefusedNames()
+    {
+        var names = ArgumentChecks.Invalid(Definitions.SchemaOf(ToolName), Arguments);
+        return names.Count == 0 ? null : names.Select(name => Text.Truncate(name, Text.MaxName)).ToList();
+    }
+
     private void Record(bool success, string? source, string? type, string? message, object? response)
     {
         try
@@ -327,6 +341,7 @@ internal sealed class Call
                 // A tool the server has, refused arguments included: often the schema is why.
                 DefinitionHash = Kind is null && source != ErrorSources.UnknownTool ? Definitions.Of(ToolName) : null,
                 Repeated = Kind is null && Repeated ? true : null,
+                InvalidArguments = Kind is null && source == ErrorSources.Arguments ? RefusedNames() : null,
             });
         }
         catch (Exception)

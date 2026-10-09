@@ -21,10 +21,23 @@ final class Definitions
     /** @var array<string, string> */
     private static array $listed = [];
 
+    /**
+     * Each tool's input schema as last listed, to tell which arguments a refusal was over (contract, 3.10).
+     *
+     * @var array<string, mixed>
+     */
+    private static array $schemas = [];
+
     /** The latest fingerprint listed for a tool, or null when no listing in this process named it. */
     public static function of(string $toolName): ?string
     {
         return self::$listed[$toolName] ?? null;
+    }
+
+    /** The latest input schema listed for a tool, or null when no listing in this process named it. */
+    public static function schemaOf(string $toolName): mixed
+    {
+        return self::$schemas[$toolName] ?? null;
     }
 
     /**
@@ -44,6 +57,7 @@ final class Definitions
                     if (null !== $hash) {
                         self::$listed[$tool->name] = $hash;
                     }
+                    self::$schemas[$tool->name] = $tool->inputSchema ?? null;
                 }
             }
         } catch (\Throwable) {
@@ -54,6 +68,7 @@ final class Definitions
     public static function forget(): void
     {
         self::$listed = [];
+        self::$schemas = [];
     }
 
     /**

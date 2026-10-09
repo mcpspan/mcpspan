@@ -81,6 +81,10 @@ fn privacy() {
     let options = mcpspan::Options::default().capture_parameter_names(true);
 }
 
+fn error_messages() {
+    let options = mcpspan::Options::default().capture_error_messages(false);
+}
+
 fn self_hosting() {
     let options = mcpspan::Options::default().endpoint("https://mcpspan.example.com");
 }
@@ -97,7 +101,7 @@ fn readme_matches_the_samples() {
         .skip(1)
         .map(|rest| rest.split("```").next().unwrap())
         .collect();
-    assert_eq!(blocks.len(), 7, "every Rust block in the README has a sample here");
+    assert_eq!(blocks.len(), 8, "every Rust block in the README has a sample here");
     for block in blocks {
         let block = lines(block.trim_end());
         assert!(

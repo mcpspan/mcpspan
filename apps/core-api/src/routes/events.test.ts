@@ -390,3 +390,33 @@ describe('repeated calls (contract, 3.9)', () => {
     expect(response.status).toBe(400);
   });
 });
+
+describe('refused arguments (contract, 3.10)', () => {
+  it('stores the names on a tool call refused for its arguments, and on nothing else', async () => {
+    await post({
+      events: [
+        event({
+          success: false,
+          errorSource: 'arguments',
+          invalidArguments: ['date', 'passengers'],
+          timestamp: '2026-09-17T10:00:00.000Z',
+        }),
+        event({ success: false, errorSource: 'arguments', timestamp: '2026-09-17T10:00:01.000Z' }),
+        event({ success: false, errorSource: 'result', invalidArguments: ['date'], timestamp: '2026-09-17T10:00:02.000Z' }),
+        event({ success: false, errorSource: 'arguments', invalidArguments: [], timestamp: '2026-09-17T10:00:03.000Z' }),
+      ],
+    });
+
+    expect((await storedRows()).map((row) => row['invalid_arguments'])).toEqual([['date', 'passengers'], null, null, null]);
+  });
+
+  it('refuses more than twenty names, or one over 200 characters', async () => {
+    const many = Array.from({ length: 21 }, (_, i) => `a${i}`);
+
+    expect((await post({ events: [event({ success: false, errorSource: 'arguments', invalidArguments: many })] })).status).toBe(400);
+    expect(
+      (await post({ events: [event({ success: false, errorSource: 'arguments', invalidArguments: ['x'.repeat(201)] })] }))
+        .status,
+    ).toBe(400);
+  });
+});
