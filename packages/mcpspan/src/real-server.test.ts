@@ -35,8 +35,9 @@ afterEach(async () => {
 async function connected(
   setup: (server: McpServer) => void,
   options: { captureParameterNames?: boolean; serverVersion?: string } = {},
+  serverOptions: ConstructorParameters<typeof McpServer>[1] = undefined,
 ): Promise<Client> {
-  const server = new McpServer({ name: 'flights', version: '1.0.0' });
+  const server = new McpServer({ name: 'flights', version: '1.0.0' }, serverOptions);
   instrument(server, { apiKey: 'key-123', endpoint: 'https://ingest.example.com', ...options });
   setup(server);
 
@@ -91,6 +92,20 @@ describe('a call with arguments the schema refuses', () => {
       errorSource: 'arguments',
       clientType: 'claude-code',
     });
+  });
+
+  it('counts arguments over the element limit of the server as refused too, naming none', async () => {
+    const client = await connected((server) => searchTool(server), {}, { maxToolInputElements: 3 });
+
+    const result = await client.callTool({
+      name: 'search_flights',
+      arguments: { destination: 'WAW', passengers: 2, extra: [1, 2, 3, 4] },
+    });
+
+    expect(result.isError).toBe(true);
+    const [event] = await delivered();
+    expect(event).toMatchObject({ toolName: 'search_flights', success: false, errorSource: 'arguments' });
+    expect(event).not.toHaveProperty('invalidArguments');
   });
 
   it('never reached the handler, and is counted once', async () => {

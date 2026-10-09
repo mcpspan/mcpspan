@@ -1,6 +1,6 @@
 {
   "name": "mcpspan",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.",
   "keywords": [
     "mcp",
@@ -62,9 +62,9 @@
     "prepublishOnly": "pnpm build && pnpm typecheck && pnpm test && pnpm check:readme"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "^2.1.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "@modelcontextprotocol/server": "^2.1.0",
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@modelcontextprotocol/server": "^2.3.1",
     "@types/node": "^18.19.130",
     "@vitest/coverage-v8": "4.1.11",
     "tsdown": "^0.23.0",

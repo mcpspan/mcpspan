@@ -625,6 +625,11 @@ Known limits, not divergences:
   same private fields. If a version moves them, every read is named by its
   scheme and counted as unknown: wrong in a way the dashboard shows at once,
   never a leaked address.
+- Refused arguments are told from other errors a handler never saw by the
+  MCP SDK's wording: `Input validation error` from the schema, and, from
+  1.32.0 and 2.3.0, `Invalid arguments for tool` from the `maxToolInputElements`
+  limit, which refuses a call before the schema runs. A limit refusal names no
+  argument (3.10): the check finds nothing wrong with any one of them.
 
 ## 11. Where the Python SDK stands
 

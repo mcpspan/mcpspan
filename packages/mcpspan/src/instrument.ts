@@ -518,7 +518,9 @@ function classifyRefusal(
   const enabled = entry !== undefined && registered?.enabled !== false;
   const text = message ?? '';
 
-  if (enabled) return /validation/i.test(text) ? 'arguments' : undefined;
+  // "Input validation error: Invalid arguments for tool ..." from the schema, and, from 1.32.0 and 2.3.0, "Invalid
+  // arguments for tool ...: arguments contain more than the maximum of N elements" from maxToolInputElements.
+  if (enabled) return /validation|invalid arguments for tool/i.test(text) ? 'arguments' : undefined;
 
   return /not found|disabled/i.test(text) ? 'unknown_tool' : undefined;
 }
