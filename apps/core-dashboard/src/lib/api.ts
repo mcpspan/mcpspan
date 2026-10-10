@@ -317,6 +317,17 @@ export interface ToolDetails {
    * refused over, commonest first; `unnamed` refusals named none (SDKs before 0.5.0).
    */
   refusedArguments: { refused: number; unnamed: number; arguments: { name: string; calls: number }[] };
+  /** For its calls that repeated or failed: the call right before each in its session, by client. */
+  before: {
+    problems: number;
+    predecessors: {
+      before: string | null;
+      beforeKind: CallKind | null;
+      clientType: string;
+      repeats: number;
+      failures: number;
+    }[];
+  };
   messagesOffset: number;
   messagesHaveMore: boolean;
   parametersOffset: number;

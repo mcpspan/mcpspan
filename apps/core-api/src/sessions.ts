@@ -343,3 +343,79 @@ export async function getTransitions(
     sampled,
   };
 }
+
+/** What came right before a tool's repeated or failed calls, from one client. */
+export interface ProblemPredecessor {
+  /** The call just before, in the same session; null when nothing before it was read. */
+  before: string | null;
+  beforeKind: CallKind | null;
+  clientType: string;
+  /** Of the calls this one preceded: those that repeated the previous call's arguments (contract, 3.9). */
+  repeats: number;
+  /** And those that failed, refused ones included. A call can be both. */
+  failures: number;
+}
+
+/** Rows shown at most. */
+const MAX_PREDECESSORS = 20;
+
+/**
+ * For one tool's calls that repeated or failed, which call came right before
+ * each in its session, by client: `list_elements` failing after `click`, or
+ * repeated after it, says the click did not land. Read from the same newest
+ * session calls as the transitions, so a session cut by the window's start
+ * shows its first call read as having nothing before it.
+ */
+export async function getProblemPredecessors(
+  serverId: string,
+  toolName: string,
+  range: TimeRange,
+  maxScanned: number = MAX_SCANNED_CALLS,
+): Promise<{ predecessors: ProblemPredecessor[]; problems: number }> {
+  const params: unknown[] = [];
+  const source = recentCalls(params, serverId, range, maxScanned);
+  params.push(toolName, MAX_PREDECESSORS);
+  const tool = params.length - 1;
+
+  const result = await getPool().query<{
+    before_tool: string | null;
+    before_kind: CallKind | null;
+    client_type: string;
+    repeats: string;
+    failures: string;
+    problems: string;
+  }>(
+    `WITH paired AS (
+       SELECT tool_name, kind, success, repeated, client_type,
+              lag(tool_name) OVER calls_in_order AS before_tool,
+              lag(kind) OVER calls_in_order AS before_kind
+       FROM ${source}
+       WINDOW calls_in_order AS (PARTITION BY session_id ORDER BY occurred_at, id)
+     ),
+     problems AS (
+       SELECT * FROM paired
+       WHERE kind = 'tool' AND tool_name = $${tool} AND (repeated IS TRUE OR NOT success)
+     )
+     SELECT before_tool, before_kind, client_type,
+            count(*) FILTER (WHERE repeated IS TRUE) AS repeats,
+            count(*) FILTER (WHERE NOT success) AS failures,
+            (SELECT count(*) FROM problems) AS problems
+     FROM problems
+     GROUP BY before_tool, before_kind, client_type
+     ORDER BY count(*) DESC, before_tool NULLS LAST, before_kind, client_type
+     LIMIT $${tool + 1}`,
+    params,
+  );
+
+  return {
+    problems: Number(result.rows[0]?.problems ?? 0),
+    predecessors: result.rows.map((row) => ({
+      before: row.before_tool,
+      beforeKind: row.before_kind,
+      clientType: row.client_type,
+      repeats: Number(row.repeats),
+      failures: Number(row.failures),
+    })),
+  };
+}
+

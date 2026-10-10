@@ -23,7 +23,7 @@ import {
   type ToolDetails,
 } from '@/lib/api';
 import { formatBytes } from '@/lib/diagnosis';
-import { clientLabel, errorSourceInfo, formatCount } from '@/lib/format';
+import { clientLabel, errorSourceInfo, formatCount, kindLabel } from '@/lib/format';
 import { offsetParam, type Params, withParams } from '@/lib/query';
 import { resolveRange } from '@/lib/range';
 import { currentSession } from '@/lib/session';
@@ -163,6 +163,16 @@ export default async function ToolPage({
             </Card>
           )}
 
+          {details instanceof ApiError || details.before.problems === 0 ? null : (
+            <Card id="before">
+              <CardHeader
+                title="Right before it went wrong"
+                hint={`Before ${formatCount(details.before.problems)} repeated or failed calls, in their sessions`}
+              />
+              <Predecessors toolName={toolName} before={details.before} />
+            </Card>
+          )}
+
           {details instanceof ApiError || details.responseSizes === null ? null : (
             <Card>
               <CardHeader
@@ -244,6 +254,57 @@ export default async function ToolPage({
         </>
       )}
     </main>
+  );
+}
+
+function Predecessors({ toolName, before }: { toolName: string; before: ToolDetails['before'] }) {
+  return (
+    <>
+      <p className="mb-3 text-sm text-ink-muted">
+        What the agent called just before <span className="font-mono text-xs">{toolName}</span> repeated itself or
+        failed. One call standing out usually did not do what the agent expected: a click that did not land, a
+        search that came back empty.
+      </p>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-ink-muted">
+            <th scope="col" className="pb-2 font-medium">
+              Called before
+            </th>
+            <th scope="col" className="pb-2 font-medium">
+              Client
+            </th>
+            <th scope="col" className="pb-2 pr-4 text-right font-medium">
+              Repeated
+            </th>
+            <th scope="col" className="pb-2 text-right font-medium">
+              Failed
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {before.predecessors.map((row) => (
+            <tr key={`${row.beforeKind ?? ''}:${row.before ?? ''}:${row.clientType}`}>
+              <th scope="row" className="py-2 pr-4 text-left font-normal text-ink [overflow-wrap:anywhere]">
+                {row.before === null ? (
+                  <span className="text-ink-muted">Nothing before it</span>
+                ) : (
+                  <>
+                    {kindLabel(row.beforeKind) === null ? null : (
+                      <span className="text-ink-muted">{kindLabel(row.beforeKind)} </span>
+                    )}
+                    <span className="font-mono text-xs">{row.before}</span>
+                  </>
+                )}
+              </th>
+              <td className="py-2 pr-4 text-ink-muted">{clientLabel(row.clientType)}</td>
+              <td className="py-2 pr-4 text-right tabular-nums text-ink">{formatCount(row.repeats)}</td>
+              <td className="py-2 text-right tabular-nums text-ink">{formatCount(row.failures)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }
 

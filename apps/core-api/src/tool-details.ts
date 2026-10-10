@@ -1,6 +1,7 @@
 import { getPool } from './db.ts';
 import { type Page, takePage } from './paging.ts';
 import { splitWindow, unifiedCallSource } from './rollup.ts';
+import { getProblemPredecessors, type ProblemPredecessor } from './sessions.ts';
 import type { TimeRange } from './time-range.ts';
 
 /**
@@ -80,6 +81,12 @@ export interface ToolDetails {
    * before 0.5.0 never do.
    */
   refusedArguments: { refused: number; unnamed: number; arguments: { name: string; calls: number }[] };
+  /**
+   * For its calls that repeated or failed, the call right before each in its
+   * session, by client, commonest first; `problems` is how many such calls
+   * were read. Only calls with a session can be placed.
+   */
+  before: { problems: number; predecessors: ProblemPredecessor[] };
 }
 
 /** Arguments named on one page. */
@@ -104,7 +111,7 @@ export async function getToolDetails(
     parameters: { offset: 0, limit: MAX_PARAMETERS },
   },
 ): Promise<ToolDetails> {
-  const [failures, messages, parameters, sampled, sizes, changes, repeats, refusedArguments] = await Promise.all([
+  const [failures, messages, parameters, sampled, sizes, changes, repeats, refusedArguments, before] = await Promise.all([
     failureShares(serverId, toolName, range),
     failureMessages(serverId, toolName, range, maxScanned, pages.messages),
     parameterUse(serverId, toolName, range, maxScanned, pages.parameters),
@@ -113,6 +120,7 @@ export async function getToolDetails(
     definitionChanges(serverId, toolName, range),
     repeatedCalls(serverId, toolName, range, maxScanned),
     refusedArgumentNames(serverId, toolName, range, maxScanned),
+    getProblemPredecessors(serverId, toolName, range, maxScanned),
   ]);
 
   return {
@@ -127,6 +135,7 @@ export async function getToolDetails(
     definitionChanges: changes,
     repeats,
     refusedArguments,
+    before,
   };
 }
 

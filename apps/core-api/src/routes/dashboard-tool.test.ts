@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createAccount, resetDatabase, seedDefinition, seedEvents, type TestAccount } from '../../test/fixtures.ts';
@@ -32,6 +34,10 @@ interface Details {
   definitionChanges: { at: string }[];
   repeats: { repeated: number; of: number };
   refusedArguments: { refused: number; unnamed: number; arguments: { name: string; calls: number }[] };
+  before: {
+    problems: number;
+    predecessors: { before: string | null; beforeKind: string | null; clientType: string; repeats: number; failures: number }[];
+  };
 }
 
 beforeEach(async () => {
@@ -235,6 +241,32 @@ describe("a tool's own page", () => {
     const { refusedArguments } = await get<Details>('tool-details?toolName=ok');
 
     expect(refusedArguments).toEqual({ refused: 0, unnamed: 0, arguments: [] });
+  });
+
+  it('says which call came right before a repeated or failed call, by client', async () => {
+    const claude = randomUUID();
+    const cursor = randomUUID();
+    await seedEvents(account.serverId, [
+      // The click did not land: the agent lists the elements again, then the next try fails outright.
+      { toolName: 'list_elements', occurredAt: ago(20), sessionId: claude },
+      { toolName: 'click', occurredAt: ago(19), sessionId: claude },
+      { toolName: 'list_elements', occurredAt: ago(18), sessionId: claude, repeated: true },
+      { toolName: 'click', occurredAt: ago(17), sessionId: claude },
+      { toolName: 'list_elements', occurredAt: ago(16), sessionId: claude, success: false, errorSource: 'exception' },
+      // Another client, failing on its first call; and a call with no session, which cannot be placed.
+      { toolName: 'list_elements', occurredAt: ago(15), sessionId: cursor, clientType: 'cursor', success: false, errorSource: 'result' },
+      { toolName: 'list_elements', occurredAt: ago(14), success: false, errorSource: 'result' },
+    ]);
+
+    const { before } = await get<Details>('tool-details?toolName=list_elements');
+
+    expect(before).toEqual({
+      problems: 3,
+      predecessors: [
+        { before: 'click', beforeKind: 'tool', clientType: 'claude', repeats: 1, failures: 1 },
+        { before: null, beforeKind: null, clientType: 'cursor', repeats: 0, failures: 1 },
+      ],
+    });
   });
 
   it('needs to be told which tool', async () => {
