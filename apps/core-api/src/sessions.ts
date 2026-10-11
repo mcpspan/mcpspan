@@ -81,9 +81,16 @@ function recentCalls(
   serverId: string,
   range: TimeRange,
   maxScanned: number,
+  /** Only the sessions of this client: one connection has one client, so this keeps sessions whole. */
+  clientType?: string,
 ): string {
   params.push(serverId, range.from, range.to, maxScanned);
   const at = params.length - 3;
+  let client = '';
+  if (clientType !== undefined) {
+    params.push(clientType);
+    client = `AND client_type = $${params.length}`;
+  }
 
   // Each table's newest rows first, from its own index, then the newest of
   // those: an agent's session is its tool calls, resource reads and prompt
@@ -97,6 +104,7 @@ function recentCalls(
         AND occurred_at >= $${at + 1}
         AND occurred_at < $${at + 2}
         AND session_id IS NOT NULL
+        ${client}
       ORDER BY occurred_at DESC
       LIMIT $${at + 3})`;
   };
@@ -129,6 +137,15 @@ async function wasSampled(
   return result.rows[0]?.more === true;
 }
 
+/** What the session list can be narrowed to. */
+export interface SessionFilters {
+  clientType?: string | undefined;
+  /** Sessions that called this tool at least once. */
+  toolName?: string | undefined;
+  /** Sessions with at least one failed call, or one repeated call. */
+  with?: 'failures' | 'repeats' | undefined;
+}
+
 /** The most recent sessions in a window, newest first. */
 export async function getSessions(
   serverId: string,
@@ -136,9 +153,17 @@ export async function getSessions(
   /** Lowered by tests, which cannot seed a hundred thousand rows each. */
   maxScanned: number = MAX_SCANNED_CALLS,
   page: Page = { offset: 0, limit: MAX_SESSIONS },
+  filters: SessionFilters = {},
 ): Promise<{ sessions: SessionSummary[]; sampled: boolean; hasMore: boolean }> {
   const params: unknown[] = [];
-  const source = recentCalls(params, serverId, range, maxScanned);
+  const source = recentCalls(params, serverId, range, maxScanned, filters.clientType);
+  const having: string[] = [];
+  if (filters.toolName !== undefined) {
+    params.push(filters.toolName);
+    having.push(`bool_or(kind = 'tool' AND tool_name = $${params.length})`);
+  }
+  if (filters.with === 'failures') having.push('bool_or(NOT success)');
+  if (filters.with === 'repeats') having.push('bool_or(repeated IS TRUE)');
   params.push(page.limit + 1, page.offset);
 
   const [result, sampled] = await Promise.all([
@@ -165,6 +190,7 @@ export async function getSessions(
               min(client_name) AS client_name
        FROM ${source}
        GROUP BY session_id
+       ${having.length === 0 ? '' : `HAVING ${having.join(' AND ')}`}
        ORDER BY ended_at DESC, session_id
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
@@ -294,9 +320,17 @@ export async function getTransitions(
   /** Lowered by tests, like the one above. */
   maxScanned: number = MAX_SCANNED_CALLS,
   page: Page = { offset: 0, limit: MAX_TRANSITIONS },
+  /** The client's sessions only; and, given a tool, only the steps into or out of it. */
+  filters: Pick<SessionFilters, 'clientType' | 'toolName'> = {},
 ): Promise<{ transitions: Transition[]; sampled: boolean; hasMore: boolean }> {
   const params: unknown[] = [];
-  const source = recentCalls(params, serverId, range, maxScanned);
+  const source = recentCalls(params, serverId, range, maxScanned, filters.clientType);
+  let touching = '';
+  if (filters.toolName !== undefined) {
+    params.push(filters.toolName);
+    const tool = `$${params.length}`;
+    touching = `WHERE (to_tool = ${tool} AND to_kind = 'tool') OR (from_tool = ${tool} AND from_kind = 'tool')`;
+  }
   params.push(page.limit + 1, page.offset);
 
   const [result, sampled] = await Promise.all([
@@ -320,6 +354,7 @@ export async function getTransitions(
          FROM ${source}
          WINDOW calls_in_order AS (PARTITION BY session_id ORDER BY occurred_at, id)
        ) AS paired
+       ${touching}
        GROUP BY from_tool, from_kind, to_tool, to_kind
        ORDER BY calls DESC, from_tool NULLS FIRST, from_kind NULLS FIRST, to_tool, to_kind
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -356,8 +391,17 @@ export interface ProblemPredecessor {
   failures: number;
 }
 
-/** Rows shown at most. */
+/** Rows on one page. */
 const MAX_PREDECESSORS = 20;
+
+export type PredecessorSort = 'all' | 'repeats' | 'failures';
+
+/** Fixed fragments, chosen by name: nothing from the request reaches the SQL. */
+const PREDECESSOR_ORDER: Record<PredecessorSort, string> = {
+  all: 'count(*) DESC',
+  repeats: 'count(*) FILTER (WHERE repeated IS TRUE) DESC, count(*) DESC',
+  failures: 'count(*) FILTER (WHERE NOT success) DESC, count(*) DESC',
+};
 
 /**
  * For one tool's calls that repeated or failed, which call came right before
@@ -371,11 +415,19 @@ export async function getProblemPredecessors(
   toolName: string,
   range: TimeRange,
   maxScanned: number = MAX_SCANNED_CALLS,
-): Promise<{ predecessors: ProblemPredecessor[]; problems: number }> {
+  options: {
+    clientType?: string | undefined;
+    /** Commonest first by both, or by repeats alone, or by failures alone. */
+    sort?: PredecessorSort;
+    page?: Page;
+  } = {},
+): Promise<{ predecessors: ProblemPredecessor[]; problems: number; hasMore: boolean }> {
+  const page = options.page ?? { offset: 0, limit: MAX_PREDECESSORS };
   const params: unknown[] = [];
-  const source = recentCalls(params, serverId, range, maxScanned);
-  params.push(toolName, MAX_PREDECESSORS);
-  const tool = params.length - 1;
+  const source = recentCalls(params, serverId, range, maxScanned, options.clientType);
+  params.push(toolName, page.limit + 1, page.offset);
+  const tool = params.length - 2;
+  const order = PREDECESSOR_ORDER[options.sort ?? 'all'];
 
   const result = await getPool().query<{
     before_tool: string | null;
@@ -402,14 +454,16 @@ export async function getProblemPredecessors(
             (SELECT count(*) FROM problems) AS problems
      FROM problems
      GROUP BY before_tool, before_kind, client_type
-     ORDER BY count(*) DESC, before_tool NULLS LAST, before_kind, client_type
-     LIMIT $${tool + 1}`,
+     ORDER BY ${order}, before_tool NULLS LAST, before_kind, client_type
+     LIMIT $${tool + 1} OFFSET $${tool + 2}`,
     params,
   );
+  const { items, hasMore } = takePage(result.rows, page);
 
   return {
     problems: Number(result.rows[0]?.problems ?? 0),
-    predecessors: result.rows.map((row) => ({
+    hasMore,
+    predecessors: items.map((row) => ({
       before: row.before_tool,
       beforeKind: row.before_kind,
       clientType: row.client_type,

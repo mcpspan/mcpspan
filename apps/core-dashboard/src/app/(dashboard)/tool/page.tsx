@@ -7,6 +7,7 @@ import { LatencyChart } from '@/components/latency-chart';
 import { LocalTime } from '@/components/local-time';
 import { CannotReachApi } from '@/components/notice';
 import { PageHeader } from '@/components/page-header';
+import { ParamSelect } from '@/components/param-select';
 import { OffsetPager } from '@/components/pager';
 import { RangePicker } from '@/components/range-picker';
 import { SummaryCards } from '@/components/summary-cards';
@@ -14,6 +15,7 @@ import { Card, CardHeader } from '@/components/ui/card';
 import { VersionsTable } from '@/components/versions-table';
 import {
   ApiError,
+  getFilterOptions,
   getLatency,
   getSummary,
   getTimeseries,
@@ -63,7 +65,7 @@ export default async function ToolPage({
     ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }),
   };
 
-  const [summary, previous, timeseries, details, latency, versions] = await Promise.all([
+  const [summary, previous, timeseries, details, latency, versions, options] = await Promise.all([
     getSummary(session, query).catch(asApiError),
     getSummary(session, { ...query, ...range.previous }).catch(() => undefined),
     getTimeseries(session, query).catch(asApiError),
@@ -71,9 +73,15 @@ export default async function ToolPage({
       ...query,
       messagesOffset: offsetParam(params, 'messagesOffset'),
       parametersOffset: offsetParam(params, 'parametersOffset'),
+      beforeOffset: offsetParam(params, 'beforeOffset'),
+      ...(params['beforeSort'] === undefined ? {} : { beforeSort: params['beforeSort'] }),
+      ...(params['beforeClient'] === undefined ? {} : { beforeClient: params['beforeClient'] }),
     }).catch(asApiError),
     getLatency(session, query).catch(asApiError),
     getVersions(session, query).catch(() => undefined),
+    getFilterOptions(session, { from: range.from, ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }) }).catch(
+      () => undefined,
+    ),
   ]);
 
   const carried = { serverId: params['serverId'], range: params['range'] };
@@ -163,13 +171,48 @@ export default async function ToolPage({
             </Card>
           )}
 
-          {details instanceof ApiError || details.before.problems === 0 ? null : (
+          {details instanceof ApiError || (details.before.problems === 0 && details.beforeClient === null) ? null : (
             <Card id="before">
               <CardHeader
                 title="Right before it went wrong"
                 hint={`Before ${formatCount(details.before.problems)} repeated or failed calls, in their sessions`}
               />
-              <Predecessors toolName={toolName} before={details.before} />
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <ParamSelect
+                  params={params}
+                  name="beforeClient"
+                  label="Client"
+                  anyLabel="All clients"
+                  choices={(options?.clients ?? []).map((client) => ({ value: client, label: clientLabel(client) }))}
+                  resets={['beforeOffset']}
+                  hash="#before"
+                />
+                <ParamSelect
+                  params={params}
+                  name="beforeSort"
+                  label="Order"
+                  choices={[
+                    { value: 'all', label: 'Most repeated or failed' },
+                    { value: 'repeats', label: 'Most repeated' },
+                    { value: 'failures', label: 'Most failed' },
+                  ]}
+                  resets={['beforeOffset']}
+                  hash="#before"
+                />
+              </div>
+              {details.before.problems === 0 ? (
+                <p className="text-sm text-ink-muted">Nothing repeated or failed for this client in this window.</p>
+              ) : (
+                <Predecessors toolName={toolName} before={details.before} />
+              )}
+              <OffsetPager
+                params={params}
+                name="beforeOffset"
+                offset={details.beforeOffset}
+                limit={20}
+                hasMore={details.before.hasMore}
+                hash="#before"
+              />
             </Card>
           )}
 

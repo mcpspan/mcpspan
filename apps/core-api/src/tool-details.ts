@@ -1,7 +1,7 @@
 import { getPool } from './db.ts';
 import { type Page, takePage } from './paging.ts';
 import { splitWindow, unifiedCallSource } from './rollup.ts';
-import { getProblemPredecessors, type ProblemPredecessor } from './sessions.ts';
+import { getProblemPredecessors, type PredecessorSort, type ProblemPredecessor } from './sessions.ts';
 import type { TimeRange } from './time-range.ts';
 
 /**
@@ -86,7 +86,7 @@ export interface ToolDetails {
    * session, by client, commonest first; `problems` is how many such calls
    * were read. Only calls with a session can be placed.
    */
-  before: { problems: number; predecessors: ProblemPredecessor[] };
+  before: { problems: number; predecessors: ProblemPredecessor[]; hasMore: boolean };
 }
 
 /** Arguments named on one page. */
@@ -106,10 +106,12 @@ export async function getToolDetails(
   range: TimeRange,
   /** Lowered by tests, which cannot seed a hundred thousand rows each. */
   maxScanned: number = MAX_SCANNED_TOOL_CALLS,
-  pages: { messages: Page; parameters: Page } = {
+  pages: { messages: Page; parameters: Page; before?: Page } = {
     messages: { offset: 0, limit: MAX_MESSAGES },
     parameters: { offset: 0, limit: MAX_PARAMETERS },
   },
+  /** How the card of what came right before a problem is narrowed and ordered. */
+  beforeOptions: { clientType?: string | undefined; sort?: PredecessorSort } = {},
 ): Promise<ToolDetails> {
   const [failures, messages, parameters, sampled, sizes, changes, repeats, refusedArguments, before] = await Promise.all([
     failureShares(serverId, toolName, range),
@@ -120,7 +122,10 @@ export async function getToolDetails(
     definitionChanges(serverId, toolName, range),
     repeatedCalls(serverId, toolName, range, maxScanned),
     refusedArgumentNames(serverId, toolName, range, maxScanned),
-    getProblemPredecessors(serverId, toolName, range, maxScanned),
+    getProblemPredecessors(serverId, toolName, range, maxScanned, {
+      ...beforeOptions,
+      ...(pages.before === undefined ? {} : { page: pages.before }),
+    }),
   ]);
 
   return {

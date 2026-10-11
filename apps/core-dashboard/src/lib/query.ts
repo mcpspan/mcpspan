@@ -41,6 +41,7 @@ export const PAGING_PARAMS = [
   'transitionsOffset',
   'messagesOffset',
   'parametersOffset',
+  'beforeOffset',
   'eventsOffset',
 ] as const;
 

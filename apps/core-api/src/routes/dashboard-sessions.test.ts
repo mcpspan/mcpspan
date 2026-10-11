@@ -95,6 +95,18 @@ describe('/v1/dashboard/sessions', () => {
     expect(sampled).toBe(false);
   });
 
+  it('narrows to a client, to sessions that called a tool, and to those with failures or repeats', async () => {
+    const ids = async (query: string) =>
+      (await get<{ sessions: { sessionId: string }[] }>(`sessions?${query}`)).sessions.map((s) => s.sessionId);
+
+    expect(await ids('clientType=cursor')).toEqual([second]);
+    expect(await ids('toolName=list_items')).toEqual([second]);
+    expect(await ids('with=failures')).toEqual([first]);
+    expect(await ids('with=repeats')).toEqual([second]);
+    expect(await ids('with=failures&clientType=cursor')).toEqual([]);
+    await get('sessions?with=everything', 400);
+  });
+
   it('leaves out calls that belong to no session', async () => {
     const { sessions } = await get<{ sessions: { calls: number }[] }>('sessions');
 
@@ -169,6 +181,14 @@ describe('/v1/dashboard/transitions', () => {
     const { transitions } = await get<{ transitions: Transition[] }>('transitions');
 
     expect(transitions).toContainEqual(step('book', 'book', 1, 1));
+  });
+
+  it("narrows to a client's sessions, and to the steps into or out of a tool", async () => {
+    const pairs = async (query: string) =>
+      (await get<{ transitions: Transition[] }>(`transitions?${query}`)).transitions.map((t) => `${t.from}>${t.to}`).sort();
+
+    expect(await pairs('clientType=claude-code')).toEqual(['book>book', 'null>search', 'search>book']);
+    expect(await pairs('toolName=list_items')).toEqual(['list_items>book', 'list_items>list_items', 'search>list_items']);
   });
 
   it('never pairs calls across sessions', async () => {

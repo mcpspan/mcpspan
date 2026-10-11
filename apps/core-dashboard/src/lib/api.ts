@@ -327,7 +327,11 @@ export interface ToolDetails {
       repeats: number;
       failures: number;
     }[];
+    hasMore: boolean;
   };
+  beforeOffset: number;
+  beforeSort: 'all' | 'repeats' | 'failures';
+  beforeClient: string | null;
   messagesOffset: number;
   messagesHaveMore: boolean;
   parametersOffset: number;
@@ -469,6 +473,12 @@ export interface Query {
   messagesOffset?: number;
   parametersOffset?: number;
   eventsOffset?: number;
+  /** The tool page's card of what came right before a problem: its page, order and client. */
+  beforeOffset?: number;
+  beforeSort?: string;
+  beforeClient?: string;
+  /** The session list only: sessions with a failed call, or a repeated one. */
+  with?: string;
 }
 
 /** A request the API refused, carrying what it said and how it said it. */

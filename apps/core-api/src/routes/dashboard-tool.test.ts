@@ -37,6 +37,7 @@ interface Details {
   before: {
     problems: number;
     predecessors: { before: string | null; beforeKind: string | null; clientType: string; repeats: number; failures: number }[];
+    hasMore: boolean;
   };
 }
 
@@ -266,7 +267,35 @@ describe("a tool's own page", () => {
         { before: 'click', beforeKind: 'tool', clientType: 'claude', repeats: 1, failures: 1 },
         { before: null, beforeKind: null, clientType: 'cursor', repeats: 0, failures: 1 },
       ],
+      hasMore: false,
     });
+  });
+
+  it('narrows what came right before to one client, orders it, and pages it', async () => {
+    const claude = randomUUID();
+    const cursor = randomUUID();
+    await seedEvents(account.serverId, [
+      { toolName: 'click', occurredAt: ago(20), sessionId: claude },
+      { toolName: 'list_elements', occurredAt: ago(19), sessionId: claude, repeated: true },
+      { toolName: 'scroll', occurredAt: ago(18), sessionId: claude },
+      { toolName: 'list_elements', occurredAt: ago(17), sessionId: claude, success: false, errorSource: 'result' },
+      { toolName: 'scroll', occurredAt: ago(16), sessionId: claude },
+      { toolName: 'list_elements', occurredAt: ago(15), sessionId: claude, success: false, errorSource: 'result' },
+      { toolName: 'click', occurredAt: ago(14), sessionId: cursor, clientType: 'cursor' },
+      { toolName: 'list_elements', occurredAt: ago(13), sessionId: cursor, clientType: 'cursor', repeated: true },
+    ]);
+    type Before = { before: { problems: number; hasMore: boolean; predecessors: { before: string; clientType: string }[] } };
+    const rows = (body: Before) => body.before.predecessors.map((row) => `${row.before}/${row.clientType}`);
+
+    expect(rows(await get<Before>('tool-details?toolName=list_elements'))).toEqual(['scroll/claude', 'click/claude', 'click/cursor']);
+    expect(rows(await get<Before>('tool-details?toolName=list_elements&beforeSort=repeats'))).toEqual(['click/claude', 'click/cursor', 'scroll/claude']);
+    const cursorOnly = await get<Before>('tool-details?toolName=list_elements&beforeClient=cursor');
+    expect(rows(cursorOnly)).toEqual(['click/cursor']);
+    expect(cursorOnly.before.problems).toBe(1);
+    const paged = await get<Before>('tool-details?toolName=list_elements&beforeLimit=1&beforeOffset=1');
+    expect(rows(paged)).toEqual(['click/claude']);
+    expect(paged.before.hasMore).toBe(true);
+    await get('tool-details?toolName=list_elements&beforeSort=newest', 400);
   });
 
   it('needs to be told which tool', async () => {

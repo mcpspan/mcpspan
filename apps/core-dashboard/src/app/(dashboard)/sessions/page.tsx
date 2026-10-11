@@ -1,13 +1,16 @@
 import Link from 'next/link';
 
+import { FilterBar } from '@/components/filter-bar';
 import { LocalTime } from '@/components/local-time';
 import { CannotReachApi, Notice, NothingConnectedYet } from '@/components/notice';
 import { PageHeader } from '@/components/page-header';
+import { ParamSelect } from '@/components/param-select';
 import { OffsetPager } from '@/components/pager';
 import { RangePicker } from '@/components/range-picker';
 import { Card, CardHeader } from '@/components/ui/card';
 import {
   ApiError,
+  getFilterOptions,
   getSessions,
   getTransitions,
   type SessionSummary,
@@ -44,15 +47,25 @@ export default async function SessionsPage({
     from: range.from,
     ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }),
   };
+  // The page's filters narrow both cards; "with" is the session list's own.
+  const narrowed = {
+    ...query,
+    ...(params['toolName'] === undefined ? {} : { toolName: params['toolName'] }),
+    ...(params['clientType'] === undefined ? {} : { clientType: params['clientType'] }),
+  };
+  const filtered = params['toolName'] !== undefined || params['clientType'] !== undefined || params['with'] !== undefined;
 
-  const [transitions, sessions] = await Promise.all([
+  const [transitions, sessions, options] = await Promise.all([
     getTransitions(session, {
-      ...query,
+      ...narrowed,
       offset: offsetParam(params, 'transitionsOffset'),
     }).catch(asApiError),
-    getSessions(session, { ...query, offset: offsetParam(params, 'sessionsOffset') }).catch(
-      asApiError,
-    ),
+    getSessions(session, {
+      ...narrowed,
+      ...(params['with'] === undefined ? {} : { with: params['with'] }),
+      offset: offsetParam(params, 'sessionsOffset'),
+    }).catch(asApiError),
+    getFilterOptions(session, query).catch(() => undefined),
   ]);
 
   return (
@@ -69,7 +82,7 @@ export default async function SessionsPage({
         ) : (
           <CannotReachApi reason={sessions.message} status={sessions.status} />
         )
-      ) : sessions.sessions.length === 0 ? (
+      ) : sessions.sessions.length === 0 && !filtered ? (
         <Notice title="No sessions in this window">
           <p>
             A session is one connection from a client, and it is recorded for servers set up with{' '}
@@ -84,6 +97,10 @@ export default async function SessionsPage({
         </Notice>
       ) : (
         <>
+          {options === undefined ? null : (
+            <FilterBar params={params} tools={options.tools} clients={options.clients} />
+          )}
+
           {transitions instanceof ApiError ? null : (
             <Card id="transitions">
               <CardHeader
@@ -112,7 +129,25 @@ export default async function SessionsPage({
               title="Recent sessions"
               hint={sessions.sampled ? 'From the newest 100,000 calls' : 'Newest first'}
             />
-            <SessionList sessions={sessions.sessions} params={params} />
+            <div className="mb-3">
+              <ParamSelect
+                params={params}
+                name="with"
+                label="Which sessions"
+                anyLabel="All sessions"
+                choices={[
+                  { value: 'failures', label: 'With a failed call' },
+                  { value: 'repeats', label: 'With a repeated call' },
+                ]}
+                resets={['sessionsOffset']}
+                hash="#sessions"
+              />
+            </div>
+            {sessions.sessions.length === 0 ? (
+              <p className="text-sm text-ink-muted">No session in this window matches.</p>
+            ) : (
+              <SessionList sessions={sessions.sessions} params={params} />
+            )}
             <OffsetPager
               params={params}
               name="sessionsOffset"

@@ -217,19 +217,35 @@ export function createDashboardRoutes() {
     const read = (name: string) => c.req.query(name);
     const messages = parsePage(read, { limit: 10, max: 100 }, 'messages');
     const parameters = parsePage(read, { limit: 50, max: 200 }, 'parameters');
+    const before = parsePage(read, { limit: 20, max: 200 }, 'before');
 
     if ('error' in messages) return c.json({ error: messages.error }, 400);
     if ('error' in parameters) return c.json({ error: parameters.error }, 400);
+    if ('error' in before) return c.json({ error: before.error }, 400);
+
+    // The card of what came right before a problem has its own client and order, apart from the page's filters.
+    const beforeSort = read('beforeSort') ?? 'all';
+    if (beforeSort !== 'all' && beforeSort !== 'repeats' && beforeSort !== 'failures') {
+      return c.json({ error: "'beforeSort' must be all, repeats or failures" }, 400);
+    }
+    const beforeClient = read('beforeClient') || undefined;
 
     return c.json({
       range: describeRange(scope.range),
       toolName,
-      ...(await getToolDetails(scope.serverId, toolName, scope.range, undefined, {
-        messages,
-        parameters,
-      })),
+      ...(await getToolDetails(
+        scope.serverId,
+        toolName,
+        scope.range,
+        undefined,
+        { messages, parameters, before },
+        { clientType: beforeClient, sort: beforeSort },
+      )),
       messagesOffset: messages.offset,
       parametersOffset: parameters.offset,
+      beforeOffset: before.offset,
+      beforeSort,
+      beforeClient: beforeClient ?? null,
     });
   });
 
@@ -242,9 +258,18 @@ export function createDashboardRoutes() {
 
     if ('error' in page) return c.json({ error: page.error }, 400);
 
+    const having = c.req.query('with') || undefined;
+    if (having !== undefined && having !== 'failures' && having !== 'repeats') {
+      return c.json({ error: "'with' must be failures or repeats" }, 400);
+    }
+
     return c.json({
       range: describeRange(scope.range),
-      ...(await getSessions(scope.serverId, scope.range, undefined, page)),
+      ...(await getSessions(scope.serverId, scope.range, undefined, page, {
+        clientType: scope.filters.clientType,
+        toolName: scope.filters.toolName,
+        with: having,
+      })),
       offset: page.offset,
       limit: page.limit,
     });
@@ -285,7 +310,10 @@ export function createDashboardRoutes() {
 
     return c.json({
       range: describeRange(scope.range),
-      ...(await getTransitions(scope.serverId, scope.range, undefined, page)),
+      ...(await getTransitions(scope.serverId, scope.range, undefined, page, {
+        clientType: scope.filters.clientType,
+        toolName: scope.filters.toolName,
+      })),
       offset: page.offset,
       limit: page.limit,
     });
