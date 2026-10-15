@@ -19,15 +19,6 @@ final class Text
     /** A release, a tag, a commit: the server's or the client's. */
     public const MAX_VERSION = 100;
 
-    /** First match wins, so `claude-code` is tested before `claude`. */
-    private const CLIENT_TYPES = [
-        [['claude-code', 'claude code'], 'claude-code'],
-        [['claude'], 'claude'],
-        [['cursor'], 'cursor'],
-        [['chatgpt', 'openai'], 'chatgpt'],
-        [['inspector'], 'mcp-inspector'],
-    ];
-
     /** Cuts text to a limit in characters, leaving a visible sign that something was removed. */
     public static function truncate(string $text, int $limit): string
     {
@@ -47,23 +38,6 @@ final class Text
         return self::truncate(false === $slash ? $class : substr($class, $slash + 1), self::MAX_NAME);
     }
 
-    public static function clientType(?string $name): string
-    {
-        if (null === $name || '' === trim($name)) {
-            return 'unknown';
-        }
-        $lower = strtolower($name);
-        foreach (self::CLIENT_TYPES as [$needles, $type]) {
-            foreach ($needles as $needle) {
-                if (str_contains($lower, $needle)) {
-                    return $type;
-                }
-            }
-        }
-
-        return 'other';
-    }
-
     public static function version(?string $version): ?string
     {
         if (null === $version || '' === trim($version)) {
@@ -73,6 +47,7 @@ final class Text
         return self::truncate(trim($version), self::MAX_VERSION);
     }
 
+    /** The name as the client gave it, cut to what the API takes. The mcpspan server tells clients apart by it (contract, 7). */
     public static function clientName(?string $name): ?string
     {
         if (null === $name || '' === trim($name)) {

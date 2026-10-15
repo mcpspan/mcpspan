@@ -71,7 +71,7 @@ final class LaravelMcpTest extends TestCase
         self::assertCount(\count($calls) + 2, $transport->sent);
         $searches = array_values(array_filter($events, static fn (array $event): bool => 'search_flights' === $event['toolName']));
         self::assertTrue($searches[0]['success']);
-        self::assertSame('claude-code', $searches[0]['clientType']);
+        self::assertSame('unknown', $searches[0]['clientType']);
         self::assertEquals((object) ['destination' => 'string', 'passengers' => 'number'], $searches[0]['parameters']);
         // Laravel refuses arguments inside the tool, with a ValidationException.
         self::assertSame('arguments', $searches[1]['errorSource']);

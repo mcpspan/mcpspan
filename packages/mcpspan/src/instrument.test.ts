@@ -95,7 +95,7 @@ describe('instrument', () => {
     server.registerTool('search', {}, () => null);
     server.registered[0]?.handler();
 
-    expect((await delivered())[0]?.clientType).toBe('claude');
+    expect((await delivered())[0]?.clientName).toBe('Claude Desktop');
   });
 
   it('produces the same event as wrapping the handler by hand', async () => {
@@ -154,7 +154,7 @@ describe('instrument on an unfamiliar server', () => {
     server.registerTool('search', {}, () => null);
     server.handler();
 
-    expect((await delivered())[0]?.clientType).toBe('unknown');
+    expect((await delivered())[0]?.clientName).toBeUndefined();
   });
 
   it('registers a handler it cannot recognise without wrapping it', () => {

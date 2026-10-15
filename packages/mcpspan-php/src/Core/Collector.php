@@ -194,7 +194,10 @@ final class Collector
                 null === $type ? null : Text::truncate($type, Text::MAX_NAME),
                 // The text of a failure, unless the developer chose to send none (contract, 5).
                 null === $message || '' === $message || !(self::$settings['captureErrorMessages'] ?? true) ? null : $message,
-                Text::clientType($call->clientName),
+                // Always "unknown": the mcpspan server decides the client from its name
+                // (contract, 7). Sent only because servers released before 2026-10-15
+                // refuse an event without it.
+                'unknown',
                 Text::clientName($call->clientName),
                 self::timestamp($call->timestamp),
                 $call->sessionId,

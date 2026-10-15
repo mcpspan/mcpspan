@@ -1,0 +1,26 @@
+{
+  "about": "Which MCP client made a call, from the name it gave itself in the handshake or in the request. The only place this is decided: the API classifies every call with these rules, the dashboard names the types with these labels, and the SDKs send the name alone. The name is lower-cased and trimmed, then the rules are tried in order and the first that matches wins. Edit this file to recognise a new client; the API reclassifies stored calls when it starts with rules that changed.",
+  "rules": [
+    { "type": "claude", "startsWith": ["local-agent-mode"], "note": "Claude Desktop, chat included, as local-agent-mode-<server name>. First, because the server's name follows and could be anything. Seen 2026-10-15." },
+    { "type": "claude-code", "contains": ["claude-code", "claude code"], "note": "Seen as claude-code." },
+    { "type": "claude", "contains": ["claude"] },
+    { "type": "cursor", "contains": ["cursor"], "note": "Expected as cursor-vscode, not yet seen; Cursor's source is closed." },
+    { "type": "codex", "contains": ["codex"], "note": "OpenAI's Codex, codex-mcp-client, from its source. Before ChatGPT, whose rule takes openai." },
+    { "type": "chatgpt", "contains": ["chatgpt", "openai"], "note": "Expected as openai-mcp, not yet seen; ChatGPT's source is closed." },
+    { "type": "vscode", "contains": ["visual studio code"], "note": "VS Code names itself by its product name, from its source." },
+    { "type": "gemini-cli", "contains": ["gemini-cli"], "note": "gemini-cli-mcp-client, from its source." },
+    { "type": "mcp-inspector", "contains": ["inspector"], "note": "Seen as inspector-cli." }
+  ],
+  "labels": {
+    "claude": "Claude",
+    "claude-code": "Claude Code",
+    "cursor": "Cursor",
+    "codex": "Codex",
+    "chatgpt": "ChatGPT",
+    "vscode": "VS Code",
+    "gemini-cli": "Gemini CLI",
+    "mcp-inspector": "MCP Inspector",
+    "other": "Other",
+    "unknown": "Unidentified"
+  }
+}

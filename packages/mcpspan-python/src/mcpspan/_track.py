@@ -11,7 +11,7 @@ from typing import Any, TypeVar, overload
 
 from ._arguments import invalid_arguments
 from ._call import CallState, current_call
-from ._client import ClientInfo, client_name, detect_client
+from ._client import ClientInfo, client_name
 from ._definition import definition_of, schema_of
 from ._failure import (
     MAX_NAME_LENGTH,
@@ -227,7 +227,7 @@ def _build_event(
         "toolName": truncate(tool_name, MAX_NAME_LENGTH),
         "durationMs": duration_ms,
         "success": success,
-        "clientType": detect_client(client),
+        "clientType": "unknown",
         "timestamp": timestamp,
         "sdkVersion": SDK_VERSION,
     }

@@ -171,7 +171,7 @@ class JavaSdkTest {
 
         List<ToolCallEvent> recorded = delivered();
         assertEquals(3, recorded.size());
-        assertTrue(recorded.stream().allMatch(e -> "claude".equals(e.clientType()) && "Claude Desktop".equals(e.clientName())));
+        assertTrue(recorded.stream().allMatch(e -> "Claude Desktop".equals(e.clientName())));
         assertEquals(1, recorded.stream().map(ToolCallEvent::sessionId).distinct().count());
         assertNotNull(recorded.get(0).sessionId());
     }
@@ -255,7 +255,7 @@ class JavaSdkTest {
         }
 
         List<ToolCallEvent> recorded = delivered();
-        assertEquals(List.of("claude-code", "cursor"), recorded.stream().map(ToolCallEvent::clientType).toList());
+        assertEquals(List.of("claude-code", "cursor"), recorded.stream().map(ToolCallEvent::clientName).toList());
     }
 
     @Test
@@ -324,7 +324,7 @@ class JavaSdkTest {
         assertEquals(Map.of("destination", "string"), recorded.get(3).parameters());
         assertEquals("BookingException", recorded.get(5).errorType());
         for (ToolCallEvent event : recorded) {
-            assertEquals("cursor", event.clientType());
+            assertEquals("cursor", event.clientName());
             assertFalse(event.toString().contains("lovelace") || event.toString().contains("Lisbon"), event.toString());
         }
     }

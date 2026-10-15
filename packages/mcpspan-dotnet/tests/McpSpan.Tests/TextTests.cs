@@ -31,31 +31,6 @@ public sealed class TextTests
         Assert.Equal(200, Text.ResultMessage([new string('x', 1000)])!.Length);
     }
 
-    /// <summary>The contract's table as cases, shared by every SDK's tests (conformance/client-types.json).</summary>
-    public static TheoryData<string?, string> ContractTable()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "conformance", "client-types.json")))
-        {
-            directory = directory.Parent;
-        }
-
-        using var document = System.Text.Json.JsonDocument.Parse(
-            File.ReadAllText(Path.Combine(directory!.FullName, "conformance", "client-types.json")));
-        var data = new TheoryData<string?, string>();
-        foreach (var entry in document.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            data.Add(entry[0].GetString(), entry[1].GetString()!);
-        }
-
-        return data;
-    }
-
-    [Theory]
-    [MemberData(nameof(ContractTable))]
-    public void Detects_the_contract_table(string? name, string expected) =>
-        Assert.Equal(expected, Clients.Detect(name));
-
     [Fact]
     public void Keeps_the_client_name_but_cuts_it()
     {

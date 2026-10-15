@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { currentCall } from './call.js';
 import { invalidArguments } from './arguments.js';
 import { definitionOf, schemaOf } from './definition.js';
-import { type ClientInfo, clientName, detectClient } from './client.js';
+import { type ClientInfo, clientName } from './client.js';
 import {
   describeErrorResult,
   describeException,
@@ -47,7 +47,7 @@ function identity(
   const version = configuredServerVersion ?? serverVersion;
 
   return {
-    clientType: detectClient(client),
+    clientType: 'unknown',
     ...(name !== undefined && { clientName: name }),
     ...(clientVersion ? { clientVersion: truncate(clientVersion, MAX_VERSION_LENGTH) } : {}),
     ...(version ? { serverVersion: truncate(version, MAX_VERSION_LENGTH) } : {}),

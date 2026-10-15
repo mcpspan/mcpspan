@@ -52,10 +52,17 @@ describe('an event the shape of which is wrong', () => {
     ['the duration is infinite', { durationMs: Number.POSITIVE_INFINITY }],
     ['the timestamp is not a date', { timestamp: 'yesterday' }],
     ['the timestamp has no timezone', { timestamp: '2026-09-17T10:00:00' }],
-    ['the client type is empty', { clientType: '' }],
     ['the sdk version is missing', { sdkVersion: undefined }],
   ])('is refused when %s', (_label, overrides) => {
     expect(toolCallEventSchema.safeParse(validEvent(overrides)).success).toBe(false);
+  });
+
+  // The API decides the type from the client's name (contract, 7).
+  it.each([
+    ['empty', { clientType: '' }],
+    ['absent', { clientType: undefined }],
+  ])('takes an event whose client type is %s', (_label, overrides) => {
+    expect(toolCallEventSchema.safeParse(validEvent(overrides)).success).toBe(true);
   });
 
   it('is refused when a field is absurdly long', () => {

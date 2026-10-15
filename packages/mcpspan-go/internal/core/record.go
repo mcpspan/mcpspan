@@ -103,7 +103,7 @@ func Record(call Call, outcome Outcome) {
 		ToolName:   Truncate(call.ToolName, MaxNameLength),
 		DurationMs: float64(time.Since(call.Started).Nanoseconds()) / 1e6,
 		Success:    outcome.Success,
-		ClientType: DetectClient(call.ClientName),
+		ClientType: "unknown",
 		ClientName: ClientName(call.ClientName),
 		// Cut rather than lose the batch: the API refuses a longer one.
 		ClientVersion: Truncate(strings.TrimSpace(call.ClientVersion), MaxVersionLength),

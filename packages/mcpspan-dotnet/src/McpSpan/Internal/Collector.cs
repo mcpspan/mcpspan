@@ -329,7 +329,7 @@ internal sealed class Call
                 ErrorSource = source,
                 ErrorType = type,
                 ErrorMessage = message,
-                ClientType = Clients.Detect(ClientName),
+                ClientType = "unknown",
                 ClientName = Clients.Name(ClientName),
                 ClientVersion = Text.Version(ClientVersion),
                 ServerVersion = Text.Version(Collector.ServerVersion ?? ServerVersion),

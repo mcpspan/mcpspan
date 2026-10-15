@@ -23,31 +23,8 @@ pub(crate) fn truncate(text: &str, limit: usize) -> String {
     cut
 }
 
-// claude-code before claude, which would otherwise swallow it. The official
-// Inspector sends inspector-cli, which is why names are matched as substrings.
-const KNOWN_CLIENTS: &[(&str, &str)] = &[
-    ("claude-code", "claude-code"),
-    ("claude code", "claude-code"),
-    ("claude", "claude"),
-    ("cursor", "cursor"),
-    ("chatgpt", "chatgpt"),
-    ("openai", "chatgpt"),
-    ("inspector", "mcp-inspector"),
-];
-
-/// The client type, from the name a client reported: substring match, first match wins.
-pub(crate) fn client_type(name: Option<&str>) -> &'static str {
-    let lower = name.unwrap_or_default().trim().to_lowercase();
-    if lower.is_empty() {
-        return "unknown";
-    }
-    KNOWN_CLIENTS
-        .iter()
-        .find(|(pattern, _)| lower.contains(pattern))
-        .map_or("other", |(_, client)| client)
-}
-
-/// The name as reported, cut to what the API takes, or none.
+/// The name as reported, cut to what the API takes, or none. The mcpspan
+/// server tells clients apart by it (contract, 7).
 pub(crate) fn client_name(name: Option<&str>) -> Option<String> {
     let trimmed = name.unwrap_or_default().trim();
     (!trimmed.is_empty()).then(|| truncate(trimmed, MAX_NAME))
@@ -93,19 +70,6 @@ mod tests {
         let cut = truncate(&"ż".repeat(300), 200);
         assert_eq!(cut.chars().count(), 200);
         assert!(cut.ends_with("..."));
-    }
-
-    /// The contract's table as cases, shared by every SDK's tests (conformance/client-types.json).
-    #[test]
-    fn detects_the_contract_table() {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../conformance/client-types.json");
-        let table: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-        let cases = table["cases"].as_array().unwrap();
-        assert!(cases.len() > 10);
-        for case in cases {
-            let name = case[0].as_str();
-            assert_eq!(client_type(name), case[1].as_str().unwrap(), "{name:?}");
-        }
     }
 
     #[test]

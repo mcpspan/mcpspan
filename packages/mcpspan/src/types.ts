@@ -1,21 +1,4 @@
 /**
- * Client application a tool call originated from, as far as the transport
- * allows us to tell.
- *
- * Over stdio the client is usually invisible to the server, which yields
- * `unknown`. `other` is different: a client did identify itself, we just do
- * not recognise it.
- */
-export type ClientType =
-  | 'claude'
-  | 'claude-code'
-  | 'cursor'
-  | 'chatgpt'
-  | 'mcp-inspector'
-  | 'other'
-  | 'unknown';
-
-/**
  * How a failed tool call announced itself.
  *
  * MCP asks tools to report their own failures inside the result, with
@@ -85,16 +68,19 @@ export interface ToolCallEvent {
   /** Error message, truncated to a bounded length. Absent on success. */
   errorMessage?: string;
 
-  /** Where the call came from, or `unknown` when nothing identified itself. */
-  clientType: ClientType;
+  /**
+   * Always `unknown`. The mcpspan server decides which client made the call from
+   * `clientName` (contract, 7); this is sent only because servers released
+   * before 2026-10-15 refuse an event without it.
+   */
+  clientType: 'unknown';
 
   /**
    * The name the client reported, as it reported it.
    *
-   * Turns an unrecognised client into a lead rather than a dead end: a
-   * dashboard showing forty percent `other` is useless if nobody can find out
-   * what `other` was. This is an application's self-description, the MCP
-   * equivalent of a User-Agent, and says nothing about whoever is using it.
+   * The mcpspan server tells clients apart by it. This is an application's
+   * self-description, the MCP equivalent of a User-Agent, and says nothing
+   * about whoever is using it.
    */
   clientName?: string;
 

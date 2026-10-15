@@ -19,6 +19,7 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/core-api/package.json apps/core-api/
 COPY apps/core-dashboard/package.json apps/core-dashboard/
 COPY packages/mcpspan/package.json packages/mcpspan/
+COPY packages/client-types/package.json packages/client-types/
 
 # Development dependencies included on purpose: Tailwind and the TypeScript
 # compiler are what turn the sources into a build, so a --prod install here
@@ -34,6 +35,8 @@ WORKDIR /app
 
 COPY --from=deps /app ./
 COPY apps/core-dashboard ./apps/core-dashboard
+# The client-type table the dashboard names clients from.
+COPY packages/client-types ./packages/client-types
 
 ENV NEXT_TELEMETRY_DISABLED=1
 

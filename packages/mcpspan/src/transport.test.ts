@@ -21,7 +21,7 @@ function makeEvent(): ToolCallEvent {
     toolName: 'search_flights',
     durationMs: 42,
     success: true,
-    clientType: 'claude',
+    clientType: 'unknown',
     timestamp: '2026-09-16T12:00:00.000Z',
     sdkVersion: SDK_VERSION,
   };

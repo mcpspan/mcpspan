@@ -79,7 +79,7 @@ func TestRecordBuildsAWellFormedEvent(t *testing.T) {
 	Shutdown(context.Background())
 
 	event := onlyEvent(t, sent)
-	if event.ToolName != "search" || !event.Success || event.ClientType != "claude" ||
+	if event.ToolName != "search" || !event.Success || event.ClientType != "unknown" ||
 		event.ClientName != "Claude Desktop" || event.SessionID != "s-1" || event.SDKVersion != Version ||
 		event.ErrorMessage != "" || event.Parameters != nil || len(event.ID) != 36 ||
 		event.Timestamp[len(event.Timestamp)-1] != 'Z' {

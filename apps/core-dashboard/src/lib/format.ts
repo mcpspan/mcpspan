@@ -1,23 +1,6 @@
-/**
- * Names the clients we recognise.
- *
- * The API stores whatever a client called itself, so this only prettifies the
- * ones we know and leaves anything else as reported. Inventing a friendly name
- * for an unfamiliar client would hide the one thing worth noticing about it.
- */
-const CLIENT_NAMES: Record<string, string> = {
-  claude: 'Claude',
-  'claude-code': 'Claude Code',
-  cursor: 'Cursor',
-  chatgpt: 'ChatGPT',
-  'mcp-inspector': 'MCP Inspector',
-  other: 'Other',
-  unknown: 'Unidentified',
-};
-
-export function clientLabel(clientType: string): string {
-  return CLIENT_NAMES[clientType] ?? clientType;
-}
+// Named from the same table the API classifies clients with, so a new client
+// is added in one place, packages/client-types.
+export { clientLabel } from '@mcpspan/client-types';
 
 /** Thousands separated, so six digits can be read at a glance. */
 export function formatCount(value: number): string {

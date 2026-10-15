@@ -58,7 +58,7 @@ public sealed class PrimitiveTests
             events.Select(e => (e.Kind!, e.ToolName, e.ErrorSource)).ToArray());
         Assert.Equal(new Dictionary<string, string> { ["id"] = "string" }, events[1].Parameters);
         Assert.Equal("BookingException", events[6].ErrorType);
-        Assert.All(events, e => Assert.Equal("cursor", e.ClientType));
+        Assert.All(events, e => Assert.Equal("cursor", e.ClientName));
         Assert.DoesNotContain(events, e => $"{e.ToolName}{e.ErrorMessage}".Contains("4412", StringComparison.Ordinal));
     }
 

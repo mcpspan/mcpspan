@@ -352,7 +352,7 @@ describe('3.5 Resources and prompts', () => {
 
     expect(events()).toHaveLength(3);
     expect(new Set(events().map((event) => event['sessionId'])).size).toBe(1);
-    expect(events().every((event) => event['clientType'] === 'cursor')).toBe(true);
+    expect(events().every((event) => event['clientName'] === 'cursor')).toBe(true);
   });
 });
 
@@ -547,7 +547,7 @@ describe('4. The event', () => {
       expect(Number.isFinite(event['durationMs'])).toBe(true);
       expect(event['durationMs'] as number).toBeGreaterThanOrEqual(0);
       expect(typeof event['success']).toBe('boolean');
-      expect(event['clientType']).toBe('claude-code');
+      expect(event['clientType']).toBe('unknown');
       expect(event['clientName']).toBe('claude-code');
       expect(String(event['timestamp'])).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/);
       expect(String(event['sdkVersion']).length).toBeGreaterThan(0);
@@ -730,17 +730,13 @@ describe('6.6 Shutting down', () => {
   });
 });
 
-describe('7. Client types', () => {
-  // The table itself is in client-types.json, which every SDK's unit tests
-  // read. What only a real connection shows is that the name the client sent
-  // reaches the table, and reaches the event as sent.
-  it.each([
-    ['Claude Desktop', 'claude'],
-    ['someone-new', 'other'],
-  ])('reads %s as %s, and keeps the name as sent', async (name, type) => {
-    await run(await start({ clientName: name }), [{ name: 'ok' }]);
+describe('7. Clients', () => {
+  // The server decides which client it was from the name; the SDK sends the
+  // name as the client gave it, and clientType as unknown, whatever the name.
+  it('sends the name as the client gave it', async () => {
+    await run(await start({ clientName: 'local-agent-mode-weather-test' }), [{ name: 'ok' }]);
 
-    expect(only('ok')).toMatchObject({ clientType: type, clientName: name });
+    expect(only('ok')).toMatchObject({ clientType: 'unknown', clientName: 'local-agent-mode-weather-test' });
   });
 });
 

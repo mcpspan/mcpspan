@@ -3,14 +3,6 @@
 require "test_helper"
 
 class TextTest < Minitest::Test
-  # The contract's table as cases, shared by every SDK's tests (conformance/client-types.json).
-  def test_detects_the_contract_table
-    table = JSON.parse(File.read(File.expand_path("../../../conformance/client-types.json", __dir__)))["cases"]
-
-    assert_operator(table.size, :>, 10)
-    table.each { |name, type| assert_equal(type, McpSpan::Text.client_type(name), name.inspect) }
-  end
-
   def test_truncate_marks_a_cut_and_keeps_characters_whole
     assert_equal("abc", McpSpan::Text.truncate("abc", 5))
     assert_equal("żó...", McpSpan::Text.truncate("żółwie", 5))

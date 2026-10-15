@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from typing import Any, NamedTuple
 
 from ._failure import MAX_NAME_LENGTH, truncate
-from ._types import ClientType
 
 
 class ClientInfo(NamedTuple):
@@ -19,42 +18,12 @@ class ClientInfo(NamedTuple):
     version: str | None
 
 
-_KNOWN_CLIENTS: tuple[tuple[str, ClientType], ...] = (
-    # Measured: Claude Code sends `claude-code`. It has to come before the
-    # plain Claude entry, which would otherwise swallow it.
-    ("claude-code", "claude-code"),
-    ("claude code", "claude-code"),
-    ("claude", "claude"),
-    ("cursor", "cursor"),
-    ("chatgpt", "chatgpt"),
-    ("openai", "chatgpt"),
-    # Measured: the official Inspector sends `inspector-cli`, which is why
-    # names are matched as substrings.
-    ("inspector", "mcp-inspector"),
-)
-"""Names we recognise, matched as substrings of what a client reports, first
-match wins. The same table as every other mcpspan SDK (contract, section 7)."""
-
-
-def detect_client(info: ClientInfo | None) -> ClientType:
-    """Which application a tool call came from, as far as its name tells."""
-    name = (info.name or "").strip().lower() if info is not None else ""
-    if not name:
-        return "unknown"
-
-    for pattern, client_type in _KNOWN_CLIENTS:
-        if pattern in name:
-            return client_type
-
-    return "other"
-
-
 def client_name(info: ClientInfo | None) -> str | None:
     """The name a client reported, cut to what the API takes.
 
-    Kept alongside the recognised type so an unfamiliar client is a lead
-    rather than a dead end. The client chooses its own name, and one over the
-    API's limit would lose every event in its batch.
+    The mcpspan server tells clients apart by it (contract, 7). The client
+    chooses its own name, and one over the API's limit would lose every event
+    in its batch.
     """
     name = (info.name or "").strip() if info is not None else ""
 

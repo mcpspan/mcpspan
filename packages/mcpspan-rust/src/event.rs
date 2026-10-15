@@ -14,6 +14,9 @@ pub(crate) struct Event {
     pub error_source: Option<&'static str>,
     pub error_type: Option<String>,
     pub error_message: Option<String>,
+    /// Always `unknown`: the mcpspan server decides the client from
+    /// `client_name` (contract, 7). Sent only because servers released before
+    /// 2026-10-15 refuse an event without it.
     pub client_type: &'static str,
     pub client_name: Option<String>,
     pub client_version: Option<String>,

@@ -111,7 +111,7 @@ final class McpSdkTest extends TestCase
 
         $searches = array_values(array_filter($events, static fn (array $event): bool => 'search_flights' === $event['toolName']));
         self::assertTrue($searches[0]['success']);
-        self::assertSame('claude-code', $searches[0]['clientType']);
+        self::assertSame('unknown', $searches[0]['clientType']);
         self::assertSame(McpSpan::VERSION, $searches[0]['sdkVersion']);
         self::assertEquals((object) ['destination' => 'string', 'passengers' => 'number'], $searches[0]['parameters']);
         self::assertSame('arguments', $searches[1]['errorSource']);
@@ -229,7 +229,7 @@ final class McpSdkTest extends TestCase
         $this->call($server, $this->connect($server, 'chatgpt'), 'search_flights', ['destination' => 'LIS', 'passengers' => 1]);
         $events = $this->delivered();
 
-        self::assertSame(['cursor', 'chatgpt'], array_column($events, 'clientType'));
+        self::assertSame(['cursor', 'chatgpt'], array_column($events, 'clientName'));
         self::assertNotSame($events[0]['sessionId'], $events[1]['sessionId']);
     }
 

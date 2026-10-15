@@ -1,0 +1,15 @@
+{
+  "name": "@mcpspan/client-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Which MCP client made a call, from the name it gave itself: the one table the API and the dashboard both read",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": ["index.js", "index.d.ts", "client-types.json"]
+}

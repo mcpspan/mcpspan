@@ -23,7 +23,7 @@ class InstrumentTest < Minitest::Test
 
     searches = events.select { |event| event[:toolName] == "search_flights" }
     assert_equal(true, searches[0][:success])
-    assert_equal("claude-code", searches[0][:clientType])
+    assert_equal("unknown", searches[0][:clientType])
     assert_equal("claude-code", searches[0][:clientName])
     assert_equal(McpSpan::VERSION, searches[0][:sdkVersion])
     assert_equal({ "destination" => "string", "passengers" => "number" }, searches[0][:parameters])
@@ -100,7 +100,7 @@ class InstrumentTest < Minitest::Test
     call(connect(instrumented, "chatgpt"), "search_flights", { destination: "LIS", passengers: 1 })
     events = delivered
 
-    assert_equal(%w[cursor chatgpt], events.map { |event| event[:clientType] })
+    assert_equal(%w[cursor chatgpt], events.map { |event| event[:clientName] })
     refute_equal(events[0][:sessionId], events[1][:sessionId])
   end
 

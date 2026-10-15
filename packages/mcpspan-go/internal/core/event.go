@@ -14,8 +14,11 @@ type Event struct {
 	ErrorSource  string  `json:"errorSource,omitempty"`
 	ErrorType    string  `json:"errorType,omitempty"`
 	ErrorMessage string  `json:"errorMessage,omitempty"`
-	ClientType   string  `json:"clientType"`
-	ClientName   string  `json:"clientName,omitempty"`
+	// ClientType is always "unknown": the mcpspan server decides the client
+	// from ClientName (contract, 7). Sent only because servers released
+	// before 2026-10-15 refuse an event without it.
+	ClientType string `json:"clientType"`
+	ClientName string `json:"clientName,omitempty"`
 	// ClientVersion and ServerVersion are as the client and the server give
 	// themselves (contract, 3.6).
 	ClientVersion string `json:"clientVersion,omitempty"`
@@ -56,4 +59,4 @@ const (
 
 // Version is the SDK's own version, reported in every event and in the
 // User-Agent.
-const Version = "0.5.1"
+const Version = "0.6.0"

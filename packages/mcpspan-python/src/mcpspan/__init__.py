@@ -16,13 +16,12 @@ nothing is sent.
 from ._config import configure, shutdown
 from ._instrument import instrument
 from ._track import exclude, track
-from ._types import ClientType, ErrorSource, ToolCallEvent
+from ._types import ErrorSource, ToolCallEvent
 from ._version import SDK_VERSION
 
 __version__ = SDK_VERSION
 
 __all__ = [
-    "ClientType",
     "ErrorSource",
     "ToolCallEvent",
     "__version__",

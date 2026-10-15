@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server';
 
 import { sweepExpiredSessions } from './accounts.ts';
 import { createApp } from './app.ts';
+import { reclassifyClients } from './client-reclassify.ts';
 import { evaluateAlerts } from './alerts.ts';
 import { ping } from './db.ts';
 import { startOpenTelemetry } from './otel.ts';
@@ -54,6 +55,13 @@ async function reportDatabase(): Promise<void> {
     // Before anything is served, because the answer changes how every refusal
     // from here on should be read.
     await checkSigningSecret(process.env['API_KEY_SECRET'] ?? '');
+
+    // Calls stored under older rules for telling clients apart get the type the
+    // rules in this release give them. Once per change of rules.
+    const reclassified = await reclassifyClients();
+    if (reclassified > 0) {
+      console.log(`mcpspan core-api gave ${reclassified} stored calls the client type the current rules give them`);
+    }
   } catch (error) {
     console.error(
       `mcpspan core-api cannot reach the database yet: ${

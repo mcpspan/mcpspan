@@ -1,28 +1,6 @@
-import { readFileSync } from 'node:fs';
-
 import { describe, expect, it } from 'vitest';
 
-import { clientName, detectClient } from './client.js';
-
-/** The contract's table as cases, shared by every SDK's tests (conformance/client-types.json). */
-const table = (
-  JSON.parse(readFileSync(new URL('../../../conformance/client-types.json', import.meta.url), 'utf8')) as {
-    cases: [string | null, string][];
-  }
-).cases;
-
-describe('detectClient', () => {
-  it.each(table)('reads %j as %s', (name, expected) => {
-    expect(detectClient(name === null ? undefined : { name })).toBe(expected);
-  });
-
-  it.each([
-    ['null was passed', null],
-    ['there is no name', {}],
-  ])('reports unknown when %s', (_label, info) => {
-    expect(detectClient(info)).toBe('unknown');
-  });
-});
+import { clientName } from './client.js';
 
 describe('clientName', () => {
   it('keeps the name exactly as reported', () => {

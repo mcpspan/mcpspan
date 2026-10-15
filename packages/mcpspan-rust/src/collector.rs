@@ -304,7 +304,7 @@ pub(crate) fn record_answered(call: Call, outcome: Outcome, response_bytes: Opti
         error_type: error_type.map(|kind| text::truncate(&kind, text::MAX_NAME)),
         // The text of a failure, unless the developer chose to send none (contract, 5).
         error_message: error_message.filter(|message| capture_error_messages && !message.is_empty()),
-        client_type: text::client_type(call.client_name.as_deref()),
+        client_type: "unknown",
         client_name: text::client_name(call.client_name.as_deref()),
         client_version: text::version(call.client_version.as_deref()),
         server_version: text::version(call.server_version.as_deref()),

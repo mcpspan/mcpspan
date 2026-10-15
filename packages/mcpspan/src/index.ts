@@ -17,4 +17,4 @@
 export { configure, shutdown, type McpspanConfig } from './config.js';
 export { instrument } from './instrument.js';
 export { exclude, track } from './track.js';
-export type { ClientType, ErrorSource, ToolCallEvent } from './types.js';
+export type { ErrorSource, ToolCallEvent } from './types.js';

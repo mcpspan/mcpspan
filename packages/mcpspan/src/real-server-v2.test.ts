@@ -286,7 +286,7 @@ describe('the client, per protocol era', () => {
     await client.callTool({ name: 'search', arguments: { destination: 'WAW', passengers: 1 } });
 
     expect(await delivered()).toEqual([
-      expect.objectContaining({ clientType: 'claude-code', clientName: 'claude-code' }),
+      expect.objectContaining({ clientName: 'claude-code' }),
     ]);
   });
 
@@ -295,7 +295,7 @@ describe('the client, per protocol era', () => {
     await client.callTool({ name: 'search', arguments: { destination: 'WAW', passengers: 1 } });
 
     expect(await delivered()).toEqual([
-      expect.objectContaining({ clientType: 'claude-code', clientName: 'claude-code' }),
+      expect.objectContaining({ clientName: 'claude-code' }),
     ]);
   });
 
@@ -306,7 +306,7 @@ describe('the client, per protocol era', () => {
     const client = await connect('stateless HTTP 2025');
     await client.callTool({ name: 'search', arguments: { destination: 'WAW', passengers: 1 } });
 
-    expect(await delivered()).toEqual([expect.objectContaining({ clientType: 'unknown' })]);
+    expect((await delivered())[0]?.clientName).toBeUndefined();
   });
 });
 

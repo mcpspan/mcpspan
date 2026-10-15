@@ -1,5 +1,4 @@
 import { MAX_NAME_LENGTH, truncate } from './failure.js';
-import type { ClientType } from './types.js';
 
 /**
  * How a connected client described itself.
@@ -14,58 +13,11 @@ export interface ClientInfo {
 }
 
 /**
- * Names we recognise, matched as substrings of what a client reports.
- *
- * Substring rather than exact: clients append platform and channel suffixes to
- * their names, and an exact list would quietly rot into a table of `other`
- * with every release someone else ships. That is not a hypothetical - the
- * official Inspector reports itself as `inspector-cli`, which an exact list
- * of the obvious names would have missed on the first try.
- *
- * Order matters. More specific entries come first, so a client calling itself
- * "claude-code" is not read as plain Claude.
- */
-const KNOWN_CLIENTS: readonly (readonly [pattern: string, type: ClientType])[] = [
-  // Measured: Claude Code 2.1 sends `claude-code`. It has to sit above the
-  // plain Claude entry, which would otherwise swallow it.
-  ['claude-code', 'claude-code'],
-  ['claude code', 'claude-code'],
-  ['claude', 'claude'],
-  ['cursor', 'cursor'],
-  ['chatgpt', 'chatgpt'],
-  ['openai', 'chatgpt'],
-  // Measured: the official Inspector 2.7 sends `inspector-cli`, which is why
-  // matching on a substring is not a stylistic preference.
-  ['inspector', 'mcp-inspector'],
-];
-
-/**
- * Works out which application a tool call came from.
- *
- * Returns `unknown` when nothing identified itself: a call not made through
- * `instrument`, or a request that named no client. A name we
- * do not have in the table gives `other` - the client is there, we just have
- * not met it.
- */
-export function detectClient(info?: ClientInfo | null): ClientType {
-  const name = info?.name?.trim().toLowerCase();
-  if (!name) return 'unknown';
-
-  for (const [pattern, type] of KNOWN_CLIENTS) {
-    if (name.includes(pattern)) return type;
-  }
-
-  return 'other';
-}
-
-/**
  * The name a client reported, as it reported it.
  *
- * Kept alongside the recognised type so an unfamiliar client is a lead rather
- * than a dead end: a dashboard showing forty percent `other` is useless if
- * nobody can find out what `other` was. This is an application's own
- * self-description, the MCP equivalent of a User-Agent, and carries nothing
- * about whoever is using it.
+ * The mcpspan server tells clients apart by it (contract, 7), so the SDK sends
+ * it as it came. This is an application's own self-description, the MCP
+ * equivalent of a User-Agent, and carries nothing about whoever is using it.
  */
 export function clientName(info?: ClientInfo | null): string | undefined {
   const name = info?.name?.trim();

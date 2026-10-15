@@ -1,33 +1,16 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from types import SimpleNamespace
-
-import pytest
 
 from mcpspan._client import (
     CLIENT_INFO_META_KEY,
     ClientInfo,
     client_from_request,
     client_name,
-    detect_client,
 )
 
-# The contract's table as cases, shared by every SDK's tests.
-_TABLE = json.loads(
-    (Path(__file__).resolve().parents[3] / "conformance" / "client-types.json").read_text("utf-8")
-)["cases"]
 
-
-@pytest.mark.parametrize(("name", "expected"), _TABLE)
-def test_detects_the_contract_table(name: str | None, expected: str) -> None:
-    info = None if name is None else ClientInfo(name, "1.0")
-    assert detect_client(info) == expected
-
-
-def test_unknown_without_a_client() -> None:
-    assert detect_client(None) == "unknown"
+def test_no_name_without_a_client() -> None:
     assert client_name(None) is None
 
 

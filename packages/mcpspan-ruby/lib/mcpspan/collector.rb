@@ -139,7 +139,10 @@ module McpSpan
           error_source: source,
           error_type: type && Text.truncate(type, Text::MAX_NAME),
           error_message: message.nil? || message.empty? ? nil : message,
-          client_type: Text.client_type(call.client_name),
+          # Always "unknown": the mcpspan server decides the client from its name
+          # (contract, 7). Sent only because servers released before 2026-10-15
+          # refuse an event without it.
+          client_type: "unknown",
           client_name: Text.client_name(call.client_name),
           client_version: Text.version(call.client_version),
           server_version: Text.version(call.server_version),

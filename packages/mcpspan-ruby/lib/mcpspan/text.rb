@@ -11,15 +11,6 @@ module McpSpan
     # A release, a tag, a commit: the server's or the client's.
     MAX_VERSION = 100
 
-    # First match wins, so `claude-code` is tested before `claude`.
-    CLIENT_TYPES = [
-      [["claude-code", "claude code"], "claude-code"],
-      [["claude"], "claude"],
-      [["cursor"], "cursor"],
-      [%w[chatgpt openai], "chatgpt"],
-      [["inspector"], "mcp-inspector"],
-    ].freeze
-
     module_function
 
     # Cuts text to a limit in characters, leaving a visible sign that something was removed.
@@ -28,16 +19,8 @@ module McpSpan
       text.length <= limit ? text : "#{text[0, limit - 3]}..."
     end
 
-    def client_type(name)
-      return "unknown" if name.nil? || name.strip.empty?
-
-      lower = name.downcase
-      CLIENT_TYPES.each do |needles, type|
-        return type if needles.any? { |needle| lower.include?(needle) }
-      end
-      "other"
-    end
-
+    # The name as the client gave it, cut to what the API takes. The mcpspan
+    # server tells clients apart by it (contract, 7).
     def client_name(name)
       return nil if name.nil? || name.strip.empty?
 

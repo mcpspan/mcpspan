@@ -62,7 +62,9 @@ export const toolCallEventSchema = z.object({
   errorType: z.string().max(LIMITS.errorType).optional(),
   errorMessage: z.string().max(LIMITS.errorMessage).optional(),
 
-  clientType: z.string().min(1).max(LIMITS.clientType),
+  // Sent by every SDK so far, and ignored: the API decides the type from the
+  // name (contract, 7). Optional, so an SDK may stop sending it.
+  clientType: z.string().max(LIMITS.clientType).optional(),
   clientName: z.string().max(LIMITS.clientName).optional(),
   // As the client and the server each give themselves in the handshake.
   clientVersion: z.string().max(LIMITS.version).optional(),

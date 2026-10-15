@@ -266,7 +266,7 @@ public sealed class ServerTests
         }
 
         var events = await captured.DeliveredAsync();
-        Assert.Equal(["claude", "claude", "claude", "cursor"], events.Select(e => e.ClientType));
+        Assert.Equal(["Claude Desktop", "Claude Desktop", "Claude Desktop", "cursor-vscode"], events.Select(e => e.ClientName));
         Assert.Equal("Claude Desktop", events[0].ClientName);
         Assert.All(events, e => Assert.NotNull(e.SessionId));
         Assert.Single(events.Take(3).Select(e => e.SessionId).Distinct());

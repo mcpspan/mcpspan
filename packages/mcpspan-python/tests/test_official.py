@@ -195,7 +195,6 @@ def test_the_client_and_one_session_per_connection(events: list[ToolCallEvent]) 
 
     run(server, ("ok", {}), ("typed", {}), ("no_such_tool", {}), name="Claude Desktop")
 
-    assert {event["clientType"] for event in events} == {"claude"}
     assert {event["clientName"] for event in events} == {"Claude Desktop"}
     sessions = {event.get("sessionId") for event in events}
     assert len(sessions) == 1 and None not in sessions
@@ -252,7 +251,6 @@ def test_on_2026_the_client_comes_from_each_request(events: list[ToolCallEvent])
 
     run(server, ("ok", {}), ("typed", {}), name="cursor-vscode", mode="auto")
 
-    assert [event["clientType"] for event in events] == ["cursor", "cursor"]
     assert [event["clientName"] for event in events] == ["cursor-vscode", "cursor-vscode"]
 
 
@@ -379,7 +377,7 @@ def test_resources_and_prompts_are_recorded_by_what_they_are(events: list[ToolCa
     assert events[1].get("parameters") == {"id": "string"}
     assert events[6].get("errorType") == "ConformanceError"
     assert "lovelace" not in repr(events) and "Lisbon" not in repr(events)
-    assert all(e["clientType"] == "cursor" for e in events)
+    assert all(e.get("clientName") == "cursor" for e in events)
 
 
 def _versioned(server: Any, version: str) -> Any:

@@ -90,7 +90,7 @@ describe('a call with arguments the schema refuses', () => {
       toolName: 'search_flights',
       success: false,
       errorSource: 'arguments',
-      clientType: 'claude-code',
+      clientName: 'claude-code',
     });
   });
 
@@ -424,7 +424,7 @@ describe('resources and prompts (contract, 3.5)', () => {
     await client.listPrompts();
     const events = await delivered();
 
-    expect(events.map((event) => [event.kind, event.toolName, event.clientType])).toEqual([
+    expect(events.map((event) => [event.kind, event.toolName, event.clientName])).toEqual([
       ['resource', 'config://app', 'cursor'],
       ['prompt', 'plan_trip', 'cursor'],
     ]);

@@ -377,23 +377,13 @@ describe('track and the client that sent the call', () => {
 
     withCall({ client: { name: 'Claude Desktop', version: '1.2.0' } }, () => tracked());
 
-    expect(only().clientType).toBe('claude');
     expect(only().clientName).toBe('Claude Desktop');
-  });
-
-  it('keeps the reported name of a client it does not recognise', () => {
-    const tracked = track('search', () => null);
-
-    withCall({ client: { name: 'windsurf' } }, () => tracked());
-
-    expect(only().clientType).toBe('other');
-    expect(only().clientName).toBe('windsurf');
+    expect(only().clientVersion).toBe('1.2.0');
   });
 
   it('records unknown for a call that did not come through instrument', () => {
     track('search', () => null)();
 
-    expect(only().clientType).toBe('unknown');
     expect(only().clientName).toBeUndefined();
   });
 
@@ -403,7 +393,7 @@ describe('track and the client that sent the call', () => {
     withCall({ client: { name: 'cursor' } }, () => tracked());
     withCall({ client: { name: 'claude-code' } }, () => tracked());
 
-    expect(events.map((event) => event.clientType)).toEqual(['cursor', 'claude-code']);
+    expect(events.map((event) => event.clientName)).toEqual(['cursor', 'claude-code']);
   });
 
   it('keeps the client of an async call that finishes after another has started', async () => {
@@ -416,7 +406,7 @@ describe('track and the client that sent the call', () => {
     finish();
     await pending;
 
-    expect(events.map((event) => [event.toolName, event.clientType])).toEqual([
+    expect(events.map((event) => [event.toolName, event.clientName])).toEqual([
       ['book', 'claude-code'],
       ['search', 'cursor'],
     ]);

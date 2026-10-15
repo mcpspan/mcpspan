@@ -14,6 +14,9 @@ internal sealed record ToolCallEvent
     [JsonPropertyName("errorSource")] public string? ErrorSource { get; init; }
     [JsonPropertyName("errorType")] public string? ErrorType { get; init; }
     [JsonPropertyName("errorMessage")] public string? ErrorMessage { get; init; }
+    // Always "unknown": the mcpspan server decides the client from clientName
+    // (contract, 7). Sent only because servers released before 2026-10-15
+    // refuse an event without it.
     [JsonPropertyName("clientType")] public required string ClientType { get; init; }
     [JsonPropertyName("clientName")] public string? ClientName { get; init; }
     [JsonPropertyName("clientVersion")] public string? ClientVersion { get; init; }

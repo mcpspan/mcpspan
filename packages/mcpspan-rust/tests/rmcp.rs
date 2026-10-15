@@ -77,7 +77,7 @@ async fn records_every_kind_of_call() {
 
     let ok = ingest.only("ok");
     assert_eq!(ok["success"], true);
-    assert_eq!(ok["clientType"], "claude-code");
+    assert_eq!(ok["clientType"], "unknown");
     assert_eq!(ok["clientName"], "claude-code");
     assert_eq!(ok["sdkVersion"], mcpspan::VERSION);
     assert!(ok.get("errorSource").is_none());
@@ -142,7 +142,7 @@ async fn records_a_panic_and_lets_it_unwind() {
     assert_eq!(event["errorSource"], "exception");
     assert_eq!(event["errorType"], "panic");
     assert_eq!(event["errorMessage"], "seat map unavailable");
-    assert_eq!(event["clientType"], "cursor");
+    assert_eq!(event["clientName"], "cursor");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -437,7 +437,7 @@ mod primitives {
         .collect();
         assert_eq!(got, expected);
         assert_eq!(events[1]["parameters"], json!({"id": "string"}));
-        assert!(events.iter().all(|event| event["clientType"] == "cursor"));
+        assert!(events.iter().all(|event| event["clientName"] == "cursor"));
         // It gives itself no version, and rmcp's own name and version in its place are not the server's.
         assert!(events.iter().all(|event| event.get("serverVersion").is_none()));
         assert!(!serde_json::to_string(&events).unwrap().contains("lovelace"));

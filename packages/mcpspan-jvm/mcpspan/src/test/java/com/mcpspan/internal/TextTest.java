@@ -5,20 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 class TextTest {
 
@@ -54,31 +44,9 @@ class TextTest {
         assertEquals(200, Text.resultMessage(List.of("x".repeat(1000))).length());
     }
 
-    /**
-     * The contract's table as cases, shared by every SDK's tests (conformance/client-types.json). The core has no
-     * JSON library, and the file is a flat list of pairs of plain strings, so a pattern reads it.
-     */
-    static Stream<Arguments> contractTable() throws IOException {
-        String json = Files.readString(Path.of("../../../conformance/client-types.json"));
-        Matcher pair = Pattern.compile("\\[\\s*(null|\"([^\"]*)\")\\s*,\\s*\"([^\"]*)\"\\s*]").matcher(json);
-        List<Arguments> cases = new ArrayList<>();
-        while (pair.find()) {
-            cases.add(Arguments.of(pair.group(2), pair.group(3)));
-        }
-        assertTrue(cases.size() > 10, "read the table");
-        return cases.stream();
-    }
-
-    @ParameterizedTest
-    @MethodSource("contractTable")
-    void detectsTheContractTable(String name, String expected) {
-        assertEquals(expected, Clients.detect(name));
-    }
-
     @Test
-    void unknownWithoutANameAndTheNameKeptButCut() {
-        assertEquals("unknown", Clients.detect(null));
-        assertEquals("unknown", Clients.detect("  "));
+    void theNameKeptButCut() {
+        assertNull(Clients.name("  "));
         assertEquals("cursor", Clients.name(" cursor "));
         assertEquals(200, Clients.name("c".repeat(400)).length());
     }

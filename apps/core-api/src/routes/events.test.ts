@@ -110,6 +110,16 @@ describe('what reaches the database', () => {
     ]);
   });
 
+  // The type comes from the client's name, whatever the SDK said (contract, 7).
+  it.each([
+    ['local-agent-mode-weather-test', 'other', 'claude'],
+    [undefined, 'claude', 'unknown'],
+  ])('stores a call from %j, which an SDK called %s, as %s', async (clientName, clientType, stored) => {
+    await post({ events: [event({ clientName, clientType })] });
+
+    expect(await storedRows()).toEqual([expect.objectContaining({ client_type: stored })]);
+  });
+
   it('leaves optional fields empty when the SDK sent none', async () => {
     await post({ events: [event()] });
 

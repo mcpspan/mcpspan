@@ -198,8 +198,8 @@ func TestTheClientAndOneSessionPerConnection(t *testing.T) {
 	events := delivered()
 	sessions := map[string]bool{}
 	for _, event := range events {
-		if event.ClientType != "claude" || event.ClientName != "Claude Desktop" {
-			t.Errorf("client of %s: %s %q", event.ToolName, event.ClientType, event.ClientName)
+		if event.ClientName != "Claude Desktop" {
+			t.Errorf("client of %s: %q", event.ToolName, event.ClientName)
 		}
 		sessions[event.SessionID] = true
 	}
@@ -227,7 +227,7 @@ func TestTrackAloneRecordsTheCall(t *testing.T) {
 	run(t, server, "cursor", call{"by_hand", nil})
 
 	events := delivered()
-	if len(events) != 1 || events[0].ToolName != "by_hand" || events[0].ClientType != "cursor" || events[0].SessionID != "" {
+	if len(events) != 1 || events[0].ToolName != "by_hand" || events[0].ClientName != "cursor" || events[0].SessionID != "" {
 		t.Fatalf("events %+v", events)
 	}
 }

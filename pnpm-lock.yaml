@@ -175,6 +175,9 @@ importers:
       '@hono/node-server':
         specifier: ^2.1.1
         version: 2.1.1(hono@4.13.8)
+      '@mcpspan/client-types':
+        specifier: workspace:*
+        version: link:../../packages/client-types
       hono:
         specifier: ^4.13.8
         version: 4.13.8
@@ -206,6 +209,9 @@ importers:
 
   apps/core-dashboard:
     dependencies:
+      '@mcpspan/client-types':
+        specifier: workspace:*
+        version: link:../../packages/client-types
       lucide-react:
         specifier: ^1.47.0
         version: 1.47.0(react@19.3.0)
@@ -276,6 +282,8 @@ importers:
       zod:
         specifier: ^4.6.5
         version: 4.6.5
+
+  packages/client-types: {}
 
   packages/mcpspan:
     devDependencies:

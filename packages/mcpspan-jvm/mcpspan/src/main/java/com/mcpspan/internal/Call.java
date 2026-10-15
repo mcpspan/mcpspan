@@ -132,7 +132,10 @@ public final class Call {
                 source,
                 type,
                 message,
-                Clients.detect(clientName),
+                // Always "unknown": the mcpspan server decides the client from its name
+                // (contract, 7). Sent only because servers released before 2026-10-15
+                // refuse an event without it.
+                "unknown",
                 Clients.name(clientName),
                 Text.version(clientVersion),
                 Text.version(Collector.serverVersion() != null ? Collector.serverVersion() : serverVersion),

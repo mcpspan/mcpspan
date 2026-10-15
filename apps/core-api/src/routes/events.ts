@@ -1,3 +1,4 @@
+import { clientTypeOf } from '@mcpspan/client-types';
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 
@@ -76,7 +77,8 @@ export function createEventRoutes(
         return c.json({ error: 'Invalid batch', issues: describeIssues(parsed.error) }, 400);
       }
 
-      const { events } = parsed.data;
+      // The client's type is decided here, from its name, whatever the SDK said (contract, 7).
+      const events = parsed.data.events.map((event) => ({ ...event, clientType: clientTypeOf(event.clientName) }));
 
       if (events.length > MAX_EVENTS_PER_BATCH) {
         refusals.record('too_large', serverId);

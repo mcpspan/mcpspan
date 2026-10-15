@@ -18,8 +18,8 @@ and nothing ever leaves your machine.
 ## Features
 
 - **Every call, from every client.** Tool calls, resource reads and prompt
-  gets, with the client that made them: Claude, Claude Code, Cursor, ChatGPT
-  and the rest.
+  gets, with the client that made them: Claude, Claude Code, Cursor, VS Code,
+  Codex, ChatGPT and the rest.
 - **Response times that mean something.** Median and 95th percentile per tool,
   and the full distribution, so a cache hit and a slow path do not hide
   inside one average.

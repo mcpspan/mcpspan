@@ -12,18 +12,6 @@ use PHPUnit\Framework\TestCase;
 
 final class TextTest extends TestCase
 {
-    /** The contract's table as cases, shared by every SDK's tests (conformance/client-types.json). */
-    public function testDetectsTheContractTable(): void
-    {
-        /** @var array{cases: list<array{?string, string}>} $table */
-        $table = json_decode((string) file_get_contents(__DIR__.'/../../../conformance/client-types.json'), true, 512, \JSON_THROW_ON_ERROR);
-
-        self::assertGreaterThan(10, \count($table['cases']));
-        foreach ($table['cases'] as [$name, $type]) {
-            self::assertSame($type, Text::clientType($name), var_export($name, true));
-        }
-    }
-
     public function testTruncateMarksACutAndKeepsCharactersWhole(): void
     {
         self::assertSame('abc', Text::truncate('abc', 5));

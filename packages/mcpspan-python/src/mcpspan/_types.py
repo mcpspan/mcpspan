@@ -2,21 +2,6 @@ from __future__ import annotations
 
 from typing import Literal, TypedDict
 
-ClientType = Literal[
-    "claude",
-    "claude-code",
-    "cursor",
-    "chatgpt",
-    "mcp-inspector",
-    "other",
-    "unknown",
-]
-"""Client application a tool call came from.
-
-`other` means a client named itself and the name is not one we recognise;
-`unknown` means nothing named a client at all.
-"""
-
 ErrorSource = Literal["result", "exception", "arguments", "unknown_tool"]
 """How a failed tool call announced itself.
 
@@ -32,7 +17,10 @@ class _RequiredEventFields(TypedDict):
     toolName: str
     durationMs: float
     success: bool
-    clientType: str
+    clientType: Literal["unknown"]
+    """Always `unknown`: the mcpspan server decides the client from `clientName`
+    (contract, 7). Sent only because servers released before 2026-10-15 refuse an
+    event without it."""
     timestamp: str
     sdkVersion: str
 

@@ -75,7 +75,7 @@ func TestResourcesAndPromptsAreRecordedByWhatTheyAre(t *testing.T) {
 		t.Errorf("exception type %q", recorded[5].ErrorType)
 	}
 	for _, event := range recorded {
-		if event.ClientType != "cursor" || strings.Contains(event.ToolName+event.ErrorMessage, "4412") {
+		if event.ClientName != "cursor" || strings.Contains(event.ToolName+event.ErrorMessage, "4412") {
 			t.Errorf("event %+v", event)
 		}
 	}

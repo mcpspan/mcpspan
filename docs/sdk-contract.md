@@ -379,7 +379,7 @@ A batch is a JSON object with one field, `events`, an array of these:
 | `errorSource` | string | when `success` is false | 50 characters | `result`, `exception`, `arguments` or `unknown_tool`; `unknown_resource` or `unknown_prompt` for 3.5. MUST be absent on success. |
 | `errorType` | string | no | 200 characters | For `exception`: the error's class or kind, such as `TypeError`. |
 | `errorMessage` | string | no | see below | For `result`: the text of the result, 200 characters at most. For `exception`: the error's message, 500 at most. Absent for refused calls, and on every event when the developer turned off capturing error messages (5). |
-| `clientType` | string | yes | 1 to 50 characters | One of the values in 7. |
+| `clientType` | string | yes | `unknown` | Always `unknown`: the server decides the client from `clientName` (7). Sent only because servers released before 2026-10-15 refuse an event without it. |
 | `clientName` | string | no | 200 characters | The client's own name, as sent (see 7). |
 | `clientVersion` | string | no | 100 characters | The client's own version, as sent (3.6). |
 | `serverVersion` | string | no | 100 characters | The version of the server that answered (3.6). |
@@ -397,9 +397,9 @@ A batch is a JSON object with one field, `events`, an array of these:
   every other event beside it. Names come from outside the developer's control
   (a client names itself, an exception names its class), so this is not
   hypothetical. The TypeScript SDK cuts with a trailing `...`.
-- The API is strict about shape and lengths and lenient about vocabulary. A
-  `clientType` or `errorSource` it does not know is stored, not refused, so a
-  newer SDK can add one without its events being lost.
+- The API is strict about shape and lengths and lenient about vocabulary. An
+  `errorSource` it does not know is stored, not refused, so a newer SDK can add
+  one without its events being lost.
 - Fields not listed here MUST NOT be sent. The API drops fields it does not
   know without refusing the batch, so a misspelt field is lost silently rather
   than reported: an SDK cannot rely on the API to catch it, and its own tests
@@ -505,7 +505,7 @@ SHOULD report how many it dropped when diagnostics are on.
   program ends (`defer mcpspan.Shutdown(ctx)` in `main`).
 - An SDK MUST NOT intercept signals or the server's own exit handling.
 
-## 7. Client types
+## 7. Clients
 
 The client's name is read per call, from the first of these that has one:
 
@@ -519,25 +519,14 @@ as on a stateless 2025-11-25 HTTP endpoint that builds a server per request,
 the client is unknown. Concurrent calls from different clients MUST each carry
 their own.
 
-`clientType` is derived from that name by case-insensitive substring match,
-first match wins:
-
-| Name contains | `clientType` |
-|---|---|
-| `claude-code` or `claude code` | `claude-code` |
-| `claude` | `claude` |
-| `cursor` | `cursor` |
-| `chatgpt` or `openai` | `chatgpt` |
-| `inspector` | `mcp-inspector` |
-| anything else | `other` |
-| no name known | `unknown` |
-
-The order matters: `claude-code` must be tested before `claude`. The raw name
-goes in `clientName` as well, so a client with no entry here is still
-identifiable.
-
-The table's cases are in `conformance/client-types.json`, and every SDK's unit
-tests read that one file.
+The SDK sends the name as the client gave it, in `clientName`, cut to its
+limit. It does not decide which client that is: the server does, from the name,
+with the one table in `packages/client-types/client-types.json`, which the
+dashboard also names the clients from. Clients appear and rename themselves
+faster than SDKs are released and upgraded, so a rule kept in every SDK would
+be wrong in most installed copies; kept on the server, it is corrected for every
+SDK at once, and calls already stored are reclassified when the server starts
+with rules that changed. `clientType` is sent as `unknown`, whatever the name.
 
 ## 8. Sessions
 

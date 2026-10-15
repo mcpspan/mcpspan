@@ -138,7 +138,6 @@ def test_the_client_and_one_session_per_connection() -> None:
 
     run(server, ("ok", {}), ("typed", {}), ("no_such_tool", {}), name="cursor-vscode")
 
-    assert {event["clientType"] for event in events} == {"cursor"}
     assert {event["clientName"] for event in events} == {"cursor-vscode"}
     sessions = {event.get("sessionId") for event in events}
     assert len(sessions) == 1 and None not in sessions

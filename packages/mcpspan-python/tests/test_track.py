@@ -193,7 +193,6 @@ def test_takes_the_session_client_and_arguments_of_the_call(events: list[ToolCal
 
     event = only(events)
     assert event["sessionId"] == "s-1"
-    assert event["clientType"] == "cursor"
     assert event["clientName"] == "cursor"
     assert event["parameters"] == {"q": "string"}
     assert call.reached
@@ -221,7 +220,7 @@ def test_keeps_the_client_of_an_async_call_that_finishes_after_another_starts(
 
     asyncio.run(both())
 
-    assert [(event["toolName"], event["clientType"]) for event in events] == [
+    assert [(event["toolName"], event.get("clientName")) for event in events] == [
         ("book", "claude-code"),
         ("search", "cursor"),
     ]
