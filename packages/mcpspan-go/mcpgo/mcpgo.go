@@ -34,12 +34,21 @@ var (
 	byContext sync.Map // context.Context -> *pendingCall
 )
 
+// A call that reached the tool is recorded once the server has answered it,
+// from the hooks, because what the tool returned is not always what the
+// client gets: output schema validation and a result size limit can turn a
+// result into an error after the middleware. When the hooks finish first,
+// as for a call run as a task, the middleware records it instead.
 type pendingCall struct {
 	mu       sync.Mutex
 	call     core.Call
 	ctx      context.Context
 	reached  bool
 	recorded bool
+	answered bool // the hooks have seen the server's answer
+	returned bool // the tool has returned, with result and err
+	result   *mcp.CallToolResult
+	err      error
 }
 
 // Instrument measures every tool call the server answers, and returns the
@@ -177,13 +186,14 @@ func middleware(s *server.MCPServer) server.ToolHandlerMiddleware {
 			}
 
 			pending.mu.Lock()
-			if !pending.recorded {
+			if pending.answered && !pending.recorded {
 				pending.recorded = true
 				pending.mu.Unlock()
 				recordReached(pending.call, result, err)
-			} else {
-				pending.mu.Unlock()
+				return result, err
 			}
+			pending.returned, pending.result, pending.err = true, result, err
+			pending.mu.Unlock()
 
 			return result, err
 		}
@@ -198,11 +208,37 @@ func after(request *mcp.CallToolRequest, result any) {
 	defer func() { _ = recover() }()
 
 	pending := take(request)
-	if pending == nil || pending.reached || pending.recorded {
+	if pending == nil {
 		return
 	}
 
-	if callResult, ok := result.(*mcp.CallToolResult); ok && callResult.IsError {
+	callResult, _ := result.(*mcp.CallToolResult)
+
+	pending.mu.Lock()
+	if pending.recorded {
+		pending.mu.Unlock()
+		return
+	}
+	if pending.reached {
+		if !pending.returned {
+			// Still running, as a task: the middleware records it.
+			pending.answered = true
+			pending.mu.Unlock()
+			return
+		}
+		pending.recorded = true
+		answer := pending.result
+		if callResult != nil {
+			answer = callResult
+		}
+		pending.mu.Unlock()
+		recordReached(pending.call, answer, nil)
+		return
+	}
+	pending.recorded = true
+	pending.mu.Unlock()
+
+	if callResult != nil && callResult.IsError {
 		// No message: validation text can quote the value that was sent.
 		core.Record(pending.call, core.Outcome{ErrorSource: core.SourceArguments})
 	}
@@ -213,9 +249,27 @@ func failed(request *mcp.CallToolRequest, err error) {
 	defer func() { _ = recover() }()
 
 	pending := take(request)
-	if pending == nil || pending.reached || pending.recorded {
+	if pending == nil {
 		return
 	}
+
+	pending.mu.Lock()
+	if pending.recorded {
+		pending.mu.Unlock()
+		return
+	}
+	pending.recorded = true
+	if pending.reached {
+		// The tool's own error when it returned one; else the server's, as
+		// for a panic a recovery middleware outside this one turned into one.
+		if pending.returned && pending.err != nil {
+			err = pending.err
+		}
+		pending.mu.Unlock()
+		recordReached(pending.call, nil, err)
+		return
+	}
+	pending.mu.Unlock()
 
 	if errors.Is(err, server.ErrToolNotFound) {
 		core.Record(pending.call, core.Outcome{ErrorSource: core.SourceUnknownTool})

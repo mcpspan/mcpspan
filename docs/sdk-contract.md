@@ -690,6 +690,14 @@ in only the SDK it uses.
   `server.ErrToolNotFound`. mcp-go answers a Go error from a handler with a
   protocol error, not an error result; that is recorded as an exception all
   the same.
+- On mcp-go, a call that reached the tool is recorded from the hooks, with
+  the answer the client got, since the server can still change what the tool
+  returned: `WithOutputSchemaValidation` and, from 1.3.0,
+  `WithToolResultSizeLimit` turn a result into an error result, and a panic a
+  recovery middleware such as `WithRecovery` caught becomes a protocol error.
+  Before 0.5.1 such a call was recorded as the tool returned it, or, for the
+  panic, not at all. A call run as a task is answered before the tool
+  finishes, and is recorded when the tool returns.
 - **Tools left out** (3.3) are named by their definition, `Exclude(tool)`,
   since a Go function cannot be marked. The name is written once, in the
   tool, and the exclusion applies to that name on every server in the

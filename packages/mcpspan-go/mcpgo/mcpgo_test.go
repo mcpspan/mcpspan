@@ -140,6 +140,87 @@ func TestRecordsRefusedCallsWithoutAMessage(t *testing.T) {
 	}
 }
 
+// The server can turn what the tool returned into an error after the
+// middleware; the call is recorded as the client got it.
+func TestRecordsTheAnswerTheClientGot(t *testing.T) {
+	delivered := capture(t)
+	s := server.NewMCPServer("test", "1.0.0", server.WithOutputSchemaValidation())
+	s.AddTool(mcp.NewTool("quote",
+		mcp.WithOutputSchema[struct {
+			Price float64 `json:"price"`
+		}]()),
+		func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			return mcp.NewToolResultStructuredOnly(map[string]any{"price": "cheap"}), nil
+		})
+	Instrument(s)
+
+	results := run(t, s, "claude-code", call{"quote", nil})
+
+	e := byTool(delivered())["quote"]
+	if !results[0].IsError || e.Success || e.ErrorSource != "result" {
+		t.Errorf("client error %v, recorded %+v", results[0].IsError, e)
+	}
+}
+
+func TestRecordsAPanicARecoveryMiddlewareAnswered(t *testing.T) {
+	delivered := capture(t)
+	s := server.NewMCPServer("test", "1.0.0", server.WithRecovery())
+	s.AddTool(mcp.NewTool("crashes"), func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		panic("index out of range")
+	})
+	Instrument(s)
+
+	run(t, s, "claude-code", call{"crashes", nil})
+
+	if e := byTool(delivered())["crashes"]; e.ErrorSource != "exception" || e.Success {
+		t.Errorf("crashes: %+v", e)
+	}
+}
+
+// A call run as a task is answered before the tool finishes; it is
+// recorded once, when the tool returns.
+func TestRecordsACallRunAsATaskOnce(t *testing.T) {
+	delivered := capture(t)
+	s := server.NewMCPServer("test", "1.0.0", server.WithTaskCapabilities(true, true, true))
+	release, finished := make(chan struct{}), make(chan struct{})
+	s.AddTool(mcp.NewTool("slow", mcp.WithTaskSupport(mcp.TaskSupportOptional)),
+		func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			defer close(finished)
+			<-release
+			return mcp.NewToolResultError("No flights found"), nil
+		})
+	Instrument(s)
+
+	ctx := context.Background()
+	c, err := client.NewInProcessClient(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if err := c.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	initialize := mcp.InitializeRequest{}
+	initialize.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
+	initialize.Params.ClientInfo = mcp.Implementation{Name: "claude-code", Version: "1.0.0"}
+	if _, err := c.Initialize(ctx, initialize); err != nil {
+		t.Fatal(err)
+	}
+	request := mcp.CallToolRequest{}
+	request.Params.Name = "slow"
+	request.Params.Task = &mcp.TaskParams{}
+	_, _ = c.CallTool(ctx, request)
+
+	close(release)
+	<-finished
+	time.Sleep(50 * time.Millisecond)
+
+	events := delivered()
+	if len(events) != 1 || events[0].ErrorSource != "result" {
+		t.Fatalf("events %+v", events)
+	}
+}
+
 func TestLeavesAnExcludedToolOutEvenWhenRefused(t *testing.T) {
 	delivered := capture(t)
 	s := Instrument(build())
