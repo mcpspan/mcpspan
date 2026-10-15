@@ -44,9 +44,11 @@ services:
     volumes:
       - mcpspan-db-data:/var/lib/postgresql/data
     healthcheck:
-      # Whether the server accepts connections, which is a later and more
-      # useful moment than the container merely having started.
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-mcpspan} -d ${POSTGRES_DB:-mcpspan}']
+      # Whether the server accepts connections over TCP, as the other services
+      # connect. On a fresh volume the image first runs a temporary server that
+      # listens only on its Unix socket, then restarts: a check over the socket
+      # passes during that window, and migrate would be refused.
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-mcpspan} -d ${POSTGRES_DB:-mcpspan}']
       interval: 5s
       timeout: 5s
       retries: 10
