@@ -11,6 +11,7 @@ import { ParamSelect } from '@/components/param-select';
 import { OffsetPager } from '@/components/pager';
 import { RangePicker } from '@/components/range-picker';
 import { SummaryCards } from '@/components/summary-cards';
+import { tokens } from '@/components/tool-listing';
 import { Card, CardHeader } from '@/components/ui/card';
 import { VersionsTable } from '@/components/versions-table';
 import {
@@ -20,6 +21,7 @@ import {
   getSummary,
   getTimeseries,
   getToolDetails,
+  getToolListing,
   getVersions,
   type Summary,
   type ToolDetails,
@@ -65,7 +67,7 @@ export default async function ToolPage({
     ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }),
   };
 
-  const [summary, previous, timeseries, details, latency, versions, options] = await Promise.all([
+  const [summary, previous, timeseries, details, latency, versions, options, listing] = await Promise.all([
     getSummary(session, query).catch(asApiError),
     getSummary(session, { ...query, ...range.previous }).catch(() => undefined),
     getTimeseries(session, query).catch(asApiError),
@@ -82,7 +84,12 @@ export default async function ToolPage({
     getFilterOptions(session, { from: range.from, ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }) }).catch(
       () => undefined,
     ),
+    // The whole list, for this tool's row and its share of the list. Losing it loses the card.
+    getToolListing(session, { from: range.from, ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }) }).catch(
+      () => undefined,
+    ),
   ]);
+  const listed = listing?.tools.find((tool) => tool.name === toolName);
 
   const carried = { serverId: params['serverId'], range: params['range'] };
 
@@ -212,6 +219,32 @@ export default async function ToolPage({
                 limit={20}
                 hasMore={details.before.hasMore}
                 hash="#before"
+              />
+            </Card>
+          )}
+
+          {/* Only from SDKs that report what the server lists (0.7.0 and later). */}
+          {listing === undefined || listed === undefined ? null : (
+            <Card>
+              <CardHeader
+                title="In the tool list"
+                hint="What its definition costs every session, and how many of those sessions used it"
+              />
+              <Facts
+                rows={[
+                  ['Definition', `${tokens(listed.bytes)} tokens, ${formatBytes(listed.bytes)}`],
+                  ...(listing.latest === null || !listed.listed || listing.latest.bytes === 0
+                    ? []
+                    : ([['Share of the list', `${Math.round((listed.bytes / listing.latest.bytes) * 100)}%`]] as [string, string][])),
+                  ['Shown in', `${formatCount(listed.sessions)} ${listed.sessions === 1 ? 'session' : 'sessions'}`],
+                  [
+                    'Used in',
+                    listed.usedSessions === 0
+                      ? 'None of them'
+                      : `${formatCount(listed.usedSessions)} (${Math.round((listed.usedSessions / listed.sessions) * 100)}%)`,
+                  ],
+                  ...(listed.listed ? [] : ([['Now', 'No longer listed']] as [string, string][])),
+                ]}
               />
             </Card>
           )}

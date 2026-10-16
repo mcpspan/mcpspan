@@ -9,7 +9,7 @@ import { InfoTip } from './info-tip';
 /** A common rule of thumb for English text and JSON; the real count depends on the model. */
 const BYTES_PER_TOKEN = 4;
 
-function tokens(bytes: number): string {
+export function tokens(bytes: number): string {
   return `≈ ${formatCount(Math.round(bytes / BYTES_PER_TOKEN))}`;
 }
 
