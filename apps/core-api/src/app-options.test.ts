@@ -171,4 +171,20 @@ describe('an account store', () => {
     await expect(status.json()).resolves.toMatchObject({ registrationOpen: true });
     expect(login.status).toBe(401);
   });
+
+  it('explains a registration it refuses by a rule of its own', async () => {
+    const accounts: AccountStore = {
+      ...selfHostedAccounts,
+      register: async () => ({ ok: false, reason: 'refused', message: 'Use a longer password' }),
+    };
+
+    const response = await createApp({ accounts }).request('/v1/auth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'new@example.com', password: 'short' }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: 'Use a longer password' });
+  });
 });

@@ -6,6 +6,7 @@ import {
   changePassword,
   createSession,
   endSession,
+  type RegisterRefusal,
   selfHostedAccounts,
   SESSION_COOKIE,
   userForSession,
@@ -51,7 +52,11 @@ export function createAuthRoutes(
 
     const result = await accounts.register(body.email, body.password);
 
-    if (!result.ok) return c.json({ error: explainRegistration(result.reason) }, refusalStatus(result.reason));
+    if (!result.ok) {
+      if (result.reason === 'refused') return c.json({ error: result.message }, 400);
+
+      return c.json({ error: explainRegistration(result.reason) }, refusalStatus(result.reason));
+    }
 
     // The first key comes with the account. Somebody who has just signed up
     // wants to connect a server, and making them find a second button first
@@ -198,7 +203,7 @@ async function readCredentials(
   };
 }
 
-function explainRegistration(reason: 'closed' | 'taken' | 'invalid-email' | 'empty-password'): string {
+function explainRegistration(reason: RegisterRefusal): string {
   switch (reason) {
     case 'closed':
       return 'This installation already has an account. Sign in instead.';
@@ -211,7 +216,7 @@ function explainRegistration(reason: 'closed' | 'taken' | 'invalid-email' | 'emp
   }
 }
 
-function refusalStatus(reason: 'closed' | 'taken' | 'invalid-email' | 'empty-password'): 400 | 403 | 409 {
+function refusalStatus(reason: RegisterRefusal): 400 | 403 | 409 {
   if (reason === 'closed') return 403;
   if (reason === 'taken') return 409;
 

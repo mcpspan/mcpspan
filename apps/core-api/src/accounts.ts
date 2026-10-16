@@ -36,7 +36,11 @@ export interface AccountStore {
 
 export type RegisterResult =
   | { ok: true; user: User }
-  | { ok: false; reason: 'closed' | 'taken' | 'invalid-email' | 'empty-password' };
+  | { ok: false; reason: RegisterRefusal }
+  /** A rule of the store's own, explained in its own words, such as what a password must be. */
+  | { ok: false; reason: 'refused'; message: string };
+
+export type RegisterRefusal = 'closed' | 'taken' | 'invalid-email' | 'empty-password';
 
 /**
  * Whether anybody has signed up yet.
@@ -55,12 +59,26 @@ export async function isRegistrationOpen(): Promise<boolean> {
 const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function register(email: string, password: string): Promise<RegisterResult> {
-  const normalised = email.trim().toLowerCase();
-
-  if (!LOOKS_LIKE_EMAIL.test(normalised)) return { ok: false, reason: 'invalid-email' };
+  if (!LOOKS_LIKE_EMAIL.test(email.trim().toLowerCase())) return { ok: false, reason: 'invalid-email' };
   // Any password will do: on a self-hosted install it is the owner's to choose.
   if (password.length === 0) return { ok: false, reason: 'empty-password' };
   if (!(await isRegistrationOpen())) return { ok: false, reason: 'closed' };
+
+  return createUser(email, password);
+}
+
+/**
+ * Writes an account, once whoever is registering has been let in.
+ *
+ * The part of registering that is the same everywhere: the address checked
+ * and stored the way sign-in reads it, the password hashed, a taken address
+ * answered as such. Who may register, and what a password must be, are the
+ * caller's to decide.
+ */
+export async function createUser(email: string, password: string): Promise<RegisterResult> {
+  const normalised = email.trim().toLowerCase();
+
+  if (!LOOKS_LIKE_EMAIL.test(normalised)) return { ok: false, reason: 'invalid-email' };
 
   try {
     const result = await getPool().query<{ id: string; email: string }>(
