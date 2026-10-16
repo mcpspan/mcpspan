@@ -190,7 +190,16 @@ export async function seedEvents(serverId: string, seeds: readonly EventSeed[]):
  */
 async function refreshRollup(): Promise<void> {
   for (const { rollup } of Object.values(CALL_TABLES)) {
-    await getPool().query(`CALL refresh_continuous_aggregate('${rollup}', NULL, NULL)`);
+    // Tried again while an API another test started refreshes the same rollup, which TimescaleDB refuses alongside.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await getPool().query(`CALL refresh_continuous_aggregate('${rollup}', NULL, NULL)`);
+        break;
+      } catch (error) {
+        if ((error as { code?: unknown }).code !== '55P03' || attempt === 10) throw error;
+        await new Promise((done) => setTimeout(done, 500));
+      }
+    }
   }
 }
 

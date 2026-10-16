@@ -8,6 +8,27 @@ import { CALL_TABLES, type CallKind } from './rollup.ts';
 /** Where the fingerprint of the rules stored calls were last classified with is kept. */
 const SETTING = 'client_type_rules';
 
+/** How often a refresh another one is running into is tried again, a second apart. */
+const REFRESH_ATTEMPTS = 10;
+
+/**
+ * Rebuilds a rollup over the hours given. Outside any transaction, which TimescaleDB requires of a refresh, and
+ * tried again while the scheduled refresh of the same rollup is running, which TimescaleDB refuses alongside.
+ * A policy refresh would not do it later: it looks back only so far, and these hours can be older.
+ */
+async function refreshRollup(rollup: string, from: Date, to: Date): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await getPool().query(`CALL refresh_continuous_aggregate('${rollup}', $1::timestamptz, $2::timestamptz)`, [from, to]);
+      return;
+    } catch (error) {
+      const concurrent = (error as { code?: unknown }).code === '55P03';
+      if (!concurrent || attempt === REFRESH_ATTEMPTS) throw error;
+      await new Promise((done) => setTimeout(done, 1_000));
+    }
+  }
+}
+
 /** Changes whenever a rule does, so a release with new rules is noticed once. */
 export function rulesFingerprint(): string {
   return createHash('sha256').update(JSON.stringify(CLIENT_TYPE_RULES)).digest('hex');
@@ -76,11 +97,7 @@ export async function reclassifyClients(): Promise<number> {
 
     const row = result.rows[0];
     if (row?.first && row.last) {
-      // Outside any transaction, which TimescaleDB requires of a refresh.
-      await getPool().query(`CALL refresh_continuous_aggregate('${rollup}', $1::timestamptz, $2::timestamptz)`, [
-        row.first,
-        row.last,
-      ]);
+      await refreshRollup(rollup, row.first, row.last);
     }
     changed += Number(row?.calls ?? 0);
   }

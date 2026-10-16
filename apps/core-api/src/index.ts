@@ -57,10 +57,20 @@ async function reportDatabase(): Promise<void> {
     await checkSigningSecret(process.env['API_KEY_SECRET'] ?? '');
 
     // Calls stored under older rules for telling clients apart get the type the
-    // rules in this release give them. Once per change of rules.
-    const reclassified = await reclassifyClients();
-    if (reclassified > 0) {
-      console.log(`mcpspan core-api gave ${reclassified} stored calls the client type the current rules give them`);
+    // rules in this release give them. Once per change of rules; a failure is
+    // tried again at the next start, since the rules are only noted as applied
+    // once they were.
+    try {
+      const reclassified = await reclassifyClients();
+      if (reclassified > 0) {
+        console.log(`mcpspan core-api gave ${reclassified} stored calls the client type the current rules give them`);
+      }
+    } catch (error) {
+      console.error(
+        `mcpspan core-api could not give stored calls their client type, will try again at the next start: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   } catch (error) {
     console.error(
