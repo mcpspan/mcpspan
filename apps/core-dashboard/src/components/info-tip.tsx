@@ -8,7 +8,18 @@ import { Info } from 'lucide-react';
  * it needs no script. The text is tied to the button for a screen reader, so
  * the definition is announced rather than only drawn.
  */
-export function InfoTip({ id, about, children }: { id: string; about: string; children: string }) {
+export function InfoTip({
+  id,
+  about,
+  children,
+  align = 'end',
+}: {
+  id: string;
+  about: string;
+  children: string;
+  /** Which way the text opens on a wide screen: toward the left from its end, or toward the right from its start. */
+  align?: 'start' | 'end';
+}) {
   return (
     <span className="group relative inline-flex">
       <button
@@ -22,7 +33,8 @@ export function InfoTip({ id, about, children }: { id: string; about: string; ch
       <span
         role="tooltip"
         id={id}
-        className="invisible absolute top-5 right-0 z-20 w-64 max-w-[calc(100vw-3rem)] rounded-lg border border-border bg-raised p-2.5 text-xs font-normal tracking-normal text-ink normal-case opacity-0 shadow-md transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+        // On a phone, a strip along the bottom of the screen: fixed, so no table that scrolls sideways cuts it off.
+        className={`invisible absolute top-5 ${align === 'start' ? 'left-0' : 'right-0'} z-20 w-64 max-w-[calc(100vw-3rem)] max-sm:fixed max-sm:inset-x-4 max-sm:top-auto max-sm:bottom-4 max-sm:w-auto max-sm:max-w-none rounded-lg border border-border bg-raised p-2.5 text-left text-xs font-normal tracking-normal text-ink normal-case opacity-0 shadow-md transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100`}
       >
         {children}
       </span>

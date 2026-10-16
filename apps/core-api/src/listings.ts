@@ -21,9 +21,25 @@ export interface ToolListing {
   sessions: number;
   /** The latest listing: how many tools, and their definitions' size together. */
   latest: { tools: number; bytes: number; at: string } | null;
-  /** The least used first: never called, then by the share of sessions that called it. */
+  /** Tools the latest listing has that no session shown them called. */
+  neverUsed: number;
+  /** How many tools were listed in the period, on every page. */
+  total: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+  /** One page of them, in the order asked for. */
   tools: ListedToolStats[];
 }
+
+/** How the tools can be ordered: the least used first, the largest first, or by name. */
+export const LISTING_ORDERS = {
+  'least-used': 'coalesce(u.sessions, 0)::float / p.sessions, p.sessions DESC, p.name',
+  largest: 'p.bytes DESC, p.name',
+  name: 'p.name',
+} as const;
+
+export type ListingOrder = keyof typeof LISTING_ORDERS;
 
 /**
  * What agents were shown and what they used (contract, 3.11): for each tool
@@ -36,7 +52,11 @@ export async function getToolListing(
   serverId: string,
   range: TimeRange,
   clientType?: string,
+  page: { order?: ListingOrder; offset?: number; limit?: number } = {},
 ): Promise<ToolListing> {
+  const order = LISTING_ORDERS[page.order ?? 'least-used'];
+  const offset = page.offset ?? 0;
+  const limit = page.limit ?? 1_000;
   const params: unknown[] = [serverId, range.from, range.to];
   let client = '';
   if (clientType !== undefined) {
@@ -95,11 +115,11 @@ export async function getToolListing(
      FROM per_tool p
      LEFT JOIN used u USING (name)
      LEFT JOIN calls c USING (name)
-     ORDER BY coalesce(u.sessions, 0)::float / p.sessions, p.sessions DESC, p.name`,
+     ORDER BY ${order}`,
     params,
   );
 
-  const tools = result.rows.map((row) => ({
+  const all = result.rows.map((row) => ({
     name: row.name,
     sessions: Number(row.sessions),
     usedSessions: Number(row.used_sessions),
@@ -120,9 +140,15 @@ export async function getToolListing(
   );
   const last = latest.rows[0];
 
+  // Paged here rather than in SQL: the list is one row per tool, and the counts above need all of it.
   return {
     sessions: Number(result.rows[0]?.all_sessions ?? 0),
     latest: last === undefined ? null : { tools: last.tools, bytes: Number(last.bytes), at: last.at.toISOString() },
-    tools,
+    neverUsed: all.filter((tool) => tool.listed && tool.usedSessions === 0).length,
+    total: all.length,
+    offset,
+    limit,
+    hasMore: offset + limit < all.length,
+    tools: all.slice(offset, offset + limit),
   };
 }

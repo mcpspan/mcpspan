@@ -121,6 +121,7 @@ function Detail({ call, carried }: { call: CallDetail; carried: Record<string, s
                 {/* Clocks on two machines: a small negative gap is skew, not time travel. */}
                 {delay > 1_000 ? <span className="text-ink-muted">, {formatSpan(delay)} later</span> : null}
               </>,
+              'When mcpspan stored the call, by its own clock. The SDK sends calls in batches every few seconds, so a few seconds after the call is normal; much more means the server could not reach mcpspan for a while.',
             ],
             [
               'Client',
@@ -163,6 +164,7 @@ function Detail({ call, carried }: { call: CallDetail; carried: Record<string, s
                   Every call in it
                 </Link>
               ),
+              'One connection from a client: what an agent did, in order. A stateless HTTP server on the 2025 protocol has none.',
             ],
             ...(call.repeated
               ? [['Repeated', 'Same arguments as this tool\'s call before it in the session'] as [string, string]]
@@ -180,6 +182,7 @@ function Detail({ call, carried }: { call: CallDetail; carried: Record<string, s
               ) : (
                 formatBytes(call.responseBytes)
               ),
+              'The size of what the server answered, as compact JSON: what the agent had to take in. Not measured when the call threw, was refused, or came from an SDK before 0.2.0.',
             ],
             ['SDK', `mcpspan ${call.sdkVersion}`],
           ]}

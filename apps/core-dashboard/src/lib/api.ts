@@ -160,7 +160,14 @@ export interface ToolListing {
   range: TimeWindow;
   sessions: number;
   latest: { tools: number; bytes: number; at: string } | null;
-  /** The least used first. */
+  /** Tools the latest listing has that no session shown them called. */
+  neverUsed: number;
+  /** Tools listed in the window, on every page. */
+  total: number;
+  offset: number;
+  limit: number;
+  hasMore: boolean;
+  /** One page, in the order asked for: the least used first unless `listingOrder` says otherwise. */
   tools: ListedToolStats[];
 }
 
@@ -231,10 +238,21 @@ export interface UnknownPrimitive {
   afterwards: Afterwards | null;
 }
 
+/** Where one page of a list sits in the whole of it. */
+export interface ListPage {
+  offset: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+}
+
 export interface ResourcesAndPrompts {
   range: TimeWindow;
+  /** One page of each, by calls. */
   resources: PrimitiveStats[];
+  resourcesPage: ListPage;
   prompts: PrimitiveStats[];
+  promptsPage: ListPage;
   unknownResources: UnknownPrimitive[];
   unknownPrompts: UnknownPrimitive[];
 }
@@ -503,6 +521,12 @@ export interface Query {
   beforeClient?: string;
   /** The session list only: sessions with a failed call, or a repeated one. */
   with?: string;
+  /** The card of what agents are shown: its page and order. */
+  listingOffset?: number;
+  listingOrder?: string;
+  /** The resources and prompts card: each list's page. */
+  resourcesOffset?: number;
+  promptsOffset?: number;
 }
 
 /** A request the API refused, carrying what it said and how it said it. */

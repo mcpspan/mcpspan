@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { createApiKey, resetDatabase, type TestApiKey } from '../test/fixtures.ts';
+import { createAccount, createApiKey, resetDatabase, type TestApiKey } from '../test/fixtures.ts';
 import { createApp } from './app.ts';
 import { closePool, getPool } from './db.ts';
 import { getToolListing } from './listings.ts';
@@ -66,6 +66,26 @@ async function post(events: Record<string, unknown>[]): Promise<{ accepted: numb
 }
 
 describe('listings (contract, 3.11)', () => {
+  it('orders by size or name, and pages', async () => {
+    await post([listing(randomUUID(), [['b_small', 100], ['a_large', 900], ['c_middle', 500]])]);
+
+    const largest = await getToolListing(apiKey.serverId, range, undefined, { order: 'largest', offset: 0, limit: 2 });
+    expect(largest.tools.map((tool) => tool.name)).toEqual(['a_large', 'c_middle']);
+    expect(largest).toMatchObject({ total: 3, hasMore: true, neverUsed: 3 });
+
+    const byName = await getToolListing(apiKey.serverId, range, undefined, { order: 'name', offset: 2, limit: 2 });
+    expect(byName.tools.map((tool) => tool.name)).toEqual(['c_middle']);
+    expect(byName.hasMore).toBe(false);
+  });
+
+  it('refuses an order it does not know', async () => {
+    const account = await createAccount();
+    const response = await createApp().request(`/v1/dashboard/listing?listingOrder=random&serverId=${account.serverId}`, {
+      headers: { cookie: account.cookie },
+    });
+    expect(response.status).toBe(400);
+  });
+
   it('counts the sessions shown each tool and those of them that called it, the least used first', async () => {
     const [a, b, c] = [randomUUID(), randomUUID(), randomUUID()];
     const tools: [string, number][] = [
@@ -89,6 +109,8 @@ describe('listings (contract, 3.11)', () => {
 
     expect(result.sessions).toBe(3);
     expect(result.latest).toMatchObject({ tools: 2, bytes: 1300 });
+    // export_report is no longer listed, so it is not counted as never used.
+    expect(result).toMatchObject({ neverUsed: 0, total: 3, offset: 0, hasMore: false });
     expect(result.tools).toEqual([
       { name: 'export_report', sessions: 2, usedSessions: 0, calls: 0, bytes: 1200, listed: false },
       { name: 'book_flight', sessions: 3, usedSessions: 1, calls: 2, bytes: 400, listed: true },
@@ -119,6 +141,6 @@ describe('listings (contract, 3.11)', () => {
     await post([listing(randomUUID(), [['search_flights', 900]])]);
 
     expect((await getToolListing(apiKey.serverId, range, 'cursor')).sessions).toBe(1);
-    expect(await getToolListing(apiKey.serverId, range, 'claude')).toEqual({ sessions: 0, latest: null, tools: [] });
+    expect(await getToolListing(apiKey.serverId, range, 'claude')).toMatchObject({ sessions: 0, latest: null, total: 0, tools: [] });
   });
 });

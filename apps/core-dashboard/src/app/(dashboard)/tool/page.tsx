@@ -232,16 +232,31 @@ export default async function ToolPage({
               />
               <Facts
                 rows={[
-                  ['Definition', `${tokens(listed.bytes)} tokens, ${formatBytes(listed.bytes)}`],
+                  [
+                    'Definition',
+                    `${tokens(listed.bytes)} tokens, ${formatBytes(listed.bytes)}`,
+                    "What the tool's name, title, description and input schema take in the model's context, read at the start of every session whether the tool is called or not. Estimated at four bytes a token; the exact count depends on the model.",
+                  ],
                   ...(listing.latest === null || !listed.listed || listing.latest.bytes === 0
                     ? []
-                    : ([['Share of the list', `${Math.round((listed.bytes / listing.latest.bytes) * 100)}%`]] as [string, string][])),
-                  ['Shown in', `${formatCount(listed.sessions)} ${listed.sessions === 1 ? 'session' : 'sessions'}`],
+                    : ([
+                        [
+                          'Share of the list',
+                          `${Math.round((listed.bytes / listing.latest.bytes) * 100)}%`,
+                          `How much of the whole tool list, ${tokens(listing.latest.bytes)} tokens for ${formatCount(listing.latest.tools)} tools, is this one tool's definition.`,
+                        ],
+                      ] as [string, string, string][])),
+                  [
+                    'Shown in',
+                    `${formatCount(listed.sessions)} ${listed.sessions === 1 ? 'session' : 'sessions'}`,
+                    'Sessions whose client was sent this tool in the list of tools, in this window.',
+                  ],
                   [
                     'Used in',
                     listed.usedSessions === 0
                       ? 'None of them'
                       : `${formatCount(listed.usedSessions)} (${Math.round((listed.usedSessions / listed.sessions) * 100)}%)`,
+                    'Of the sessions shown the tool, how many called it at least once. A tool shown often and used rarely may need a clearer description, or may not be needed.',
                   ],
                   ...(listed.listed ? [] : ([['Now', 'No longer listed']] as [string, string][])),
                 ]}
@@ -257,8 +272,16 @@ export default async function ToolPage({
               />
               <Facts
                 rows={[
-                  ['Typical (median)', formatBytes(details.responseSizes.medianBytes)],
-                  ['Large (95th percentile)', formatBytes(details.responseSizes.p95Bytes)],
+                  [
+                    'Typical (median)',
+                    formatBytes(details.responseSizes.medianBytes),
+                    'Half of the answers were smaller than this, as compact JSON. The size is all that is measured; the content never leaves the server.',
+                  ],
+                  [
+                    'Large (95th percentile)',
+                    formatBytes(details.responseSizes.p95Bytes),
+                    "95 in 100 answers were smaller. A large one fills the agent's context, and every later step pays for it.",
+                  ],
                   ['Largest', formatBytes(details.responseSizes.maxBytes)],
                 ]}
               />
@@ -315,7 +338,7 @@ export default async function ToolPage({
               <p className="text-sm text-ink-muted">{details.message}</p>
             ) : (
               <>
-                <Parameters details={details} />
+                <Parameters details={details} called={summary.totalCalls > 0} />
                 <OffsetPager
                   params={params}
                   name="parametersOffset"
@@ -493,7 +516,10 @@ function Clients({ summary }: { summary: Summary }) {
   );
 }
 
-function Parameters({ details }: { details: ToolDetails }) {
+function Parameters({ details, called }: { details: ToolDetails; called: boolean }) {
+  if (!called) {
+    return <p className="text-sm text-ink-muted">Not called in this window.</p>;
+  }
   if (details.callsWithParameters === 0) {
     return (
       <p className="text-sm text-ink-muted">

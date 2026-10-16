@@ -1,8 +1,10 @@
 import Link from 'next/link';
 
 import type { Versions } from '@/lib/api';
+import { EXPLAIN } from '@/lib/explain';
 import { formatCount, formatDuration, formatRate } from '@/lib/format';
 import { type Params, withParams } from '@/lib/query';
+import { InfoTip } from './info-tip';
 import { LocalTime } from './local-time';
 
 /** Above this, a version's error rate is called out, as a tool's is. */
@@ -26,16 +28,31 @@ export function VersionsTable({ data, carried }: { data: Versions; carried: Para
                 Version
               </th>
               <th scope="col" className="pb-2 pl-4 text-left font-medium">
-                First seen
+                <span className="inline-flex items-center gap-1">
+                  First seen
+                  <InfoTip id="versions-firstSeen" about="first seen" align="start">
+                    {EXPLAIN.firstSeen}
+                  </InfoTip>
+                </span>
               </th>
               <th scope="col" className="pb-2 pl-4 text-right font-medium">
                 Calls
               </th>
               <th scope="col" className="pb-2 pl-4 text-right font-medium">
-                Errors
+                <span className="inline-flex items-center gap-1">
+                  Errors
+                  <InfoTip id="versions-errors" about="errors">
+                    {EXPLAIN.errors}
+                  </InfoTip>
+                </span>
               </th>
               <th scope="col" className="pb-2 pl-4 text-right font-medium">
-                Median
+                <span className="inline-flex items-center gap-1">
+                  Median
+                  <InfoTip id="versions-median" about="median">
+                    {EXPLAIN.median}
+                  </InfoTip>
+                </span>
               </th>
             </tr>
           </thead>

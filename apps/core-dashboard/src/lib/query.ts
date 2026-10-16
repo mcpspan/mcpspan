@@ -43,6 +43,9 @@ export const PAGING_PARAMS = [
   'parametersOffset',
   'beforeOffset',
   'eventsOffset',
+  'listingOffset',
+  'resourcesOffset',
+  'promptsOffset',
 ] as const;
 
 /**

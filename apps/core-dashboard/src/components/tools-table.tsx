@@ -2,8 +2,11 @@ import { ArrowDown } from 'lucide-react';
 import Link from 'next/link';
 
 import type { ToolStats } from '@/lib/api';
+import { EXPLAIN } from '@/lib/explain';
 import { formatCount, formatDuration, formatRate } from '@/lib/format';
 import { type Params, withoutPaging, withParams } from '@/lib/query';
+import { BreakableName } from './breakable-name';
+import { InfoTip } from './info-tip';
 
 /** Above this, a tool's error rate is called out rather than just reported. */
 const ELEVATED_ERROR_RATE = 0.05;
@@ -11,8 +14,8 @@ const ELEVATED_ERROR_RATE = 0.05;
 const COLUMNS = [
   { sort: 'name', label: 'Tool', align: 'text-left' },
   { sort: 'calls', label: 'Calls', align: 'text-right' },
-  { sort: 'errors', label: 'Errors', align: 'text-right' },
-  { sort: 'duration', label: 'Median', align: 'text-right' },
+  { sort: 'errors', label: 'Errors', align: 'text-right', about: EXPLAIN.errors },
+  { sort: 'duration', label: 'Median', align: 'text-right', about: EXPLAIN.median },
 ] as const;
 
 /**
@@ -44,7 +47,8 @@ export function ToolsTable({
       <thead>
         <tr className="text-xs text-ink-muted">
           {COLUMNS.map((column) => (
-            <th key={column.sort} scope="col" className={`pb-2 font-medium ${column.align}`}>
+            <th key={column.sort} scope="col" className={`pb-2 font-medium ${column.align} ${column.align === 'text-right' ? 'pl-1.5 sm:pl-3' : ''}`}>
+              <span className="inline-flex items-center gap-1">
               <Link
                 href={withParams(withoutPaging(params), { sort: column.sort })}
                 aria-sort={sort === column.sort ? 'descending' : 'none'}
@@ -53,6 +57,12 @@ export function ToolsTable({
                 {column.label}
                 {sort === column.sort ? <ArrowDown aria-hidden className="size-3" /> : null}
               </Link>
+              {'about' in column ? (
+                <InfoTip id={`tools-${column.sort}`} about={column.label.toLowerCase()}>
+                  {column.about}
+                </InfoTip>
+              ) : null}
+              </span>
             </th>
           ))}
         </tr>
@@ -75,7 +85,7 @@ export function ToolsTable({
                   )}`}
                   className="font-mono text-xs outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ink"
                 >
-                  {tool.toolName}
+                  <BreakableName name={tool.toolName} />
                 </Link>
               </th>
               <td className="py-2 text-right tabular-nums">{formatCount(tool.calls)}</td>

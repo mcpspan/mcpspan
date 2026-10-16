@@ -449,6 +449,11 @@ describe('getToolListing', () => {
       range: expect.any(Object),
       sessions: 1,
       latest: { tools: 1, bytes: 900, at: expect.any(String) },
+      neverUsed: 1,
+      total: 1,
+      offset: 0,
+      limit: 20,
+      hasMore: false,
       tools: [{ name: 'search_flights', sessions: 1, usedSessions: 0, calls: expect.any(Number), bytes: 900, listed: true }],
     });
   });

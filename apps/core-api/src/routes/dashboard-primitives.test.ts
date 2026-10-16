@@ -16,7 +16,9 @@ interface Stats {
 
 interface Body {
   resources: Stats[];
+  resourcesPage: { offset: number; limit: number; total: number; hasMore: boolean };
   prompts: Stats[];
+  promptsPage: { offset: number; limit: number; total: number; hasMore: boolean };
   unknownResources: { name: string; calls: number; closest: string | null }[];
   unknownPrompts: { name: string; calls: number; closest: string | null }[];
 }
@@ -67,6 +69,18 @@ describe('/v1/dashboard/resources-and-prompts', () => {
     ]);
     expect(body.prompts.map((prompt) => [prompt.name, prompt.calls, prompt.errors])).toEqual([['plan_trip', 2, 1]]);
     expect(body.resources[0]?.durationMs.p50).toEqual(expect.any(Number));
+  });
+
+  it('pages resources and prompts each on its own', async () => {
+    const window = `from=${hoursAgo(7 * 24).toISOString()}&to=${new Date().toISOString()}`;
+    const first = await get(`?${window}&resourcesLimit=1`);
+    expect(first.resources.map((resource) => resource.name)).toEqual(['trips://{id}']);
+    expect(first.resourcesPage).toEqual({ offset: 0, limit: 1, total: 2, hasMore: true });
+    expect(first.promptsPage).toMatchObject({ total: 1, hasMore: false });
+
+    const second = await get(`?${window}&resourcesLimit=1&resourcesOffset=1`);
+    expect(second.resources.map((resource) => resource.name)).toEqual(['config://app']);
+    expect(second.resourcesPage.hasMore).toBe(false);
   });
 
   it('keeps what was asked for and not there out of the ranking, and lists it', async () => {

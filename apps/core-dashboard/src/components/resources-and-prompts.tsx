@@ -1,5 +1,9 @@
 import type { PrimitiveStats, ResourcesAndPrompts as Data } from '@/lib/api';
+import { EXPLAIN } from '@/lib/explain';
 import { formatCount, formatDuration, formatRate } from '@/lib/format';
+import { type Params } from '@/lib/query';
+import { InfoTip } from './info-tip';
+import { OffsetPager } from './pager';
 import { Card, CardHeader } from './ui/card';
 
 /** Above this, an error rate is called out rather than just reported, as for tools. */
@@ -16,10 +20,10 @@ const ELEVATED_ERROR_RATE = 0.05;
  */
 /** Whether there is anything for the card to show. */
 export function hasResourcesOrPrompts(data: Data): boolean {
-  return data.resources.length + data.prompts.length > 0;
+  return data.resourcesPage.total + data.promptsPage.total > 0;
 }
 
-export function ResourcesAndPrompts({ data }: { data: Data }) {
+export function ResourcesAndPrompts({ data, params }: { data: Data; params: Params }) {
   if (!hasResourcesOrPrompts(data)) return null;
 
   return (
@@ -28,8 +32,30 @@ export function ResourcesAndPrompts({ data }: { data: Data }) {
 
       {/* items-start: stretched to the taller one, the shorter table spread its rows apart. */}
       <div className="grid items-start gap-6 md:grid-cols-2">
-        <Ranking label="Resource" empty="No resources were read in this window." items={data.resources} />
-        <Ranking label="Prompt" empty="No prompts were got in this window." items={data.prompts} />
+        <div>
+          <Ranking label="Resource" empty="No resources were read in this window." items={data.resources} />
+          <OffsetPager
+            params={params}
+            name="resourcesOffset"
+            offset={data.resourcesPage.offset}
+            limit={data.resourcesPage.limit}
+            hasMore={data.resourcesPage.hasMore}
+            total={data.resourcesPage.total}
+            hash="#resources-and-prompts"
+          />
+        </div>
+        <div>
+          <Ranking label="Prompt" empty="No prompts were got in this window." items={data.prompts} />
+          <OffsetPager
+            params={params}
+            name="promptsOffset"
+            offset={data.promptsPage.offset}
+            limit={data.promptsPage.limit}
+            hasMore={data.promptsPage.hasMore}
+            total={data.promptsPage.total}
+            hash="#resources-and-prompts"
+          />
+        </div>
       </div>
     </Card>
   );
@@ -49,10 +75,20 @@ function Ranking({ label, empty, items }: { label: string; empty: string; items:
             Calls
           </th>
           <th scope="col" className="pb-2 text-right font-medium">
-            Errors
+            <span className="inline-flex items-center gap-1">
+              Errors
+              <InfoTip id={`${label.toLowerCase()}-errors`} about="errors">
+                {EXPLAIN.errors}
+              </InfoTip>
+            </span>
           </th>
           <th scope="col" className="pb-2 text-right font-medium">
-            Median
+            <span className="inline-flex items-center gap-1">
+              Median
+              <InfoTip id={`${label.toLowerCase()}-median`} about="median">
+                {EXPLAIN.median}
+              </InfoTip>
+            </span>
           </th>
         </tr>
       </thead>

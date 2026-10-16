@@ -137,11 +137,17 @@ export default async function OverviewPage({
       getResourcesAndPrompts(session, {
         ...serverWide,
         ...pick(params, ['clientType']),
+        resourcesOffset: offsetParam(params, 'resourcesOffset'),
+        promptsOffset: offsetParam(params, 'promptsOffset'),
       }).catch(() => undefined),
       // Losing it loses the version marks and card, not the page.
       getVersions(session, query).catch(() => undefined),
       // Narrowed by client only, like the resources. Losing it loses the card.
-      getToolListing(session, { ...serverWide, ...pick(params, ['clientType']) }).catch(() => undefined),
+      getToolListing(session, {
+        ...serverWide,
+        ...pick(params, ['clientType', 'listingOrder']),
+        listingOffset: offsetParam(params, 'listingOffset'),
+      }).catch(() => undefined),
     ]);
 
   return (
@@ -290,7 +296,7 @@ export default async function OverviewPage({
 
           {primitives === undefined || !hasResourcesOrPrompts(primitives) ? null : (
             <div className="mt-6">
-              <ResourcesAndPrompts data={primitives} />
+              <ResourcesAndPrompts data={primitives} params={params} />
             </div>
           )}
 

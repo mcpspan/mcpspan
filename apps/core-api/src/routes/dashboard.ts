@@ -24,7 +24,7 @@ import { requireSession, resolveServerId, type SessionVariables } from '../sessi
 import { getSessionCalls, getSessions, getTransitions } from '../sessions.ts';
 import { getToolDetails } from '../tool-details.ts';
 import { getVersions } from '../versions.ts';
-import { getToolListing } from '../listings.ts';
+import { getToolListing, LISTING_ORDERS, type ListingOrder } from '../listings.ts';
 import { parseTimeRange, type TimeRange } from '../time-range.ts';
 
 type DashboardContext = Context<{ Variables: SessionVariables }>;
@@ -173,9 +173,20 @@ export function createDashboardRoutes() {
 
     if ('error' in scope) return c.json({ error: scope.error }, scope.status);
 
+    const order = c.req.query('listingOrder');
+    if (order !== undefined && !(order in LISTING_ORDERS)) {
+      return c.json({ error: `listingOrder must be one of ${Object.keys(LISTING_ORDERS).join(', ')}` }, 400);
+    }
+    const page = parsePage((name) => c.req.query(name), { limit: 20, max: 200 }, 'listing');
+    if ('error' in page) return c.json({ error: page.error }, 400);
+
     return c.json({
       range: describeRange(scope.range),
-      ...(await getToolListing(scope.serverId, scope.range, scope.filters.clientType)),
+      ...(await getToolListing(scope.serverId, scope.range, scope.filters.clientType, {
+        ...(order === undefined ? {} : { order: order as ListingOrder }),
+        offset: page.offset,
+        limit: page.limit,
+      })),
     });
   });
 
@@ -186,6 +197,11 @@ export function createDashboardRoutes() {
 
     const filters = scope.filters.clientType === undefined ? {} : { clientType: scope.filters.clientType };
     const unknownPage = { offset: 0, limit: MAX_UNKNOWN_TOOLS };
+    // A server can register a resource per file it serves: each list is paged on its own.
+    const resourcesPage = parsePage((name) => c.req.query(name), { limit: 10, max: 200 }, 'resources');
+    const promptsPage = parsePage((name) => c.req.query(name), { limit: 10, max: 200 }, 'prompts');
+    if ('error' in resourcesPage) return c.json({ error: resourcesPage.error }, 400);
+    if ('error' in promptsPage) return c.json({ error: promptsPage.error }, 400);
     const [resources, prompts, unknownResources, unknownPrompts] = await Promise.all([
       getToolStats(scope.serverId, scope.range, filters, 'calls', 'resource'),
       getToolStats(scope.serverId, scope.range, filters, 'calls', 'prompt'),
@@ -193,11 +209,19 @@ export function createDashboardRoutes() {
       getUnknownTools(scope.serverId, scope.range, unknownPage, 'prompt'),
     ]);
     const named = ({ toolName, ...rest }: { toolName: string }) => ({ name: toolName, ...rest });
+    const paged = <T>(all: T[], page: { offset: number; limit: number }) => ({
+      items: all.slice(page.offset, page.offset + page.limit),
+      page: { offset: page.offset, limit: page.limit, total: all.length, hasMore: page.offset + page.limit < all.length },
+    });
+    const resourceList = paged(resources.map(named), resourcesPage);
+    const promptList = paged(prompts.map(named), promptsPage);
 
     return c.json({
       range: describeRange(scope.range),
-      resources: resources.map(named),
-      prompts: prompts.map(named),
+      resources: resourceList.items,
+      resourcesPage: resourceList.page,
+      prompts: promptList.items,
+      promptsPage: promptList.page,
       unknownResources: unknownResources.tools.map(named),
       unknownPrompts: unknownPrompts.tools.map(named),
     });

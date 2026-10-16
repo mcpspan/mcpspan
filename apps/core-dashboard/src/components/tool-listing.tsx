@@ -4,7 +4,10 @@ import type { ToolListing as ToolListingData } from '@/lib/api';
 import { formatBytes } from '@/lib/diagnosis';
 import { formatCount } from '@/lib/format';
 import { type Params, withParams } from '@/lib/query';
+import { BreakableName } from './breakable-name';
 import { InfoTip } from './info-tip';
+import { OffsetPager } from './pager';
+import { ParamSelect } from './param-select';
 
 /** A common rule of thumb for English text and JSON; the real count depends on the model. */
 const BYTES_PER_TOKEN = 4;
@@ -23,7 +26,7 @@ export function tokens(bytes: number): string {
  * the description, or drop the tool and its cost with it.
  */
 export function ToolListing({ data, params }: { data: ToolListingData; params: Params }) {
-  const neverUsed = data.tools.filter((tool) => tool.listed && tool.usedSessions === 0).length;
+  const neverUsed = data.neverUsed;
 
   return (
     <>
@@ -48,6 +51,23 @@ export function ToolListing({ data, params }: { data: ToolListingData; params: P
         </p>
       )}
 
+      {data.total <= 1 ? null : (
+        <div className="mb-3">
+          <ParamSelect
+            params={params}
+            name="listingOrder"
+            label="Order"
+            choices={[
+              { value: 'least-used', label: 'Least used first' },
+              { value: 'largest', label: 'Largest first' },
+              { value: 'name', label: 'By name' },
+            ]}
+            resets={['listingOffset']}
+            hash="#listing"
+          />
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -57,13 +77,30 @@ export function ToolListing({ data, params }: { data: ToolListingData; params: P
               </th>
               {/* On a phone the number of sessions shown goes under the share instead. */}
               <th scope="col" className="hidden pb-2 pl-4 text-right font-medium sm:table-cell">
-                Shown in
+                <span className="inline-flex items-center gap-1">
+                  Shown in
+                  <InfoTip id="listing-shown" about="shown in">
+                    Sessions whose client was sent this tool in the list of tools, whether or not it then called it.
+                  </InfoTip>
+                </span>
               </th>
               <th scope="col" className="pb-2 pl-4 text-right font-medium">
-                Used in
+                <span className="inline-flex items-center gap-1">
+                  Used in
+                  <InfoTip id="listing-used" about="used in">
+                    Of the sessions shown the tool, the share that called it at least once. Never: shown in every one of
+                    them and not called once.
+                  </InfoTip>
+                </span>
               </th>
               <th scope="col" className="pb-2 pl-4 text-right font-medium">
-                Tokens
+                <span className="inline-flex items-center gap-1">
+                  Tokens
+                  <InfoTip id="listing-tool-tokens" about="tokens">
+                    What the tool's definition takes in the model's context, every session, called or not. Estimated at
+                    four bytes a token from its name, title, description and input schema.
+                  </InfoTip>
+                </span>
               </th>
             </tr>
           </thead>
@@ -79,9 +116,9 @@ export function ToolListing({ data, params }: { data: ToolListingData; params: P
                         { serverId: params['serverId'], range: params['range'] },
                         { toolName: tool.name },
                       )}`}
-                      className="font-mono text-xs outline-offset-2 [overflow-wrap:anywhere] hover:underline focus-visible:outline-2 focus-visible:outline-ink"
+                      className="font-mono text-xs outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ink"
                     >
-                      {tool.name}
+                      <BreakableName name={tool.name} />
                     </Link>
                     {tool.listed ? null : <span className="block text-[11px] text-ink-muted">No longer listed</span>}
                   </th>
@@ -105,6 +142,15 @@ export function ToolListing({ data, params }: { data: ToolListingData; params: P
           </tbody>
         </table>
       </div>
+      <OffsetPager
+        params={params}
+        name="listingOffset"
+        offset={data.offset}
+        limit={data.limit}
+        hasMore={data.hasMore}
+        total={data.total}
+        hash="#listing"
+      />
     </>
   );
 }
