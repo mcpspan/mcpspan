@@ -86,7 +86,7 @@ class CollectorTest {
 
         Collector.record(new ToolCallEvent("8f0e2b0c-6d2a-4c1e-9a43-1f5b0c7d9e21", null, "run", 1.0, false,
             ToolCallEvent.EXCEPTION, "java.nio.file.AccessDeniedException", "cannot read /home/me/.aws/credentials",
-            "other", null, null, null, null, null, null, null, "2026-10-09T00:00:00.000Z", "test", null, null));
+            "other", null, null, null, null, null, null, null, "2026-10-09T00:00:00.000Z", "test", null, null, null));
         McpSpan.shutdown();
 
         assertEquals(1, sent.size());

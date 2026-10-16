@@ -32,11 +32,13 @@ type Event struct {
 	Repeated bool `json:"repeated,omitempty"`
 	// InvalidArguments names, for refused arguments, which ones did not match
 	// the tool's schema (contract, 3.10).
-	InvalidArguments []string          `json:"invalidArguments,omitempty"`
-	Timestamp        string            `json:"timestamp"`
-	SDKVersion       string            `json:"sdkVersion"`
-	SessionID        string            `json:"sessionId,omitempty"`
-	Parameters       map[string]string `json:"parameters,omitempty"`
+	InvalidArguments []string `json:"invalidArguments,omitempty"`
+	// ListedTools is, on a listing, what the server listed (contract, 3.11).
+	ListedTools []ListedTool      `json:"listedTools,omitempty"`
+	Timestamp   string            `json:"timestamp"`
+	SDKVersion  string            `json:"sdkVersion"`
+	SessionID   string            `json:"sessionId,omitempty"`
+	Parameters  map[string]string `json:"parameters,omitempty"`
 }
 
 // Error sources, as the contract names them.
@@ -55,8 +57,10 @@ const (
 const (
 	KindResource = "resource"
 	KindPrompt   = "prompt"
+	// KindListing is an answer to tools/list (contract, 3.11).
+	KindListing = "listing"
 )
 
 // Version is the SDK's own version, reported in every event and in the
 // User-Agent.
-const Version = "0.6.0"
+const Version = "0.7.0"

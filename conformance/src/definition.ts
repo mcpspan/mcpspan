@@ -6,12 +6,20 @@ import { createHash } from 'node:crypto';
  * shared cases in definition-hashes.json.
  */
 export function definitionHash(tool: Record<string, unknown>): string {
+  return createHash('sha256').update(fingerprinted(tool), 'utf8').digest('hex').slice(0, 16);
+}
+
+/** How many UTF-8 bytes the fingerprinted part of a definition takes (3.11). */
+export function definitionBytes(tool: Record<string, unknown>): number {
+  return Buffer.byteLength(fingerprinted(tool), 'utf8');
+}
+
+function fingerprinted(tool: Record<string, unknown>): string {
   const hashed: Record<string, unknown> = {};
   for (const field of ['name', 'title', 'description', 'inputSchema']) {
     if (tool[field] !== undefined) hashed[field] = tool[field];
   }
-
-  return createHash('sha256').update(canonical(hashed), 'utf8').digest('hex').slice(0, 16);
+  return canonical(hashed);
 }
 
 function canonical(value: unknown): string {

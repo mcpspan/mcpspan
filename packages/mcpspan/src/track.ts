@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { currentCall } from './call.js';
 import { invalidArguments } from './arguments.js';
-import { definitionOf, schemaOf } from './definition.js';
+import { definitionOf, type ListedDefinition, schemaOf } from './definition.js';
+import { firstListing } from './listings.js';
 import { type ClientInfo, clientName } from './client.js';
 import {
   describeErrorResult,
@@ -358,6 +359,50 @@ export function recordPrimitiveCall(call: {
       sdkVersion: SDK_VERSION,
       ...(call.sessionId !== undefined && { sessionId: call.sessionId }),
       ...(call.responseBytes !== undefined && { responseBytes: call.responseBytes }),
+    });
+  } catch {
+    // Recording must never disturb the answer the client gets.
+  }
+}
+
+/** Tools in a listing beyond this are left out (contract, 3.11). */
+const MAX_LISTED_TOOLS = 500;
+
+/**
+ * Records what the server answered to `tools/list` (contract, 3.11): the
+ * tools' names, fingerprints and sizes, once per session for the same answer.
+ * Tools left out of the numbers are left out here too.
+ */
+export function recordListing(listing: {
+  tools: ListedDefinition[];
+  excluded: (name: string) => boolean;
+  timestamp: string;
+  sessionId: string | undefined;
+  client: ClientInfo | undefined;
+  serverVersion?: string | undefined;
+}): void {
+  const active = sink;
+  if (active === undefined) return;
+
+  try {
+    const listedTools = listing.tools
+      .filter((tool) => !listing.excluded(tool.name))
+      .slice(0, MAX_LISTED_TOOLS)
+      .map((tool) => ({ ...tool, name: truncate(tool.name, MAX_TOOL_NAME_LENGTH) }));
+    const signature = listedTools.map((tool) => `${tool.name}\u0000${tool.definitionHash}`).join('\u0000');
+    if (!firstListing(listing.sessionId, signature)) return;
+
+    active({
+      id: randomUUID(),
+      kind: 'listing',
+      toolName: 'tools/list',
+      durationMs: 0,
+      success: true,
+      ...identity(listing.client, listing.serverVersion),
+      timestamp: listing.timestamp,
+      sdkVersion: SDK_VERSION,
+      ...(listing.sessionId !== undefined && { sessionId: listing.sessionId }),
+      listedTools,
     });
   } catch {
     // Recording must never disturb the answer the client gets.

@@ -159,6 +159,31 @@ class JavaSdkTest {
     }
 
     @Test
+    void recordsWhatTheServerListsOncePerSessionWithoutExcludedTools() throws Exception {
+        try (Wire wire = new Wire()) {
+            server(McpSpanJavaSdk.instrument(wire.transport), flightTools());
+            wire.connect("cursor");
+
+            wire.request("tools/list", Map.of());
+            wire.request("tools/list", Map.of());
+            wire.call("ok");
+        }
+
+        List<ToolCallEvent> recorded = delivered();
+        List<ToolCallEvent> listings = recorded.stream().filter(e -> ToolCallEvent.LISTING.equals(e.kind())).toList();
+        ToolCallEvent call = recorded.stream().filter(e -> "ok".equals(e.toolName())).findFirst().orElseThrow();
+        assertEquals(1, listings.size());
+        ToolCallEvent listing = listings.get(0);
+        assertEquals(List.of("tools/list", "cursor"), List.of(listing.toolName(), listing.clientName()));
+        assertNotNull(listing.sessionId());
+        assertEquals(call.sessionId(), listing.sessionId());
+        assertTrue(listing.listedTools().stream().noneMatch(tool -> "health".equals(tool.name())));
+        assertEquals(call.definitionHash(), listing.listedTools().stream()
+            .filter(tool -> "ok".equals(tool.name())).findFirst().orElseThrow().definitionHash());
+        assertTrue(listing.listedTools().stream().allMatch(tool -> tool.definitionBytes() > tool.name().length()));
+    }
+
+    @Test
     void theClientAndOneSessionPerConnection() throws Exception {
         try (Wire wire = new Wire()) {
             server(McpSpanJavaSdk.instrument(wire.transport), flightTools());

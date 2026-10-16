@@ -12,7 +12,7 @@ import {
   type McpClient,
   SERVER_VERSION,
 } from './adapter.ts';
-import { definitionHash } from './definition.ts';
+import { definitionBytes, definitionHash } from './definition.ts';
 import { FakeIngest } from './ingest.ts';
 
 /**
@@ -45,6 +45,7 @@ const EVENT_FIELDS = new Set([
   'definitionHash',
   'repeated',
   'invalidArguments',
+  'listedTools',
   'timestamp',
   'sdkVersion',
   'sessionId',
@@ -93,9 +94,14 @@ async function run(
   open = open.filter((candidate) => candidate !== connection);
 }
 
-/** Events from tool calls, leaving out the announcement's empty batch. */
+/** Events from calls, leaving out the announcement's empty batch and listings (3.11). */
 function events(): Record<string, unknown>[] {
-  return ingest.accepted;
+  return ingest.accepted.filter((event) => event['kind'] !== 'listing');
+}
+
+/** Listings of the server's tools (3.11). */
+function listings(): Record<string, unknown>[] {
+  return ingest.accepted.filter((event) => event['kind'] === 'listing');
 }
 
 function only(name: string): Record<string, unknown> {
@@ -528,6 +534,46 @@ describe('3.10 Which arguments were refused', () => {
     await run(connection, [{ name: 'reported_error' }, { name: 'no_such_tool', arguments: { passengers: 'two' } }]);
 
     for (const event of events()) expect(event).not.toHaveProperty('invalidArguments');
+  });
+});
+
+describe('3.11 What the server lists', () => {
+  it('sends what the server listed once per session, leaving out an excluded tool', async () => {
+    const connection = await start({ clientName: 'cursor' });
+    const { tools } = await connection.client.listTools();
+    await connection.client.listTools();
+    await run(connection, [{ name: 'ok' }]);
+
+    expect(listings()).toHaveLength(1);
+    const listing = listings()[0] as Record<string, unknown>;
+    expect(listing).toMatchObject({
+      toolName: 'tools/list',
+      durationMs: 0,
+      success: true,
+      clientType: 'unknown',
+      clientName: 'cursor',
+      sessionId: only('ok')['sessionId'],
+    });
+
+    const sent = listing['listedTools'] as { name: string; definitionHash: string; definitionBytes: number }[];
+    const shown = tools.filter((tool) => tool['name'] !== 'excluded');
+    expect(sent.map((tool) => [tool.definitionHash, tool.definitionBytes])).toEqual(
+      shown.map((tool) => [definitionHash(tool), definitionBytes(tool)]),
+    );
+    sent.forEach((tool, index) => {
+      const name = String(shown[index]?.['name']);
+      if (name.length <= 200) expect(tool.name).toBe(name);
+      else expect(tool.name.length <= 200 && tool.name.startsWith('long_')).toBe(true);
+    });
+  });
+
+  it('sends a listing for each connection', async () => {
+    for (const connection of [await start(), await start()]) {
+      await connection.client.listTools();
+      await run(connection, [{ name: 'ok' }]);
+    }
+
+    expect(new Set(listings().map((listing) => listing['sessionId'])).size).toBe(2);
   });
 });
 

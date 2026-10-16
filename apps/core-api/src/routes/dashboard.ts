@@ -24,6 +24,7 @@ import { requireSession, resolveServerId, type SessionVariables } from '../sessi
 import { getSessionCalls, getSessions, getTransitions } from '../sessions.ts';
 import { getToolDetails } from '../tool-details.ts';
 import { getVersions } from '../versions.ts';
+import { getToolListing } from '../listings.ts';
 import { parseTimeRange, type TimeRange } from '../time-range.ts';
 
 type DashboardContext = Context<{ Variables: SessionVariables }>;
@@ -163,6 +164,18 @@ export function createDashboardRoutes() {
     return c.json({
       range: describeRange(scope.range),
       ...(await getVersions(scope.serverId, scope.range, scope.filters)),
+    });
+  });
+
+  // What agents were shown and what they used (contract, 3.11). Filtered by client only.
+  app.get('/listing', async (c) => {
+    const scope = resolveScope(c);
+
+    if ('error' in scope) return c.json({ error: scope.error }, scope.status);
+
+    return c.json({
+      range: describeRange(scope.range),
+      ...(await getToolListing(scope.serverId, scope.range, scope.filters.clientType)),
     });
   });
 

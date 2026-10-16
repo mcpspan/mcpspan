@@ -55,7 +55,7 @@ final class McpSdk
             $builder->setReferenceHandler(new ReferenceHandler($builder));
             $builder->addRequestHandler(new CallToolHandler($builder, $connections));
             $builder->addRequestHandler(new PrimitiveHandler($builder, $connections));
-            $builder->addRequestHandler(new ListToolsHandler($builder));
+            $builder->addRequestHandler(new ListToolsHandler($builder, $connections));
         } catch (\Throwable) {
         }
 

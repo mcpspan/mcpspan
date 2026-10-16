@@ -106,6 +106,10 @@ func run(t *testing.T, server *mcp.Server, clientName string, calls ...call) []*
 
 	var results []*mcp.CallToolResult
 	for _, c := range calls {
+		if c.name == "tools/list" {
+			_, _ = clientSession.ListTools(ctx, nil)
+			continue
+		}
 		result, _ := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: c.name, Arguments: c.arguments})
 		results = append(results, result)
 	}
@@ -268,5 +272,41 @@ func TestUnconfiguredTheServerWorksAndNothingIsRecorded(t *testing.T) {
 func TestANilServerIsReturnedAsItCame(t *testing.T) {
 	if Instrument(nil) != nil {
 		t.Fatal("not nil")
+	}
+}
+
+// What the server lists is recorded once per session, without excluded tools
+// (contract, 3.11).
+func TestRecordsWhatTheServerListsOncePerSession(t *testing.T) {
+	delivered := capture(t)
+	server := Instrument(build())
+
+	run(t, server, "cursor", call{"tools/list", nil}, call{"tools/list", nil}, call{"ok", nil})
+
+	var listings []core.Event
+	var ok core.Event
+	for _, event := range delivered() {
+		if event.Kind == core.KindListing {
+			listings = append(listings, event)
+		} else if event.ToolName == "ok" {
+			ok = event
+		}
+	}
+	if len(listings) != 1 {
+		t.Fatalf("listings %+v", listings)
+	}
+	listing := listings[0]
+	if listing.ToolName != "tools/list" || listing.SessionID == "" || listing.SessionID != ok.SessionID || listing.ClientName != "cursor" {
+		t.Errorf("listing %+v, call %+v", listing, ok)
+	}
+	hashes := map[string]string{}
+	for _, tool := range listing.ListedTools {
+		hashes[tool.Name] = tool.DefinitionHash
+		if tool.DefinitionBytes <= len(tool.Name) {
+			t.Errorf("size of %s: %d", tool.Name, tool.DefinitionBytes)
+		}
+	}
+	if _, listed := hashes["excluded"]; listed || hashes["ok"] == "" || hashes["ok"] != ok.DefinitionHash {
+		t.Errorf("listed %v, call fingerprint %q", hashes, ok.DefinitionHash)
 	}
 }

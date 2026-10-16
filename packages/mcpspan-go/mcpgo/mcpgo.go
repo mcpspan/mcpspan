@@ -83,9 +83,12 @@ func Instrument(s *server.MCPServer, config ...mcpspan.Config) *server.MCPServer
 		server.WithHooks(hooks)(s)
 	}
 
-	hooks.AddAfterListTools(func(_ context.Context, _ any, _ *mcp.ListToolsRequest, result *mcp.ListToolsResult) {
+	hooks.AddAfterListTools(func(ctx context.Context, _ any, request *mcp.ListToolsRequest, result *mcp.ListToolsResult) {
 		if result != nil && core.Recording() {
-			core.NoteListing(result.Tools)
+			tools := core.NoteListing(result.Tools)
+			if request != nil {
+				core.RecordListing(beginPrimitive(s, ctx, request.Header != nil, core.KindListing, "tools/list", nil, request.Params.Meta), tools)
+			}
 		}
 	})
 	hooks.AddBeforeCallTool(func(ctx context.Context, _ any, request *mcp.CallToolRequest) {

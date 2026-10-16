@@ -39,27 +39,45 @@ pub(crate) fn definition_of(tool_name: &str) -> Option<String> {
     listed().lock().ok()?.get(tool_name).cloned()
 }
 
-/// Notes every tool in a listing, as rmcp writes it to the client. Never panics.
-pub(crate) fn note_listing(tools: &[rmcp::model::Tool]) {
+/// One tool in a listing (contract, 3.11): its name, fingerprint and size. Never its definition.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ListedTool {
+    pub name: String,
+    pub hash: String,
+    /// UTF-8 bytes of the canonical JSON the fingerprint is taken from.
+    pub bytes: usize,
+}
+
+/// Notes every tool in a listing, as rmcp writes it to the client, and returns them in its order, each with its
+/// fingerprint and size (contract, 3.11). Never panics.
+pub(crate) fn note_listing(tools: &[rmcp::model::Tool]) -> Vec<ListedTool> {
+    let mut found = Vec::new();
     for tool in tools {
         let Ok(wire) = serde_json::to_value(tool) else { continue };
         let Some(name) = wire.get("name").and_then(Value::as_str) else {
             continue;
         };
-        if let Some(hash) = definition_hash(&wire)
-            && let Ok(mut listed) = listed().lock()
-        {
-            listed.insert(name.to_owned(), hash);
+        if let Some((hash, bytes)) = fingerprint(&wire) {
+            if let Ok(mut listed) = listed().lock() {
+                listed.insert(name.to_owned(), hash.clone());
+            }
+            found.push(ListedTool {
+                name: name.to_owned(),
+                hash,
+                bytes,
+            });
         }
         if let Ok(mut schemas) = schemas().lock() {
             schemas.insert(name.to_owned(), wire.get("inputSchema").cloned().unwrap_or(Value::Null));
         }
     }
+    found
 }
 
 /// The first 16 hex characters of the SHA-256 of the tool's name, title, description and input schema, as
-/// canonical JSON; `None` for a definition that cannot be written so.
-pub(crate) fn definition_hash(tool: &Value) -> Option<String> {
+/// canonical JSON, and the size in UTF-8 bytes of that JSON (contract, 3.8 and 3.11); `None` for a definition that
+/// cannot be written so.
+pub(crate) fn fingerprint(tool: &Value) -> Option<(String, usize)> {
     let mut hashed = serde_json::Map::new();
     for field in ["name", "title", "description", "inputSchema"] {
         if let Some(value) = tool.get(field).filter(|value| !value.is_null()) {
@@ -73,7 +91,7 @@ pub(crate) fn definition_hash(tool: &Value) -> Option<String> {
     for byte in &digest[..8] {
         let _ = write!(hex, "{byte:02x}");
     }
-    Some(hex)
+    Some((hex, text.len()))
 }
 
 /// A value as canonical JSON (contract, 3.8), or `None` for what cannot be written so.
@@ -165,9 +183,16 @@ mod tests {
         .expect("shared cases");
         let shared: Value = serde_json::from_str(&raw).expect("JSON");
         for case in shared["cases"].as_array().expect("cases") {
+            let written = fingerprint(&case["tool"]);
             assert_eq!(
-                definition_hash(&case["tool"]).as_deref(),
+                written.as_ref().map(|(hash, _)| hash.as_str()),
                 case["hash"].as_str(),
+                "{}",
+                case["case"]
+            );
+            assert_eq!(
+                written.map(|(_, bytes)| bytes as u64),
+                case["bytes"].as_u64(),
                 "{}",
                 case["case"]
             );

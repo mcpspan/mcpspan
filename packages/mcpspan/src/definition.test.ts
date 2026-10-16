@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { definitionHash, definitionOf, forgetListings, noteListing } from './definition.js';
+import { definitionHash, definitionOf, fingerprint, forgetListings, noteListing } from './definition.js';
 
 const shared = JSON.parse(readFileSync(new URL('../../../conformance/definition-hashes.json', import.meta.url), 'utf8')) as {
-  cases: { case: string; tool: Record<string, unknown>; hash: string }[];
+  cases: { case: string; tool: Record<string, unknown>; hash: string; bytes: number }[];
 };
 
 afterEach(() => forgetListings());
@@ -15,6 +15,13 @@ describe('definitionHash (contract, 3.8)', () => {
     'fingerprints %s as every SDK does',
     (_name, tool, hash) => {
       expect(definitionHash(tool)).toBe(hash);
+    },
+  );
+
+  it.each(shared.cases.map((entry) => [entry.case, entry.tool, entry.bytes] as const))(
+    'sizes %s as every SDK does (contract, 3.11)',
+    (_name, tool, bytes) => {
+      expect(fingerprint(tool)?.bytes).toBe(bytes);
     },
   );
 

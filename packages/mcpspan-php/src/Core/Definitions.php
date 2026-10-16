@@ -42,26 +42,33 @@ final class Definitions
 
     /**
      * Notes every tool in a listing, in whatever shape the SDK keeps them, written to JSON and read back as the
-     * client reads it: an empty object stays an object. Never throws.
+     * client reads it: an empty object stays an object. Returns them in its order, each with its fingerprint and
+     * size (contract, 3.11). Never throws.
+     *
+     * @return list<array{string, string, int}> name, fingerprint and size of each tool
      */
-    public static function note(mixed $tools): void
+    public static function note(mixed $tools): array
     {
+        $found = [];
         try {
             $wire = json_decode(json_encode($tools, \JSON_THROW_ON_ERROR), false, 512, \JSON_THROW_ON_ERROR);
             if (!\is_array($wire)) {
-                return;
+                return $found;
             }
             foreach ($wire as $tool) {
                 if ($tool instanceof \stdClass && isset($tool->name) && \is_string($tool->name)) {
-                    $hash = self::hash($tool);
-                    if (null !== $hash) {
-                        self::$listed[$tool->name] = $hash;
+                    $written = self::fingerprint($tool);
+                    if (null !== $written) {
+                        self::$listed[$tool->name] = $written[0];
+                        $found[] = [$tool->name, $written[0], $written[1]];
                     }
                     self::$schemas[$tool->name] = $tool->inputSchema ?? null;
                 }
             }
         } catch (\Throwable) {
         }
+
+        return $found;
     }
 
     /** For tests: forgets every listing. */
@@ -77,6 +84,17 @@ final class Definitions
      */
     public static function hash(\stdClass $tool): ?string
     {
+        return self::fingerprint($tool)[0] ?? null;
+    }
+
+    /**
+     * The fingerprint, and the size in UTF-8 bytes of the canonical JSON it is taken from (contract, 3.11); null for
+     * a definition that cannot be written so.
+     *
+     * @return array{string, int}|null
+     */
+    public static function fingerprint(\stdClass $tool): ?array
+    {
         try {
             $hashed = new \stdClass();
             foreach (self::HASHED as $field) {
@@ -85,7 +103,9 @@ final class Definitions
                 }
             }
 
-            return substr(hash('sha256', self::canonical($hashed)), 0, 16);
+            $written = self::canonical($hashed);
+
+            return [substr(hash('sha256', $written), 0, 16), \strlen($written)];
         } catch (\Throwable) {
             return null;
         }

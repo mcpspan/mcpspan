@@ -216,6 +216,57 @@ final class Collector
         }
     }
 
+    /** Tools in a listing beyond this are left out (contract, 3.11). */
+    private const MAX_LISTED_TOOLS = 500;
+
+    /**
+     * Records what the server answered to `tools/list` (contract, 3.11): the tools' names, fingerprints and sizes,
+     * once per session for the same answer, leaving out those `$excluded` names. `$call` carries the client, the
+     * session and the versions. It never blocks on the network.
+     *
+     * @param list<array{string, string, int}> $tools
+     * @param \Closure(string): bool           $excluded
+     */
+    public static function recordListing(?Call $call, array $tools, \Closure $excluded): void
+    {
+        $delivery = self::$delivery;
+        if (null === $delivery || null === $call) {
+            return;
+        }
+        try {
+            $shown = [];
+            foreach ($tools as [$name, $hash, $bytes]) {
+                if (!$excluded($name) && \count($shown) < self::MAX_LISTED_TOOLS) {
+                    $shown[] = ['name' => Text::truncate($name, Text::MAX_NAME), 'definitionHash' => $hash, 'definitionBytes' => $bytes];
+                }
+            }
+            $signature = implode("\0", array_map(static fn (array $tool): string => $tool['name']."\0".$tool['definitionHash'], $shown));
+            if (!Listings::first($call->sessionId, $signature)) {
+                return;
+            }
+            $event = new Event(
+                Event::uuid(),
+                'tools/list',
+                0.0,
+                true,
+                null,
+                null,
+                null,
+                'unknown',
+                Text::clientName($call->clientName),
+                self::timestamp($call->timestamp),
+                $call->sessionId,
+                null,
+                Event::KIND_LISTING,
+                Text::version($call->clientVersion),
+                Text::version($call->serverVersion),
+                listedTools: $shown,
+            );
+            $delivery->record($event->toArray());
+        } catch (\Throwable) {
+        }
+    }
+
     /**
      * For tests: deliver through this rather than over HTTP, from the server's own process.
      *

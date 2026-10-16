@@ -163,7 +163,7 @@ final class CallToolHandler implements RequestHandlerInterface
     }
 
     /** The function a tool's handler runs, for its attributes. */
-    private static function reflect(mixed $handler): ?\Reflector
+    public static function reflect(mixed $handler): ?\Reflector
     {
         try {
             return match (true) {

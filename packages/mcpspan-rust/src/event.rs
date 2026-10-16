@@ -32,6 +32,8 @@ pub(crate) struct Event {
     pub timestamp: String,
     pub session_id: Option<String>,
     pub parameters: Option<Map<String, Value>>,
+    /// On a listing: the tools the server listed, in its order (contract, 3.11).
+    pub listed_tools: Option<Value>,
 }
 
 /// How a failed call announced itself, as the contract names it.
@@ -76,6 +78,7 @@ impl Event {
         optional("sdkVersion", Some(crate::VERSION.into()));
         optional("sessionId", self.session_id.clone().map(Value::from));
         optional("parameters", self.parameters.clone().map(Value::Object));
+        optional("listedTools", self.listed_tools.clone());
         Value::Object(object)
     }
 }

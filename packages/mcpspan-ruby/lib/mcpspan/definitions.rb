@@ -29,19 +29,23 @@ module McpSpan
         @lock.synchronize { @schemas[tool_name] }
       end
 
-      # Notes every tool in a listing, in whatever key style the gem keeps them. Never raises.
+      # Notes every tool in a listing, in whatever key style the gem keeps them, and returns them in its order as
+      # name, fingerprint and size (contract, 3.11). Never raises.
       def note(tools)
+        found = []
         JSON.parse(JSON.generate(Array(tools))).each do |tool|
           next unless tool.is_a?(Hash) && tool["name"].is_a?(String)
 
-          fingerprint = hash(tool)
+          written = fingerprint(tool)
           @lock.synchronize do
-            @listed[tool["name"]] = fingerprint if fingerprint
+            @listed[tool["name"]] = written[0] if written
             @schemas[tool["name"]] = tool["inputSchema"]
           end
+          found << [tool["name"], *written] if written
         end
+        found
       rescue StandardError
-        nil
+        found || []
       end
 
       # For tests: forgets every listing.
@@ -55,8 +59,15 @@ module McpSpan
       # The first 16 hex characters of the SHA-256 of the tool's name, title, description and input schema, as
       # canonical JSON; nil for a definition that cannot be written so.
       def hash(tool)
+        fingerprint(tool)&.first
+      end
+
+      # The fingerprint, and the size in UTF-8 bytes of the canonical JSON it is taken from (contract, 3.11); nil for
+      # a definition that cannot be written so.
+      def fingerprint(tool)
         hashed = HASHED.each_with_object({}) { |field, out| out[field] = tool[field] unless tool[field].nil? }
-        Digest::SHA256.hexdigest(canonical(hashed))[0, 16]
+        written = canonical(hashed)
+        [Digest::SHA256.hexdigest(written)[0, 16], written.bytesize]
       rescue StandardError
         nil
       end

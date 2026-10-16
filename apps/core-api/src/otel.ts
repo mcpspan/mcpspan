@@ -507,5 +507,6 @@ export function openTelemetryTargets(): string[] | null {
 
 /** Hands calls just stored to OpenTelemetry, if it is on. Never throws. */
 export function forwardToOpenTelemetry(serverId: string, events: readonly ToolCallEventInput[]): void {
-  exporter?.record(serverId, events);
+  // Calls only: a listing (contract, 3.11) is no operation of the server's.
+  exporter?.record(serverId, events.filter((event) => event.kind !== 'listing'));
 }

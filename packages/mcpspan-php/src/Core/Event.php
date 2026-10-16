@@ -22,6 +22,8 @@ final class Event
 
     public const KIND_RESOURCE = 'resource';
     public const KIND_PROMPT = 'prompt';
+    /** An answer to `tools/list` (contract, 3.11). */
+    public const KIND_LISTING = 'listing';
 
     /**
      * @param array<string, string>|null $parameters
@@ -54,6 +56,12 @@ final class Event
          * @var list<string>|null
          */
         public readonly ?array $invalidArguments = null,
+        /**
+         * On a listing: the tools the server listed, in its order (contract, 3.11).
+         *
+         * @var list<array{name: string, definitionHash: string, definitionBytes: int}>|null
+         */
+        public readonly ?array $listedTools = null,
     ) {
     }
 
@@ -86,6 +94,7 @@ final class Event
             'sessionId' => $this->sessionId,
             // An object even when PHP would take the keys for a list.
             'parameters' => null === $this->parameters ? null : (object) $this->parameters,
+            'listedTools' => $this->listedTools,
         ], static fn (mixed $value): bool => null !== $value);
     }
 

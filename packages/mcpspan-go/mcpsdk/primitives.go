@@ -260,6 +260,8 @@ func clientOf(req mcp.Request) *mcp.Implementation {
 		return r.ClientInfo()
 	case *mcp.GetPromptRequest:
 		return r.ClientInfo()
+	case *mcp.ListToolsRequest:
+		return r.ClientInfo()
 	}
 	return nil
 }
@@ -274,6 +276,8 @@ func sessionOf(server *mcp.Server, req mcp.Request) string {
 	case *mcp.ReadResourceRequest:
 		extra, session = r.Extra, r.Session
 	case *mcp.GetPromptRequest:
+		extra, session = r.Extra, r.Session
+	case *mcp.ListToolsRequest:
 		extra, session = r.Extra, r.Session
 	}
 	transportSession := ""

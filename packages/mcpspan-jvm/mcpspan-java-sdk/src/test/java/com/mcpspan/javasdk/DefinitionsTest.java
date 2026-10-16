@@ -28,6 +28,8 @@ class DefinitionsTest {
 
         for (Map<String, Object> entry : (List<Map<String, Object>>) shared.get("cases")) {
             assertEquals(entry.get("hash"), Definitions.hash((Map<?, ?>) entry.get("tool")), (String) entry.get("case"));
+            assertEquals(((Number) entry.get("bytes")).intValue(),
+                Definitions.fingerprint((Map<?, ?>) entry.get("tool")).definitionBytes(), (String) entry.get("case"));
         }
     }
 

@@ -6,7 +6,13 @@ from typing import Any
 
 import pytest
 
-from mcpspan._definition import definition_hash, definition_of, forget_listings, note_listing
+from mcpspan._definition import (
+    definition_hash,
+    definition_of,
+    fingerprint,
+    forget_listings,
+    note_listing,
+)
 
 SHARED = json.loads(
     (Path(__file__).parents[3] / "conformance" / "definition-hashes.json").read_text(
@@ -24,6 +30,11 @@ def _forget() -> Any:
 @pytest.mark.parametrize("case", SHARED, ids=[case["case"] for case in SHARED])
 def test_fingerprints_the_shared_cases_as_every_sdk_does(case: dict[str, Any]) -> None:
     assert definition_hash(case["tool"]) == case["hash"]
+
+
+@pytest.mark.parametrize("case", SHARED, ids=[case["case"] for case in SHARED])
+def test_sizes_the_shared_cases_as_every_sdk_does(case: dict[str, Any]) -> None:
+    assert fingerprint(case["tool"]) == (case["hash"], case["bytes"])
 
 
 def test_keeps_the_latest_listed_fingerprint_of_each_tool() -> None:

@@ -26,6 +26,9 @@ and nothing ever leaves your machine.
 - **Answer sizes.** How large each tool's answers are, typical and largest:
   a tool that now and then returns megabytes fills the agent's context while
   looking fine on every latency chart.
+- **What agents are shown.** Every session starts by reading the definitions
+  of all your tools, called or not. See how many tokens that list costs, and
+  which tools agents were shown in hundreds of sessions and never called.
 - **Failures, told apart.** A handler that threw, a tool that answered with an
   error, arguments the server refused and which of them were wrong, and tools
   that agents asked for but your server does not have: which clients asked,

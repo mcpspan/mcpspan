@@ -29,10 +29,21 @@ internal sealed record ToolCallEvent
     [JsonPropertyName("repeated")] public bool? Repeated { get; init; }
     /// <summary>For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10).</summary>
     [JsonPropertyName("invalidArguments")] public IReadOnlyList<string>? InvalidArguments { get; init; }
+    /// <summary>On a listing: the tools the server listed, in its order (contract, 3.11).</summary>
+    [JsonPropertyName("listedTools")] public IReadOnlyList<ListedTool>? ListedTools { get; init; }
     [JsonPropertyName("timestamp")] public required string Timestamp { get; init; }
     [JsonPropertyName("sdkVersion")] public required string SdkVersion { get; init; }
     [JsonPropertyName("sessionId")] public string? SessionId { get; init; }
     [JsonPropertyName("parameters")] public IReadOnlyDictionary<string, string>? Parameters { get; init; }
+}
+
+/// <summary>One tool in a listing (contract, 3.11): its name, fingerprint and size. Never its definition.</summary>
+internal sealed record ListedTool
+{
+    [JsonPropertyName("name")] public required string Name { get; init; }
+    [JsonPropertyName("definitionHash")] public required string DefinitionHash { get; init; }
+    /// <summary>UTF-8 bytes of the canonical JSON the fingerprint is taken from.</summary>
+    [JsonPropertyName("definitionBytes")] public required int DefinitionBytes { get; init; }
 }
 
 /// <summary>How a failed call announced itself, as the contract names it.</summary>

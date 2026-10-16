@@ -12,7 +12,7 @@ from typing import Any, TypeVar, overload
 from ._arguments import invalid_arguments
 from ._call import CallState, current_call
 from ._client import ClientInfo, client_name
-from ._definition import definition_of, schema_of
+from ._definition import ListedDefinition, definition_of, schema_of
 from ._failure import (
     MAX_NAME_LENGTH,
     describe_error_result,
@@ -22,9 +22,10 @@ from ._failure import (
     response_bytes,
     truncate,
 )
+from ._listings import first_listing
 from ._marks import is_marked, mark_excluded, mark_handler
 from ._parameters import describe_parameters
-from ._types import ToolCallEvent
+from ._types import ListedTool, ToolCallEvent
 from ._version import SDK_VERSION
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -410,6 +411,59 @@ def record_call(
         sink(event)
     except Exception:
         # Recording a call must never disturb the answer the client gets.
+        pass
+
+
+# Tools in a listing beyond this are left out (contract, 3.11).
+_MAX_LISTED_TOOLS = 500
+
+
+def record_listing(
+    tools: list[ListedDefinition],
+    *,
+    excluded: Callable[[str], bool],
+    session_id: str | None,
+    client: ClientInfo | None,
+    server_version: str | None,
+    timestamp: str,
+) -> None:
+    """Records what the server answered to `tools/list` (contract, 3.11): the
+    tools' names, fingerprints and sizes, once per session for the same answer.
+    Tools left out of the numbers are left out here too."""
+    sink = _sink
+    if sink is None:
+        return
+
+    try:
+        listed = [
+            ListedTool(
+                name=truncate(tool.name, MAX_NAME_LENGTH),
+                definitionHash=tool.definition_hash,
+                definitionBytes=tool.definition_bytes,
+            )
+            for tool in tools
+            if not excluded(tool.name)
+        ][:_MAX_LISTED_TOOLS]
+        signature = "\x00".join(f"{tool['name']}\x00{tool['definitionHash']}" for tool in listed)
+        if not first_listing(session_id, signature):
+            return
+
+        event = _build_event(
+            tool_name="tools/list",
+            duration_ms=0,
+            success=True,
+            client=client,
+            session_id=session_id,
+            arguments=None,
+            timestamp=timestamp,
+            server_version=server_version,
+        )
+        event.pop("parameters", None)
+        event["kind"] = "listing"
+        event["listedTools"] = listed
+        sink(event)
+    except Exception:
+        # Recording must never disturb the answer the client gets.
         pass
 
 

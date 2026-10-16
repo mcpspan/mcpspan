@@ -43,6 +43,19 @@ except ImportError:
     InputRequiredResult = None  # type: ignore[assignment, misc, unused-ignore]
 
 
+def calls_into(events: list[ToolCallEvent]) -> Callable[[ToolCallEvent], None]:
+    """A sink keeping calls, and the listings (contract, 3.11) in LISTINGS."""
+    LISTINGS.clear()
+
+    def sink(event: ToolCallEvent) -> None:
+        (LISTINGS if event.get("kind") == "listing" else events).append(event)
+
+    return sink
+
+
+LISTINGS: list[ToolCallEvent] = []
+
+
 @asynccontextmanager
 async def connect(
     server: Any, name: str = "claude-code", mode: str = "legacy"
@@ -123,7 +136,7 @@ def instrumented(server: Any, events: list[ToolCallEvent]) -> Any:
     mcpspan.instrument(server)
     # After instrument(), which without a key configures nothing and would
     # otherwise switch this sink off again.
-    set_event_sink(events.append)
+    set_event_sink(calls_into(events))
     return server
 
 
@@ -230,7 +243,7 @@ def test_a_tool_tracked_by_hand_and_instrumented_counts_once(events: list[ToolCa
 
     server = instrumented(build(register), events)
     mcpspan.instrument(server)
-    set_event_sink(events.append)
+    set_event_sink(calls_into(events))
 
     run(server, ("by_hand", {}), ("ok", {}))
 
@@ -407,3 +420,31 @@ def test_a_version_given_to_the_sdk_wins_over_the_servers_own(events: list[ToolC
         set_server_version(None)
 
     assert events[0].get("serverVersion") == "a1b2c3d"
+
+
+def test_records_what_the_server_lists_once_per_session(events: list[ToolCallEvent]) -> None:
+    server = instrumented(build(), events)
+
+    async def go() -> Any:
+        async with connect(server) as client:
+            listed = await client.list_tools()
+            await client.list_tools()
+            await client.call_tool("ok", {})
+            return listed
+
+    listed = anyio.run(go)
+
+    assert len(LISTINGS) == 1
+    listing = LISTINGS[0]
+    sent = listing["listedTools"]
+    assert [tool["name"] for tool in sent] == [
+        tool.name for tool in listed.tools if tool.name != "excluded"
+    ]
+    assert all(tool["definitionBytes"] > len(tool["name"]) for tool in sent)
+    call = by_tool(events)["ok"]
+    assert listing["toolName"] == "tools/list"
+    assert listing.get("sessionId") == call.get("sessionId") is not None
+    assert listing.get("clientName") == "claude-code"
+    assert {tool["name"]: tool["definitionHash"] for tool in sent}["ok"] == call.get(
+        "definitionHash"
+    )

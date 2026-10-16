@@ -21,6 +21,7 @@ mod definition;
 mod event;
 mod handler;
 mod instrument;
+mod listings;
 mod options;
 mod primitives;
 mod repeats;

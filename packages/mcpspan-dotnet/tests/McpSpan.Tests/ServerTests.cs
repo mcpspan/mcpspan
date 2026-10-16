@@ -91,6 +91,8 @@ internal sealed class Connection : IAsyncDisposable
         }
     }
 
+    public async Task ListAsync() => await _client.ListToolsAsync();
+
     /// <summary>Reads a resource, swallowing the error a refusal comes back as.</summary>
     public async Task ReadAsync(string uri)
     {
@@ -126,6 +128,27 @@ public sealed class ServerTests
 {
     private static Dictionary<string, ToolCallEvent> ByTool(IEnumerable<ToolCallEvent> events) =>
         events.GroupBy(e => e.ToolName).ToDictionary(g => g.Key, g => g.Last());
+
+    [Fact]
+    public async Task Records_what_the_server_lists_once_per_session_without_excluded_tools()
+    {
+        await using var captured = new Captured();
+        await using (var connection = await Connection.OpenAsync(b => b.WithTools<FlightTools>().WithMcpSpan(), "cursor"))
+        {
+            await connection.ListAsync();
+            await connection.ListAsync();
+            await connection.CallAsync("ok");
+        }
+
+        var delivered = await captured.DeliveredAsync();
+        var listing = Assert.Single(delivered, e => e.Kind == "listing");
+        var call = delivered.Single(e => e.ToolName == "ok");
+        Assert.Equal(("tools/list", "cursor", call.SessionId), (listing.ToolName, listing.ClientName, listing.SessionId));
+        Assert.NotNull(listing.SessionId);
+        Assert.DoesNotContain(listing.ListedTools!, tool => tool.Name == "health");
+        Assert.Equal(call.DefinitionHash, listing.ListedTools!.Single(tool => tool.Name == "ok").DefinitionHash);
+        Assert.All(listing.ListedTools!, tool => Assert.True(tool.DefinitionBytes > tool.Name.Length));
+    }
 
     [Fact]
     public async Task Records_each_kind_of_outcome_and_leaves_the_answers_alone()

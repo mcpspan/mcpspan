@@ -18,6 +18,7 @@ import { CALL_TABLES, type CallKind } from './rollup.ts';
  * The server comes from the caller, never from an event. That is the whole
  * reason the column is not in the request schema.
  *
+ * Listings of the server's tools (contract, 3.11) go to a table of their own.
  * An event of a kind this API does not know is not stored anywhere.
  *
  * @returns the events that were new; the rest were copies of events already
@@ -41,6 +42,14 @@ export async function insertEvents(
     }
   }
 
+  const listings = events.filter((event) => event.kind === 'listing' && event.listedTools !== undefined);
+  if (listings.length > 0) {
+    const ids = await insertListings(serverId, listings);
+    for (const event of listings) {
+      if (ids.delete(event.id.toLowerCase())) stored.push(event);
+    }
+  }
+
   await noteVersions(serverId, events);
   await noteDefinitions(serverId, events);
 
@@ -48,25 +57,72 @@ export async function insertEvents(
 }
 
 /**
+ * Writes listings (contract, 3.11), one row each, the tools as arrays in the
+ * order listed. Passed as JSON, since unnest would flatten an array of arrays.
+ */
+async function insertListings(serverId: string, events: readonly ToolCallEventInput[]): Promise<Set<string>> {
+  const result = await getPool().query<{ id: string }>(
+    `INSERT INTO tool_listings (
+       id, server_id, occurred_at, session_id, client_type, client_name, server_version, sdk_version,
+       tool_names, definition_hashes, definition_bytes
+     )
+     SELECT
+       id, $1::uuid, occurred_at, session_id, client_type, client_name, server_version, sdk_version,
+       ARRAY(SELECT tool->>'name' FROM jsonb_array_elements(tools) AS tool),
+       ARRAY(SELECT tool->>'definitionHash' FROM jsonb_array_elements(tools) AS tool),
+       ARRAY(SELECT (tool->>'definitionBytes')::integer FROM jsonb_array_elements(tools) AS tool)
+     FROM unnest(
+       $2::uuid[], $3::timestamptz[], $4::uuid[], $5::text[], $6::text[], $7::text[], $8::text[], $9::jsonb[]
+     ) AS incoming (id, occurred_at, session_id, client_type, client_name, server_version, sdk_version, tools)
+     ON CONFLICT DO NOTHING
+     RETURNING id`,
+    [
+      serverId,
+      events.map((event) => event.id),
+      events.map((event) => event.timestamp),
+      events.map((event) => event.sessionId ?? null),
+      events.map((event) => event.clientType),
+      events.map((event) => event.clientName ?? null),
+      events.map((event) => event.serverVersion ?? null),
+      events.map((event) => event.sdkVersion),
+      events.map((event) => JSON.stringify(event.listedTools ?? [])),
+    ],
+  );
+
+  return new Set(result.rows.map((row) => row.id));
+}
+
+/**
  * Keeps when each definition of each tool was first and last seen (contract,
- * 3.8), from the whole batch for the same reason as versions. Only tool calls
- * carry one; a fingerprint on anything else is ignored rather than refused.
+ * 3.8), from the whole batch for the same reason as versions. Tool calls and
+ * listings (3.11) carry them, so a tool's definition is known from the moment
+ * it is listed, called or not; a fingerprint on anything else is ignored
+ * rather than refused.
  */
 async function noteDefinitions(serverId: string, events: readonly ToolCallEventInput[]): Promise<void> {
   const seen = new Map<string, { tool: string; hash: string; first: string; last: string }>();
-
-  for (const event of events) {
-    if (event.definitionHash === undefined || event.definitionHash === '') continue;
-    if ((event.kind ?? 'tool') !== 'tool' || event.errorSource === 'unknown_tool') continue;
-    const at = new Date(event.timestamp).toISOString();
-    const key = JSON.stringify([event.toolName, event.definitionHash]);
+  const note = (tool: string, hash: string, at: string): void => {
+    const key = JSON.stringify([tool, hash]);
     const known = seen.get(key);
     seen.set(key, {
-      tool: event.toolName,
-      hash: event.definitionHash,
+      tool,
+      hash,
       first: known === undefined || at < known.first ? at : known.first,
       last: known === undefined || at > known.last ? at : known.last,
     });
+  };
+
+  for (const event of events) {
+    const at = new Date(event.timestamp).toISOString();
+    if (event.kind === 'listing') {
+      for (const listed of event.listedTools ?? []) {
+        if (listed.definitionHash !== '') note(listed.name, listed.definitionHash, at);
+      }
+      continue;
+    }
+    if (event.definitionHash === undefined || event.definitionHash === '') continue;
+    if ((event.kind ?? 'tool') !== 'tool' || event.errorSource === 'unknown_tool') continue;
+    note(event.toolName, event.definitionHash, at);
   }
 
   if (seen.size === 0) return;

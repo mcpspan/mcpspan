@@ -52,18 +52,32 @@ module McpSpan
       original = handlers.is_a?(Hash) ? handlers[method] : nil
       return unless original.respond_to?(:call) && original.respond_to?(:parameters)
 
-      note = lambda do |result|
-        Definitions.note(result[:tools] || result["tools"]) if Collector.collecting? && result.is_a?(Hash)
+      contextual = original.parameters.any? { |kind, name| %i[key keyreq].include?(kind) && name == :server_context }
+      # Always asking for the context, which is where the session and the client are; the gem's own handler gets
+      # it only if it asked for it too.
+      handlers[method] = lambda do |params, server_context: nil|
+        result = contextual ? original.call(params, server_context: server_context) : original.call(params)
+        record_listing(server, result, server_context) if Collector.collecting? && result.is_a?(Hash)
         result
       end
-      contextual = original.parameters.any? { |kind, name| %i[key keyreq].include?(kind) && name == :server_context }
-      handlers[method] = if contextual
-                           lambda do |params, server_context: nil|
-                             note.call(original.call(params, server_context: server_context))
-                           end
-                         else
-                           ->(params) { note.call(original.call(params)) }
-                         end
+    rescue StandardError
+      nil
+    end
+
+    # Notes a listing's fingerprints (contract, 3.8) and records it (3.11). Never raises.
+    def record_listing(server, result, server_context)
+      tools = Definitions.note(result[:tools] || result["tools"])
+      session = server_context&.instance_variable_get(:@notification_target)
+      envelope = server_context.respond_to?(:envelope) ? server_context.envelope : nil
+      call = Collector.begin_call(
+        "tools/list",
+        arguments: nil,
+        session_id: session_id(session),
+        server_version: server_version(server),
+        kind: "listing",
+        **client(envelope, session, server),
+      )
+      Collector.record_listing(call, tools) { |name| excluded?(server.tools[name], name) }
     rescue StandardError
       nil
     end

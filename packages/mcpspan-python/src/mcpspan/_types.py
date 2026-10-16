@@ -25,6 +25,15 @@ class _RequiredEventFields(TypedDict):
     sdkVersion: str
 
 
+class ListedTool(TypedDict):
+    """One tool in a listing (contract, 3.11): its name, fingerprint and size.
+    Never its definition."""
+
+    name: str
+    definitionHash: str
+    definitionBytes: int
+
+
 class ToolCallEvent(_RequiredEventFields, total=False):
     """A single tool call, in the shape the ingest API takes.
 
@@ -32,6 +41,7 @@ class ToolCallEvent(_RequiredEventFields, total=False):
     goes out exactly as it is built. Parameter values are never part of it.
     """
 
+    kind: str
     errorSource: str
     errorType: str
     errorMessage: str
@@ -42,5 +52,6 @@ class ToolCallEvent(_RequiredEventFields, total=False):
     definitionHash: str
     repeated: bool
     invalidArguments: list[str]
+    listedTools: list[ListedTool]
     sessionId: str
     parameters: dict[str, str]

@@ -193,4 +193,23 @@ final class LaravelMcpTest extends TestCase
         self::assertFalse(McpSpan::collecting());
         $response->assertSee('LIS for 1');
     }
+
+    public function testRecordsWhatTheServerListsOncePerSessionWithoutExcludedTools(): void
+    {
+        $this->capture();
+        $server = $this->stdioServer(new QuietStdio());
+        $server->handle(self::message(0, 'initialize', ['protocolVersion' => '2025-11-25', 'capabilities' => [], 'clientInfo' => ['name' => 'cursor', 'version' => '1']]));
+        $server->handle(self::message(1, 'tools/list', []));
+        $server->handle(self::message(2, 'tools/list', []));
+        $server->handle(self::message(3, 'tools/call', ['name' => 'search_flights', 'arguments' => ['destination' => 'LIS', 'passengers' => 2]]));
+        $events = $this->delivered();
+
+        $listings = array_values(array_filter($events, static fn (array $event): bool => 'listing' === ($event['kind'] ?? null)));
+        self::assertCount(1, $listings);
+        $search = $this->capture->only('search_flights');
+        self::assertSame(['tools/list', 'cursor', $search['sessionId']], [$listings[0]['toolName'], $listings[0]['clientName'], $listings[0]['sessionId']]);
+        $listed = array_column($listings[0]['listedTools'], null, 'name');
+        self::assertArrayNotHasKey('health_check', $listed);
+        self::assertSame($search['definitionHash'], $listed['search_flights']['definitionHash']);
+    }
 }

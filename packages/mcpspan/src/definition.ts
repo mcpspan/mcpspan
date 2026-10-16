@@ -26,22 +26,37 @@ export function schemaOf(toolName: string): unknown {
   return schemas.get(toolName);
 }
 
-/** Notes every tool in an answer to `tools/list`. Never throws. */
-export function noteListing(result: unknown): void {
+/** A tool as an answer to `tools/list` described it (contract, 3.11). */
+export interface ListedDefinition {
+  name: string;
+  definitionHash: string;
+  definitionBytes: number;
+}
+
+/**
+ * Notes every tool in an answer to `tools/list`, and returns them in its
+ * order, each with its fingerprint and size. Never throws.
+ */
+export function noteListing(result: unknown): ListedDefinition[] {
+  const found: ListedDefinition[] = [];
   try {
     const tools = (result as { tools?: unknown } | null)?.tools;
-    if (!Array.isArray(tools)) return;
+    if (!Array.isArray(tools)) return found;
 
     for (const tool of tools) {
       const name = (tool as { name?: unknown } | null)?.name;
       if (typeof name !== 'string') continue;
-      const hash = definitionHash(tool as Record<string, unknown>);
-      if (hash !== undefined) listed.set(name, hash);
+      const written = fingerprint(tool as Record<string, unknown>);
+      if (written !== undefined) {
+        listed.set(name, written.hash);
+        found.push({ name, definitionHash: written.hash, definitionBytes: written.bytes });
+      }
       schemas.set(name, (tool as { inputSchema?: unknown }).inputSchema);
     }
   } catch {
     // A listing that cannot be read leaves the fingerprints as they were.
   }
+  return found;
 }
 
 /** For tests: forgets every listing. */
@@ -56,13 +71,22 @@ export function forgetListings(): void {
  * that cannot be written so, which is then sent without one.
  */
 export function definitionHash(tool: Record<string, unknown>): string | undefined {
+  return fingerprint(tool)?.hash;
+}
+
+/** The fingerprint, and the size in UTF-8 bytes of the canonical JSON it is taken from (contract, 3.11). */
+export function fingerprint(tool: Record<string, unknown>): { hash: string; bytes: number } | undefined {
   const hashed: Record<string, unknown> = {};
   for (const field of ['name', 'title', 'description', 'inputSchema']) {
     if (tool[field] !== undefined) hashed[field] = tool[field];
   }
 
   try {
-    return createHash('sha256').update(canonical(hashed), 'utf8').digest('hex').slice(0, 16);
+    const written = canonical(hashed);
+    return {
+      hash: createHash('sha256').update(written, 'utf8').digest('hex').slice(0, 16),
+      bytes: Buffer.byteLength(written, 'utf8'),
+    };
   } catch {
     return undefined;
   }

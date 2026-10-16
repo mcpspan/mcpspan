@@ -29,6 +29,7 @@ public sealed class DefinitionTests
         var tool = JsonNode.Parse(entry["tool"]!.ToJsonString())!.AsObject();
 
         Assert.Equal(entry["hash"]!.GetValue<string>(), Definitions.Hash(tool));
+        Assert.Equal(entry["bytes"]!.GetValue<int>(), Definitions.Fingerprint(tool)?.Bytes);
     }
 
     [Fact]

@@ -365,6 +365,33 @@ the tool's input schema. Twenty-nine refusals of `book_flight`, all of them
   checked by the cases in `conformance/argument-checks.json`.
 - Only on tool calls refused with `errorSource` `arguments`.
 
+### 3.11 What the server lists
+
+A tool no agent calls is invisible in a list of calls, and every tool costs
+something before any is called: its definition is read into the model's
+context at the start of every session. So when the server answers
+`tools/list`, the SDK SHOULD send one event that describes the answer:
+
+- `kind` `listing`, `toolName` `tools/list`, `durationMs` 0, `success`
+  `true`; the client, the session and the versions as on a call from the same
+  connection (3.6, 7, 8); `timestamp` when the answer went out.
+- `listedTools`: one entry per tool in the answer, in its order, each with
+  the tool's `name`, cut as `toolName` is (4), its `definitionHash` (3.8) and
+  `definitionBytes`, the length in UTF-8 bytes of the canonical JSON the
+  fingerprint is taken from.
+  A tool whose definition cannot be written so is left out, and so is a tool
+  left out of the numbers (3.3). At most the first 500 tools.
+- Once per session for the same answer: an SDK MUST NOT send a listing whose
+  tools, fingerprints and order are those of one it already sent for the same
+  session. It keeps what it sent for up to 10,000 sessions, forgetting the
+  oldest first. A listing with no session is sent each time. An answer the
+  client got in pages is a listing per page.
+- Names and sizes only, like everything else: the definitions themselves stay
+  in the process. `definitionBytes` and the fingerprints are checked by the
+  cases in `conformance/definition-hashes.json`.
+- A server that does not know the kind takes the event and stores nothing
+  (4), so a newer SDK loses nothing by sending it to an older server.
+
 ## 4. The event
 
 A batch is a JSON object with one field, `events`, an array of these:
@@ -372,7 +399,7 @@ A batch is a JSON object with one field, `events`, an array of these:
 | Field | Type | Required | Limit | Meaning |
 |---|---|---|---|---|
 | `id` | UUID string | yes | | Made by the SDK, once per event. Makes redelivery harmless: the API stores an event once. |
-| `kind` | string | no | 20 characters | `tool`, `resource` or `prompt` (3.5). Absent means `tool`, which is what SDKs from before 3.5 measured. |
+| `kind` | string | no | 20 characters | `tool`, `resource` or `prompt` (3.5), or `listing` (3.11). Absent means `tool`, which is what SDKs from before 3.5 measured. |
 | `toolName` | string | yes | 1 to 200 characters | What was called: the tool's registered name, or the name asked for in an `unknown_tool` refusal; for a resource or a prompt, its name as 3.5 sets out. Named for tools, which came first. |
 | `durationMs` | number | yes | finite, at least 0 | Fractional milliseconds. |
 | `success` | boolean | yes | | |
@@ -387,6 +414,7 @@ A batch is a JSON object with one field, `events`, an array of these:
 | `definitionHash` | string | no | 64 characters | The tool's definition, as listed, fingerprinted (3.8). |
 | `repeated` | boolean | no | | `true` when the call's arguments are the previous call's to the same tool in the same session (3.9); absent otherwise. |
 | `invalidArguments` | array of strings | no | 20 entries, each 1 to 200 characters | Which top-level arguments of a refused call did not match the tool's schema, by the names the schema declares (3.10). |
+| `listedTools` | array of objects | on a listing | 500 entries; `name` 1 to 200 characters, `definitionHash` 64, `definitionBytes` an integer from 0 | What the server listed (3.11). Only on `kind` `listing`. |
 | `timestamp` | string | yes | ISO 8601 with an offset | When the call started, by the reporting machine's clock. |
 | `sdkVersion` | string | yes | 1 to 50 characters | The SDK's own version. |
 | `sessionId` | UUID string | no | | See 8. |
@@ -398,8 +426,9 @@ A batch is a JSON object with one field, `events`, an array of these:
   (a client names itself, an exception names its class), so this is not
   hypothetical. The TypeScript SDK cuts with a trailing `...`.
 - The API is strict about shape and lengths and lenient about vocabulary. An
-  `errorSource` it does not know is stored, not refused, so a newer SDK can add
-  one without its events being lost.
+  `errorSource` it does not know is stored, not refused, and an event of a
+  `kind` it does not know is taken and not stored, so a newer SDK can add
+  either without the rest of its batch being lost.
 - Fields not listed here MUST NOT be sent. The API drops fields it does not
   know without refusing the batch, so a misspelt field is lost silently rather
   than reported: an SDK cannot rely on the API to catch it, and its own tests

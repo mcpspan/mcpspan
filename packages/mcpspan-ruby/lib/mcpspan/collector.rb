@@ -159,6 +159,40 @@ module McpSpan
         nil
       end
 
+      # Tools in a listing beyond this are left out (contract, 3.11).
+      MAX_LISTED_TOOLS = 500
+
+      # Records what the server answered to `tools/list` (contract, 3.11): the tools' names, fingerprints and sizes,
+      # once per session for the same answer, leaving out the tools the block says are excluded. `call` carries the
+      # client, the session and the versions. It never blocks on the network.
+      def record_listing(call, tools)
+        reporter = @reporter
+        return if reporter.nil? || call.nil?
+
+        shown = tools.reject { |name, _, _| yield(name) }.first(MAX_LISTED_TOOLS).map do |name, hash, bytes|
+          { name: Text.truncate(name, Text::MAX_NAME), definitionHash: hash, definitionBytes: bytes }
+        end
+        signature = shown.map { |tool| "#{tool[:name]}\0#{tool[:definitionHash]}" }.join("\0")
+        return unless Listings.first?(call.session_id, signature)
+
+        reporter.record(Event.new(
+          id: SecureRandom.uuid,
+          kind: "listing",
+          tool_name: "tools/list",
+          duration_ms: 0,
+          success: true,
+          client_type: "unknown",
+          client_name: Text.client_name(call.client_name),
+          client_version: Text.version(call.client_version),
+          server_version: Text.version(call.server_version),
+          timestamp: call.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%LZ"),
+          session_id: call.session_id,
+          listed_tools: shown,
+        ))
+      rescue StandardError
+        nil
+      end
+
       # Which declared arguments a refusal was over (contract, 3.10), or nil when none were found.
       def refused_names(call)
         names = ArgumentChecks.invalid(Definitions.schema_of(call.tool_name), call.arguments)

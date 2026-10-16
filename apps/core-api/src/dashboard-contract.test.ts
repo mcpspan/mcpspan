@@ -19,6 +19,7 @@ import {
   getUnknownTools,
   getVersions,
   getCalls,
+  getToolListing,
 } from '../../core-dashboard/src/lib/api.ts';
 import { createAccount, createApiKey, resetDatabase, seedEvents, type TestAccount } from '../test/fixtures.ts';
 import { createApp } from './app.ts';
@@ -430,6 +431,25 @@ describe('the session views', () => {
       toKind: 'tool',
       calls: 1,
       afterFailure: 0,
+    });
+  });
+});
+
+describe('getToolListing', () => {
+  it('parses what agents were shown (contract, 3.11)', async () => {
+    await getPool().query(
+      `INSERT INTO tool_listings (id, server_id, occurred_at, session_id, client_type, sdk_version,
+                                  tool_names, definition_hashes, definition_bytes)
+       VALUES (gen_random_uuid(), $1, $2, gen_random_uuid(), 'cursor', '0.7.0', '{search_flights}', '{abc}', '{900}')`,
+      [account.serverId, minutesAgo(5)],
+    );
+
+    const listing = await getToolListing(account.cookie);
+    expect(listing).toEqual({
+      range: expect.any(Object),
+      sessions: 1,
+      latest: { tools: 1, bytes: 900, at: expect.any(String) },
+      tools: [{ name: 'search_flights', sessions: 1, usedSessions: 0, calls: expect.any(Number), bytes: 900, listed: true }],
     });
   });
 });

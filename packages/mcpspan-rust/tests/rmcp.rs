@@ -443,3 +443,33 @@ mod primitives {
         assert!(!serde_json::to_string(&events).unwrap().contains("lovelace"));
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn records_what_the_server_lists_once_per_session_without_excluded_tools() {
+    let _serial = serial();
+    let ingest = Ingest::start();
+    let guard = mcpspan::configure(options(&ingest));
+
+    let server = mcpspan::instrument(Flights::new()).exclude(Flights::health_check_tool_attr());
+    let (connection, serving) = connect(server, "cursor").await;
+    let _ = connection.list_all_tools().await;
+    let _ = connection.list_all_tools().await;
+    call(&connection, "ok", json!({})).await;
+    leave(connection, serving).await;
+    drop(guard);
+
+    let events = ingest.events();
+    let listings: Vec<_> = events.iter().filter(|event| event["kind"] == "listing").collect();
+    assert_eq!(listings.len(), 1);
+    let listing = listings[0];
+    let ok = ingest.only("ok");
+    assert_eq!(listing["toolName"], "tools/list");
+    assert_eq!(listing["clientName"], "cursor");
+    assert!(listing["sessionId"].is_string());
+    assert_eq!(listing["sessionId"], ok["sessionId"]);
+    let tools = listing["listedTools"].as_array().expect("listed tools");
+    assert!(tools.iter().all(|tool| tool["name"] != "health_check"));
+    let listed_ok = tools.iter().find(|tool| tool["name"] == "ok").expect("ok listed");
+    assert_eq!(listed_ok["definitionHash"], ok["definitionHash"]);
+    assert!(listed_ok["definitionBytes"].as_u64().unwrap_or(0) > 2);
+}

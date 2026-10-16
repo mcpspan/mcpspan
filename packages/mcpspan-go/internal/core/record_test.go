@@ -36,17 +36,18 @@ func TestDefinitionHashMatchesTheSharedCases(t *testing.T) {
 	decoder.UseNumber()
 	var shared struct {
 		Cases []struct {
-			Case string         `json:"case"`
-			Tool map[string]any `json:"tool"`
-			Hash string         `json:"hash"`
+			Case  string         `json:"case"`
+			Tool  map[string]any `json:"tool"`
+			Hash  string         `json:"hash"`
+			Bytes int            `json:"bytes"`
 		} `json:"cases"`
 	}
 	if err := decoder.Decode(&shared); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range shared.Cases {
-		if got, ok := DefinitionHash(c.Tool); !ok || got != c.Hash {
-			t.Errorf("%s: got %q, want %q", c.Case, got, c.Hash)
+		if got, size, ok := Fingerprint(c.Tool); !ok || got != c.Hash || size != c.Bytes {
+			t.Errorf("%s: got %q and %d bytes, want %q and %d", c.Case, got, size, c.Hash, c.Bytes)
 		}
 	}
 }

@@ -27,13 +27,18 @@ public record ToolCallEvent(
     String timestamp,
     String sdkVersion,
     String sessionId,
-    Map<String, String> parameters) {
+    Map<String, String> parameters,
+    List<ListedTool> listedTools) {
+
+    /** One tool in a listing (contract, 3.11): its name, fingerprint and size. Never its definition. */
+    public record ListedTool(String name, String definitionHash, int definitionBytes) {
+    }
 
     /** The same event, less the text of its failure. */
     public ToolCallEvent withoutErrorMessage() {
         return new ToolCallEvent(id, kind, toolName, durationMs, success, errorSource, errorType, null, clientType,
             clientName, clientVersion, serverVersion, responseBytes, definitionHash, repeated, invalidArguments,
-            timestamp, sdkVersion, sessionId, parameters);
+            timestamp, sdkVersion, sessionId, parameters, listedTools);
     }
 
     /** How a failed call announced itself, as the contract names it. */
@@ -53,6 +58,8 @@ public record ToolCallEvent(
     public static final String RESOURCE = "resource";
     /** A prompt got (contract, 3.5). */
     public static final String PROMPT = "prompt";
+    /** An answer to tools/list (contract, 3.11). */
+    public static final String LISTING = "listing";
 
     /** The event as JSON, leaving absent fields out rather than sending them as null. */
     public void writeTo(StringBuilder json) {
@@ -97,6 +104,17 @@ public record ToolCallEvent(
                 first = false;
             }
             json.append('}');
+        }
+        if (listedTools != null) {
+            json.append(",\"listedTools\":[");
+            for (int i = 0; i < listedTools.size(); i++) {
+                ListedTool tool = listedTools.get(i);
+                json.append(i > 0 ? ",{" : "{");
+                Json.field(json, "name", tool.name(), true);
+                Json.field(json, "definitionHash", tool.definitionHash(), false);
+                json.append(",\"definitionBytes\":").append(tool.definitionBytes()).append('}');
+            }
+            json.append(']');
         }
         json.append('}');
     }

@@ -140,6 +140,30 @@ export interface Versions {
   unversionedCalls: number;
 }
 
+/** One tool as the sessions of the window were shown it (contract, 3.11). */
+export interface ListedToolStats {
+  name: string;
+  /** Sessions shown the tool. */
+  sessions: number;
+  /** Of those, the sessions that called it. */
+  usedSessions: number;
+  /** Calls to it in the window. */
+  calls: number;
+  /** Size of its definition as last listed, in bytes. */
+  bytes: number;
+  /** Whether the latest listing still has it. */
+  listed: boolean;
+}
+
+/** What agents were shown and what they used. */
+export interface ToolListing {
+  range: TimeWindow;
+  sessions: number;
+  latest: { tools: number; bytes: number; at: string } | null;
+  /** The least used first. */
+  tools: ListedToolStats[];
+}
+
 /** One call with everything recorded about it. Parameter values are never stored. */
 export interface CallDetail extends CallRecord {
   /** When the API stored it, by its own clock. */
@@ -521,6 +545,11 @@ export function getFailures(session: Session, query: Query = {}): Promise<Failur
 /** Tool calls by the version of the server that answered them. */
 export function getVersions(session: Session, query: Query = {}): Promise<Versions> {
   return request<Versions>('dashboard/versions', session, query);
+}
+
+/** What the server listed to sessions in the window, and what they used of it. */
+export function getToolListing(session: Session, query: Query = {}): Promise<ToolListing> {
+  return request<ToolListing>('dashboard/listing', session, query);
 }
 
 /** Every call in the window, newest first; `outcome` and `kind` narrow it. */

@@ -7,7 +7,7 @@ module McpSpan
   Event = Struct.new(
     :id, :kind, :tool_name, :duration_ms, :success, :error_source, :error_type, :error_message,
     :client_type, :client_name, :client_version, :server_version, :response_bytes, :definition_hash, :repeated,
-    :invalid_arguments, :timestamp, :session_id, :parameters,
+    :invalid_arguments, :timestamp, :session_id, :parameters, :listed_tools,
     keyword_init: true,
   ) do
     # The event as the API takes it, leaving absent fields out rather than sending them as null.
@@ -33,6 +33,8 @@ module McpSpan
         sdkVersion: VERSION,
         sessionId: session_id,
         parameters: parameters,
+        # On a listing: the tools the server listed, in its order (contract, 3.11).
+        listedTools: listed_tools,
       }.compact
     end
 

@@ -251,13 +251,51 @@ describe('what stays as it was', () => {
     expect(await delivered()).toEqual([]);
   });
 
-  it('does not touch other requests', async () => {
+  it('answers a listing as it would, and records only the listing itself', async () => {
     const client = await connected((server) => searchTool(server));
 
     const { tools } = await client.listTools();
 
     expect(tools.map((tool) => tool.name)).toEqual(['search_flights']);
-    expect(await delivered()).toEqual([]);
+    expect((await delivered()).map((event) => event.kind)).toEqual(['listing']);
+  });
+});
+
+describe('what the server lists (contract, 3.11)', () => {
+  it('records each tool listed, with its fingerprint and size, once per session and without excluded tools', async () => {
+    const client = await connected((server) => {
+      searchTool(server);
+      server.registerTool('health_check', {}, exclude(async () => ok()));
+    });
+
+    const { tools } = await client.listTools();
+    await client.listTools();
+    await client.callTool({ name: 'search_flights', arguments: { destination: 'WAW', passengers: 2 } });
+
+    const events = await delivered();
+    const listings = events.filter((event) => event.kind === 'listing');
+    const call = events.find((event) => event.kind === undefined);
+    expect(listings).toHaveLength(1);
+    expect(listings[0]).toMatchObject({
+      toolName: 'tools/list',
+      success: true,
+      clientName: 'claude-code',
+      sessionId: call?.sessionId,
+      listedTools: [{ name: 'search_flights', definitionHash: call?.definitionHash }],
+    });
+    expect(listings[0]?.listedTools?.[0]?.definitionBytes).toBeGreaterThan(JSON.stringify({ name: 'search_flights' }).length);
+    expect(tools.map((tool) => tool.name)).toContain('health_check');
+  });
+
+  it('records a listing on each connection', async () => {
+    const first = await connected((server) => searchTool(server));
+    const second = await connected((server) => searchTool(server));
+
+    await first.listTools();
+    await second.listTools();
+
+    const listings = (await delivered()).filter((event) => event.kind === 'listing');
+    expect(new Set(listings.map((listing) => listing.sessionId)).size).toBe(2);
   });
 });
 

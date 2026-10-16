@@ -86,6 +86,10 @@ func run(t *testing.T, s *server.MCPServer, clientName string, calls ...call) []
 
 	var results []*mcp.CallToolResult
 	for _, cl := range calls {
+		if cl.name == "tools/list" {
+			_, _ = c.ListTools(ctx, mcp.ListToolsRequest{})
+			continue
+		}
 		request := mcp.CallToolRequest{}
 		request.Params.Name = cl.name
 		request.Params.Arguments = cl.arguments
@@ -331,5 +335,41 @@ func TestLeavesNothingBehindPerCall(t *testing.T) {
 	byContext.Range(func(any, any) bool { count++; return true })
 	if count != 0 {
 		t.Fatalf("%d entries left", count)
+	}
+}
+
+// What the server lists is recorded once per session, without excluded tools
+// (contract, 3.11).
+func TestRecordsWhatTheServerListsOncePerSession(t *testing.T) {
+	delivered := capture(t)
+	s := Instrument(build())
+
+	run(t, s, "cursor", call{"tools/list", nil}, call{"tools/list", nil}, call{"ok", nil})
+
+	var listings []core.Event
+	var ok core.Event
+	for _, event := range delivered() {
+		if event.Kind == core.KindListing {
+			listings = append(listings, event)
+		} else if event.ToolName == "ok" {
+			ok = event
+		}
+	}
+	if len(listings) != 1 {
+		t.Fatalf("listings %+v", listings)
+	}
+	listing := listings[0]
+	if listing.ToolName != "tools/list" || listing.SessionID == "" || listing.SessionID != ok.SessionID || listing.ClientName != "cursor" {
+		t.Errorf("listing %+v, call %+v", listing, ok)
+	}
+	hashes := map[string]string{}
+	for _, tool := range listing.ListedTools {
+		hashes[tool.Name] = tool.DefinitionHash
+		if tool.DefinitionBytes <= len(tool.Name) {
+			t.Errorf("size of %s: %d", tool.Name, tool.DefinitionBytes)
+		}
+	}
+	if _, listed := hashes["excluded"]; listed || hashes["ok"] == "" || hashes["ok"] != ok.DefinitionHash {
+		t.Errorf("listed %v, call fingerprint %q", hashes, ok.DefinitionHash)
 	}
 }

@@ -148,10 +148,46 @@ public final class Call {
                 Version.CURRENT,
                 sessionId,
                 !Collector.captureParameterNames() ? null
-                    : described != null ? described : Parameters.describe(arguments)));
+                    : described != null ? described : Parameters.describe(arguments),
+                null));
         }
         catch (RuntimeException ignored) {
             // Recording a call must never disturb the call itself.
+        }
+    }
+
+    /** Tools in a listing beyond this are left out (contract, 3.11). */
+    private static final int MAX_LISTED_TOOLS = 500;
+
+    /**
+     * Records this as an answer to {@code tools/list} (contract, 3.11): the tools' names, fingerprints and sizes,
+     * once per session for the same answer, excluded tools left out. Never throws.
+     */
+    public void listed(java.util.List<ToolCallEvent.ListedTool> tools) {
+        try {
+            if (!Collector.collecting() || tools == null) {
+                return;
+            }
+            java.util.List<ToolCallEvent.ListedTool> shown = tools.stream()
+                .filter(tool -> !Exclusions.excluded(tool.name()))
+                .limit(MAX_LISTED_TOOLS)
+                .map(tool -> new ToolCallEvent.ListedTool(Text.truncate(tool.name(), Text.MAX_NAME),
+                    tool.definitionHash(), tool.definitionBytes()))
+                .toList();
+            StringBuilder signature = new StringBuilder();
+            for (ToolCallEvent.ListedTool tool : shown) {
+                signature.append(tool.name()).append('\0').append(tool.definitionHash()).append('\0');
+            }
+            if (!ListingsSent.first(sessionId, signature.toString())) {
+                return;
+            }
+            Collector.record(new ToolCallEvent(UUID.randomUUID().toString(), ToolCallEvent.LISTING, "tools/list", 0,
+                true, null, null, null, "unknown", Clients.name(clientName), Text.version(clientVersion),
+                Text.version(Collector.serverVersion() != null ? Collector.serverVersion() : serverVersion), null, null,
+                null, null, timestamp, Version.CURRENT, sessionId, null, shown));
+        }
+        catch (RuntimeException ignored) {
+            // Recording must never disturb the answer the client gets.
         }
     }
 

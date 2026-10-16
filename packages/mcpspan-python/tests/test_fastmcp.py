@@ -7,6 +7,7 @@ Runs with `uv run --group fastmcp`. Over stdio, the conformance suite in
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -22,6 +23,19 @@ from mcp_types import InputRequiredResult
 import mcpspan
 from mcpspan._track import set_capture_parameter_names, set_event_sink
 from mcpspan._types import ToolCallEvent
+
+
+def calls_into(events: list[ToolCallEvent]) -> Callable[[ToolCallEvent], None]:
+    """A sink keeping calls, and the listings (contract, 3.11) in LISTINGS."""
+    LISTINGS.clear()
+
+    def sink(event: ToolCallEvent) -> None:
+        (LISTINGS if event.get("kind") == "listing" else events).append(event)
+
+    return sink
+
+
+LISTINGS: list[ToolCallEvent] = []
 
 
 class ConformanceError(Exception):
@@ -61,7 +75,7 @@ def build() -> FastMCP:
 
 def instrumented(server: FastMCP, events: list[ToolCallEvent]) -> FastMCP:
     mcpspan.instrument(server)
-    set_event_sink(events.append)
+    set_event_sink(calls_into(events))
     return server
 
 
@@ -156,7 +170,7 @@ def test_instrumenting_twice_counts_once() -> None:
     events: list[ToolCallEvent] = []
     server = instrumented(build(), events)
     mcpspan.instrument(server)
-    set_event_sink(events.append)
+    set_event_sink(calls_into(events))
 
     run(server, ("ok", {}))
 
@@ -262,3 +276,25 @@ def test_resources_and_prompts_are_recorded_by_what_they_are(events: list[ToolCa
     assert events[1].get("parameters") == {"id": "string"}
     assert events[6].get("errorType") == "ConformanceError"
     assert "lovelace" not in repr(events) and "Lisbon" not in repr(events)
+
+
+def test_records_what_the_server_lists_once_per_session() -> None:
+    events: list[ToolCallEvent] = []
+    server = instrumented(build(), events)
+
+    async def go() -> None:
+        async with Client(
+            server, client_info=Implementation(name="cursor", version="1.0.0")
+        ) as client:
+            await client.list_tools()
+            await client.list_tools()
+            await client.call_tool("ok", {}, raise_on_error=False)
+
+    anyio.run(go)
+
+    assert len(LISTINGS) == 1
+    sent = LISTINGS[0]["listedTools"]
+    names = [tool["name"] for tool in sent]
+    assert "ok" in names and "excluded" not in names
+    assert LISTINGS[0].get("sessionId") == by_tool(events)["ok"].get("sessionId") is not None
+    assert LISTINGS[0].get("clientName") == "cursor"

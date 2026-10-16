@@ -163,6 +163,6 @@ internal static class ToolCallFilter
     private static bool Reached(Exception exception, McpServerTool tool) =>
         PrimitiveFilters.ReachedCode(exception, tool.Metadata);
 
-    private static bool IsExcluded(McpServerTool tool) =>
+    internal static bool IsExcluded(McpServerTool tool) =>
         tool.Metadata.OfType<McpSpanExcludeAttribute>().Any();
 }

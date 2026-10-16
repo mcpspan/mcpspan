@@ -335,4 +335,25 @@ final class McpSdkTest extends TestCase
         ]], ['Mcp-Session-Id' => $session]);
         self::assertStringContainsString('LIS for 1', (string) $response->getBody());
     }
+
+    public function testRecordsWhatTheServerListsOncePerSessionWithoutExcludedTools(): void
+    {
+        $this->capture();
+        $server = McpSdk::instrument($this->builder())->build();
+        $session = $this->connect($server, 'cursor');
+
+        $this->request($server, $session, 'tools/list', []);
+        $this->request($server, $session, 'tools/list', []);
+        $this->call($server, $session, 'search_flights', ['destination' => 'LIS', 'passengers' => 2]);
+        $events = $this->delivered();
+
+        $listings = array_values(array_filter($events, static fn (array $event): bool => 'listing' === ($event['kind'] ?? null)));
+        self::assertCount(1, $listings);
+        $search = $this->capture->only('search_flights');
+        self::assertSame(['tools/list', 'cursor', $search['sessionId']], [$listings[0]['toolName'], $listings[0]['clientName'], $listings[0]['sessionId']]);
+        $listed = array_column($listings[0]['listedTools'], null, 'name');
+        self::assertArrayNotHasKey('health_check', $listed);
+        self::assertSame($search['definitionHash'], $listed['search_flights']['definitionHash']);
+        self::assertGreaterThan(\strlen('search_flights'), $listed['search_flights']['definitionBytes']);
+    }
 }

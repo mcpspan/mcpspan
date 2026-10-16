@@ -13,6 +13,12 @@ class DefinitionsTest < Minitest::Test
     SHARED.each { |entry| assert_equal(entry["hash"], McpSpan::Definitions.hash(entry["tool"]), entry["case"]) }
   end
 
+  def test_sizes_the_shared_cases_as_every_sdk_does
+    SHARED.each do |entry|
+      assert_equal([entry["hash"], entry["bytes"]], McpSpan::Definitions.fingerprint(entry["tool"]), entry["case"])
+    end
+  end
+
   def test_keeps_the_latest_listed_fingerprint_of_each_tool
     McpSpan::Definitions.note([{ name: "a", description: "one" }, { name: "b" }])
     McpSpan::Definitions.note([{ name: "a", description: "two" }, { description: "nameless" }])

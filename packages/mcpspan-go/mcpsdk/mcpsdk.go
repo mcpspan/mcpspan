@@ -130,7 +130,10 @@ func middleware(server *mcp.Server) mcp.Middleware {
 			if method == "tools/list" {
 				result, err := next(ctx, method, req)
 				if listing, ok := result.(*mcp.ListToolsResult); ok && err == nil {
-					core.NoteListing(listing.Tools)
+					tools := core.NoteListing(listing.Tools)
+					if call, ok := beginPrimitive(server, req, core.KindListing, "tools/list", nil); ok {
+						core.RecordListing(call, tools)
+					}
 				}
 				return result, err
 			}

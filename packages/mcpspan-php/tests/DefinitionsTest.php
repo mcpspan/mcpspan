@@ -21,6 +21,7 @@ final class DefinitionsTest extends TestCase
 
         foreach ($shared->cases as $case) {
             self::assertSame($case->hash, Definitions::hash($case->tool), $case->case);
+            self::assertSame([$case->hash, $case->bytes], Definitions::fingerprint($case->tool), $case->case);
         }
     }
 

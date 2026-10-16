@@ -8,7 +8,7 @@ import { hashPassword } from '../src/passwords.ts';
 
 /** Empties every table, so each test starts from a known state. */
 export async function resetDatabase(): Promise<void> {
-  await getPool().query('TRUNCATE tool_calls, resource_calls, prompt_calls, api_keys, sessions, users CASCADE');
+  await getPool().query('TRUNCATE tool_calls, resource_calls, prompt_calls, tool_listings, api_keys, sessions, users CASCADE');
 }
 
 export interface TestApiKey {

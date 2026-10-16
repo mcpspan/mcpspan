@@ -34,7 +34,7 @@ from ._marks import is_excluded
 from ._primitives import scheme_of
 from ._repeats import continues_earlier_call, note_arguments
 from ._session import session_for
-from ._track import is_recording, now_iso, record_call, server_version_of
+from ._track import is_recording, now_iso, record_call, record_listing, server_version_of
 
 _instrumented: weakref.WeakSet[Any] = weakref.WeakSet()
 
@@ -92,13 +92,38 @@ def instrument_fastmcp(server: Any) -> bool:
         async def on_list_tools(self, context: Any, call_next: Any) -> Any:
             tools = await call_next(context)
             if is_recording():
-                note_listing(tools)
+                with contextlib.suppress(Exception):
+                    _record_listing(server, context, tools)
             return tools
 
     server.add_middleware(McpspanMiddleware())
     _instrumented.add(server)
 
     return True
+
+
+def _record_listing(server: Any, context: Any, tools: Any) -> None:
+    """Notes a listing's fingerprints (contract, 3.8) and records it (3.11).
+    The middleware sees the tools themselves, so an excluded one is known by
+    its function."""
+    fastmcp_context = getattr(context, "fastmcp_context", None)
+    try:
+        request_context = fastmcp_context.request_context if fastmcp_context else None
+    except Exception:
+        request_context = None
+    excluded = {
+        tool.name
+        for tool in tools
+        if is_excluded(getattr(tool, "fn", None)) and isinstance(tool.name, str)
+    }
+    record_listing(
+        note_listing(tools),
+        excluded=lambda name: name in excluded,
+        session_id=session_for(server, request_context) if request_context is not None else None,
+        client=client_from_request(request_context),
+        server_version=server_version_of(server),
+        timestamp=now_iso(),
+    )
 
 
 async def _begin(server: Any, context: Any) -> tuple[str | None, CallState, Any]:

@@ -22,8 +22,16 @@ export type ErrorSource =
   /** A prompt name the server does not have, or has disabled. */
   | 'unknown_prompt';
 
-/** What an event is about: a tool call, a resource read, or a prompt got. */
-type CallKind = 'tool' | 'resource' | 'prompt';
+/** What an event is about: a tool call, a resource read, a prompt got, or the tools the server listed. */
+type CallKind = 'tool' | 'resource' | 'prompt' | 'listing';
+
+/** One tool in a listing (contract, 3.11): its name, fingerprint and size. Never its definition. */
+export interface ListedTool {
+  name: string;
+  definitionHash: string;
+  /** UTF-8 bytes of the canonical JSON the fingerprint is taken from. */
+  definitionBytes: number;
+}
 
 /**
  * A single tool invocation recorded by the SDK.
@@ -44,7 +52,7 @@ export interface ToolCallEvent {
    */
   id: string;
 
-  /** Absent for a tool call; `resource` or `prompt` for the others (contract, 3.5). */
+  /** Absent for a tool call; `resource` or `prompt` for the others (contract, 3.5), `listing` for a listing (3.11). */
   kind?: Exclude<CallKind, 'tool'>;
 
   /**
@@ -103,6 +111,9 @@ export interface ToolCallEvent {
   definitionHash?: string;
   /** For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10). */
   invalidArguments?: string[];
+
+  /** On a listing: the tools the server listed, in its order (contract, 3.11). */
+  listedTools?: ListedTool[];
 
   /** The arguments are the previous call's to the same tool in this session (contract, 3.9). */
   repeated?: boolean;

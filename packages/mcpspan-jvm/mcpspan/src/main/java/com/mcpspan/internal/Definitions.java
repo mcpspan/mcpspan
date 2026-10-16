@@ -37,13 +37,16 @@ public final class Definitions {
         return toolName == null ? null : SCHEMAS.get(toolName);
     }
 
-    /** Notes one listed tool, in the wire's spelling as plain maps, lists and values. Never throws. */
-    public static void note(Map<?, ?> tool) {
+    /**
+     * Notes one listed tool, in the wire's spelling as plain maps, lists and values, and returns it with its
+     * fingerprint and size (contract, 3.11), or null when it cannot be read. Never throws.
+     */
+    public static ToolCallEvent.ListedTool note(Map<?, ?> tool) {
         try {
             if (tool != null && tool.get("name") instanceof String name) {
-                String hash = hash(tool);
-                if (hash != null) {
-                    LISTED.put(name, hash);
+                ToolCallEvent.ListedTool written = fingerprint(tool);
+                if (written != null) {
+                    LISTED.put(name, written.definitionHash());
                 }
                 Object schema = tool.get("inputSchema");
                 if (schema != null) {
@@ -52,11 +55,13 @@ public final class Definitions {
                 else {
                     SCHEMAS.remove(name);
                 }
+                return written;
             }
         }
         catch (RuntimeException ignored) {
             // A listing that cannot be read leaves the fingerprints as they were.
         }
+        return null;
     }
 
     /** For tests: forgets every listing. */
@@ -70,6 +75,15 @@ public final class Definitions {
      * canonical JSON; null for a definition that cannot be written so.
      */
     public static String hash(Map<?, ?> tool) {
+        ToolCallEvent.ListedTool written = fingerprint(tool);
+        return written == null ? null : written.definitionHash();
+    }
+
+    /**
+     * The tool's name with its fingerprint and the size in UTF-8 bytes of the canonical JSON the fingerprint is
+     * taken from (contract, 3.11); null for a definition that cannot be written so.
+     */
+    public static ToolCallEvent.ListedTool fingerprint(Map<?, ?> tool) {
         try {
             Map<String, Object> hashed = new TreeMap<>();
             for (String field : HASHED) {
@@ -80,12 +94,13 @@ public final class Definitions {
             }
             StringBuilder text = new StringBuilder();
             canonical(text, hashed);
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(text.toString().getBytes(StandardCharsets.UTF_8));
+            byte[] written = text.toString().getBytes(StandardCharsets.UTF_8);
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(written);
             StringBuilder hex = new StringBuilder();
             for (int i = 0; i < 8; i++) {
                 hex.append(String.format("%02x", digest[i]));
             }
-            return hex.toString();
+            return new ToolCallEvent.ListedTool(String.valueOf(tool.get("name")), hex.toString(), written.length);
         }
         catch (Exception e) {
             return null;

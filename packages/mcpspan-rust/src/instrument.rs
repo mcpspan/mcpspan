@@ -120,6 +120,11 @@ impl<S> Instrumented<S> {
         &self.inner
     }
 
+    /// Whether a tool is left out of the numbers (contract, 3.3).
+    pub(crate) fn is_excluded(&self, name: &str) -> bool {
+        self.excluded.contains(name)
+    }
+
     fn session_for(&self, context: &RequestContext<RoleServer>) -> Option<String> {
         let Some(parts) = context.extensions.get::<http::request::Parts>() else {
             // No HTTP request behind it: stdio, or another transport of one connection.

@@ -42,21 +42,32 @@ func SchemaOf(toolName string) any {
 	return schemas[toolName]
 }
 
+// ListedTool is one tool in a listing (contract, 3.11): its name,
+// fingerprint and size, never its definition.
+type ListedTool struct {
+	Name           string `json:"name"`
+	DefinitionHash string `json:"definitionHash"`
+	// DefinitionBytes is how many UTF-8 bytes the canonical JSON the
+	// fingerprint is taken from takes.
+	DefinitionBytes int `json:"definitionBytes"`
+}
+
 // NoteListing notes every tool in a listing: anything that encodes to a JSON
-// array of tools in the wire's spelling, such as the SDK's own tool slice. It
-// never panics.
-func NoteListing(tools any) {
+// array of tools in the wire's spelling, such as the SDK's own tool slice.
+// It returns them in the listing's order, each with its fingerprint and size
+// (contract, 3.11). It never panics.
+func NoteListing(tools any) (found []ListedTool) {
 	defer func() { _ = recover() }()
 
 	encoded, err := json.Marshal(tools)
 	if err != nil {
-		return
+		return nil
 	}
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.UseNumber()
 	var wire []map[string]any
 	if decoder.Decode(&wire) != nil {
-		return
+		return nil
 	}
 
 	listedMu.Lock()
@@ -66,11 +77,13 @@ func NoteListing(tools any) {
 		if !isText {
 			continue
 		}
-		if fingerprint, ok := DefinitionHash(tool); ok {
+		if fingerprint, size, ok := Fingerprint(tool); ok {
 			listed[name] = fingerprint
+			found = append(found, ListedTool{Name: name, DefinitionHash: fingerprint, DefinitionBytes: size})
 		}
 		schemas[name] = tool["inputSchema"]
 	}
+	return found
 }
 
 // ForgetListings is for tests: it forgets every listing.
@@ -85,6 +98,13 @@ func ForgetListings() {
 // name, title, description and input schema, as canonical JSON. Numbers are
 // expected as json.Number, which keeps integers exact.
 func DefinitionHash(tool map[string]any) (string, bool) {
+	fingerprint, _, ok := Fingerprint(tool)
+	return fingerprint, ok
+}
+
+// Fingerprint is DefinitionHash together with the size in UTF-8 bytes of the
+// canonical JSON it is taken from (contract, 3.11).
+func Fingerprint(tool map[string]any) (fingerprint string, size int, ok bool) {
 	hashed := map[string]any{}
 	for _, field := range []string{"name", "title", "description", "inputSchema"} {
 		if value, present := tool[field]; present && value != nil {
@@ -93,10 +113,10 @@ func DefinitionHash(tool map[string]any) (string, bool) {
 	}
 	var out strings.Builder
 	if err := canonical(&out, hashed); err != nil {
-		return "", false
+		return "", 0, false
 	}
 	sum := sha256.Sum256([]byte(out.String()))
-	return hex.EncodeToString(sum[:])[:16], true
+	return hex.EncodeToString(sum[:])[:16], out.Len(), true
 }
 
 // canonical writes sorted keys, no whitespace and minimal escaping: the same

@@ -5,6 +5,7 @@ use std::time::{Instant, SystemTime};
 
 use serde_json::{Map, Value};
 
+use crate::definition::ListedTool;
 use crate::event::Event;
 use crate::options::{Options, Resolved};
 use crate::reporter::Reporter;
@@ -327,6 +328,63 @@ pub(crate) fn record_answered(call: Call, outcome: Outcome, response_bytes: Opti
         timestamp: transport::iso8601(call.timestamp),
         session_id: call.session_id,
         parameters: call.parameters,
+        listed_tools: None,
+    });
+}
+
+/// Tools in a listing beyond this are left out (contract, 3.11).
+const MAX_LISTED_TOOLS: usize = 500;
+
+/// Records what the server answered to `tools/list` (contract, 3.11): the tools' names, fingerprints and sizes,
+/// once per session for the same answer, leaving out the tools `excluded` names. `call` carries the client, the
+/// session and the versions. It never blocks on the network.
+pub(crate) fn record_listing(call: Call, tools: Vec<ListedTool>, excluded: impl Fn(&str) -> bool) {
+    let Some(reporter) = global().running.as_ref().map(|running| Arc::clone(&running.reporter)) else {
+        return;
+    };
+    let shown: Vec<ListedTool> = tools
+        .into_iter()
+        .filter(|tool| !excluded(&tool.name))
+        .take(MAX_LISTED_TOOLS)
+        .map(|tool| ListedTool {
+            name: text::truncate(&tool.name, text::MAX_NAME),
+            ..tool
+        })
+        .collect();
+    let signature: String = shown
+        .iter()
+        .map(|tool| format!("{}\0{}\0", tool.name, tool.hash))
+        .collect();
+    if !crate::listings::first(call.session_id.as_deref(), &signature) {
+        return;
+    }
+
+    reporter.record(Event {
+        id: uuid::Uuid::new_v4().to_string(),
+        kind: Some("listing"),
+        tool_name: "tools/list".to_owned(),
+        duration_ms: 0.0,
+        success: true,
+        error_source: None,
+        error_type: None,
+        error_message: None,
+        client_type: "unknown",
+        client_name: text::client_name(call.client_name.as_deref()),
+        client_version: text::version(call.client_version.as_deref()),
+        server_version: text::version(call.server_version.as_deref()),
+        response_bytes: None,
+        definition_hash: None,
+        repeated: false,
+        invalid_arguments: Vec::new(),
+        timestamp: transport::iso8601(call.timestamp),
+        session_id: call.session_id,
+        parameters: None,
+        listed_tools: Some(Value::Array(
+            shown
+                .into_iter()
+                .map(|tool| serde_json::json!({ "name": tool.name, "definitionHash": tool.hash, "definitionBytes": tool.bytes }))
+                .collect(),
+        )),
     });
 }
 

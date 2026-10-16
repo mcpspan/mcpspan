@@ -25,14 +25,14 @@ internal static class Definitions
 
     private static readonly string[] Hashed = ["name", "title", "description", "inputSchema"];
 
-    /// <summary>The filter that notes every listing.</summary>
+    /// <summary>The filter that notes every listing (contract, 3.8) and records it (3.11).</summary>
     public static readonly McpRequestFilter<ListToolsRequestParams, ListToolsResult> ListFilter = next =>
         async (request, cancellationToken) =>
         {
             var result = await next(request, cancellationToken).ConfigureAwait(false);
             if (Collector.Collecting)
             {
-                Note(result.Tools);
+                Listings.Record(request, Note(result.Tools));
             }
 
             return result;
@@ -44,18 +44,28 @@ internal static class Definitions
     /// <summary>The latest input schema listed for a tool, or null when no listing in this process named it.</summary>
     public static JsonNode? SchemaOf(string toolName) => Schemas.TryGetValue(toolName, out var schema) ? schema : null;
 
-    /// <summary>Notes every tool in a listing. Never throws.</summary>
-    public static void Note(IEnumerable<Tool>? tools)
+    /// <summary>
+    /// Notes every tool in a listing, and returns them in its order, each with its fingerprint and size
+    /// (contract, 3.11). Never throws.
+    /// </summary>
+    public static List<ListedTool> Note(IEnumerable<Tool>? tools)
     {
+        var found = new List<ListedTool>();
         try
         {
             foreach (var tool in tools ?? [])
             {
                 var wire = JsonSerializer.SerializeToNode(tool, McpJsonUtilities.DefaultOptions) as JsonObject;
-                var hash = wire is null ? null : Hash(wire);
-                if (hash is not null && tool.Name is not null)
+                var written = wire is null ? null : Fingerprint(wire);
+                if (written is not null && tool.Name is not null)
                 {
-                    Listed[tool.Name] = hash;
+                    Listed[tool.Name] = written.Value.Hash;
+                    found.Add(new ListedTool
+                    {
+                        Name = tool.Name,
+                        DefinitionHash = written.Value.Hash,
+                        DefinitionBytes = written.Value.Bytes,
+                    });
                 }
 
                 if (wire is not null && tool.Name is not null)
@@ -68,6 +78,8 @@ internal static class Definitions
         {
             // A listing that cannot be read leaves the fingerprints as they were.
         }
+
+        return found;
     }
 
     /// <summary>For tests: forgets every listing.</summary>
@@ -81,7 +93,13 @@ internal static class Definitions
     /// The first 16 hex characters of the SHA-256 of the tool's name, title, description and input schema, as
     /// canonical JSON; null for a definition that cannot be written so.
     /// </summary>
-    public static string? Hash(JsonObject tool)
+    public static string? Hash(JsonObject tool) => Fingerprint(tool)?.Hash;
+
+    /// <summary>
+    /// The fingerprint, and the size in UTF-8 bytes of the canonical JSON it is taken from (contract, 3.11); null
+    /// for a definition that cannot be written so.
+    /// </summary>
+    public static (string Hash, int Bytes)? Fingerprint(JsonObject tool)
     {
         try
         {
@@ -111,8 +129,8 @@ internal static class Definitions
             }
 
             text.Append('}');
-            var digest = SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString()));
-            return Convert.ToHexString(digest)[..16].ToLowerInvariant();
+            var written = Encoding.UTF8.GetBytes(text.ToString());
+            return (Convert.ToHexString(SHA256.HashData(written))[..16].ToLowerInvariant(), written.Length);
         }
         catch (Exception)
         {

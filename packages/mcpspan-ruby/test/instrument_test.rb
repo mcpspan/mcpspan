@@ -180,4 +180,29 @@ class NeverBreaksTest < Minitest::Test
       assert(call(session, "book_flight")[:error])
     end
   end
+
+  def test_records_what_the_server_lists_once_per_session_without_excluded_tools
+    capture
+    McpSpan.exclude(HealthCheck)
+    session = connect(McpSpan.instrument(server), "cursor")
+    session.handle({ jsonrpc: "2.0", id: 90, method: "tools/list", params: {} })
+    session.handle({ jsonrpc: "2.0", id: 91, method: "tools/list", params: {} })
+    call(session, "search_flights", { destination: "LIS", passengers: 1 })
+    events = delivered
+
+    listings = events.select { |event| event[:kind] == "listing" }
+    search = events.find { |event| event[:toolName] == "search_flights" }
+    assert_equal(1, listings.size)
+    listing = listings.first
+    assert_equal(%w[tools/list cursor], [listing[:toolName], listing[:clientName]])
+    refute_nil(listing[:sessionId])
+    assert_equal(search[:sessionId], listing[:sessionId])
+    names = listing[:listedTools].map { |tool| tool[:name] }
+    refute_includes(names, "health_check")
+    listed = listing[:listedTools].find { |tool| tool[:name] == "search_flights" }
+    assert_equal(search[:definitionHash], listed[:definitionHash])
+    assert_operator(listed[:definitionBytes], :>, "search_flights".length)
+  ensure
+    HealthCheck.remove_instance_variable(:@__mcpspan_excluded)
+  end
 end

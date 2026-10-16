@@ -1,12 +1,13 @@
 {
-  "_about": "Tool definitions and the fingerprint every SDK must give them (contract, 3.8). The fingerprint covers name, title, description and inputSchema only.",
+  "_about": "Tool definitions and the fingerprint every SDK must give them (contract, 3.8). The fingerprint covers name, title, description and inputSchema only; bytes is how many UTF-8 bytes their canonical JSON takes (3.11).",
   "cases": [
     {
       "case": "a name alone",
       "tool": {
         "name": "ok"
       },
-      "hash": "e36279b38bcc149b"
+      "hash": "e36279b38bcc149b",
+      "bytes": 13
     },
     {
       "case": "an empty schema",
@@ -16,7 +17,8 @@
           "type": "object"
         }
       },
-      "hash": "115fab7742124c8f"
+      "hash": "115fab7742124c8f",
+      "bytes": 45
     },
     {
       "case": "every field hashed, with text that needs escaping",
@@ -55,7 +57,8 @@
           "additionalProperties": false
         }
       },
-      "hash": "9e5ebf01427bfdf5"
+      "hash": "9e5ebf01427bfdf5",
+      "bytes": 484
     },
     {
       "case": "the same definition with its keys in another order",
@@ -94,7 +97,8 @@
         "title": "Search flights",
         "name": "search_flights"
       },
-      "hash": "9e5ebf01427bfdf5"
+      "hash": "9e5ebf01427bfdf5",
+      "bytes": 484
     },
     {
       "case": "the same definition with fields that are not hashed",
@@ -145,7 +149,8 @@
           "taskSupport": "optional"
         }
       },
-      "hash": "9e5ebf01427bfdf5"
+      "hash": "9e5ebf01427bfdf5",
+      "bytes": 484
     },
     {
       "case": "one word of the description changed",
@@ -184,7 +189,8 @@
           "additionalProperties": false
         }
       },
-      "hash": "ef659b1b01ec9403"
+      "hash": "ef659b1b01ec9403",
+      "bytes": 487
     }
   ]
 }

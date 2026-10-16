@@ -34,6 +34,7 @@ from ._track import (
     is_recording,
     now_iso,
     record_call,
+    record_listing,
     record_refused_call,
     server_version_of,
     track,
@@ -68,14 +69,38 @@ def instrument_official(server: Any) -> bool:
     return True
 
 
-def _watch_listings(server: Any) -> None:
-    """Notes the tools each `tools/list` answer describes (contract, 3.8).
+def _record_listing(server: Any, tools: Any, request_context: Any) -> None:
+    """Notes a listing's fingerprints (contract, 3.8) and records the listing
+    itself (3.11), with the session and client of the request it answers."""
+    listed = note_listing(tools)
+    manager = getattr(server, "_tool_manager", None)
 
-    v2 lists through the server's own `list_tools`, looked up on every
-    request, so wrapping it on the instance is enough. v1 binds that method
-    into the protocol handler when the server is built, so there the handler
-    for ListToolsRequest is wrapped instead. Both together are harmless: the
-    same listing noted twice is the same fingerprints.
+    def excluded(name: str) -> bool:
+        try:
+            tool = manager.get_tool(name) if manager is not None else None
+        except Exception:
+            return False
+        return tool is not None and is_excluded(getattr(tool, "fn", None))
+
+    record_listing(
+        listed,
+        excluded=excluded,
+        session_id=session_for(server, request_context) if request_context is not None else None,
+        client=client_from_request(request_context),
+        server_version=server_version_of(server),
+        timestamp=now_iso(),
+    )
+
+
+def _watch_listings(server: Any) -> None:
+    """Records each answer to `tools/list` (contract, 3.11), noting its
+    fingerprints on the way (3.8), from the protocol handler, which is where
+    the request's context is.
+
+    v2 keeps its handlers by method, each given the request context. v1 keeps
+    them by request type, and finds the context through `get_context()`. Its
+    own `list_tools` is wrapped as well, for the fingerprints alone, for code
+    that lists without a request.
     """
     with contextlib.suppress(Exception):
         list_tools = server.list_tools
@@ -90,6 +115,23 @@ def _watch_listings(server: Any) -> None:
         server.list_tools = listed
 
     with contextlib.suppress(Exception):
+        # v2 keeps its protocol server under another name than v1.
+        handlers = server._lowlevel_server._request_handlers
+        entry = handlers.get("tools/list")
+        if entry is not None:
+            handle = entry.handler
+
+            async def handled_v2(ctx: Any, params: Any) -> Any:
+                result = await handle(ctx, params)
+                if is_recording():
+                    with contextlib.suppress(Exception):
+                        _record_listing(server, getattr(result, "tools", None) or [], ctx)
+                return result
+
+            handlers["tools/list"] = type(entry)(entry.params_type, handled_v2)
+            return
+
+    with contextlib.suppress(Exception):
         import mcp.types as types
 
         handlers = server._mcp_server.request_handlers
@@ -102,8 +144,12 @@ def _watch_listings(server: Any) -> None:
         async def handled(*args: Any, **kwargs: Any) -> Any:
             result = await handler(*args, **kwargs)
             if is_recording():
-                answer = getattr(result, "root", result)
-                note_listing(getattr(answer, "tools", None) or [])
+                with contextlib.suppress(Exception):
+                    answer = getattr(result, "root", result)
+                    request_context = None
+                    with contextlib.suppress(Exception):
+                        request_context = server.get_context().request_context
+                    _record_listing(server, getattr(answer, "tools", None) or [], request_context)
             return result
 
         handlers[request] = handled

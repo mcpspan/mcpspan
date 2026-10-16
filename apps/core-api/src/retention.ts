@@ -22,8 +22,8 @@ interface PolicyTarget {
   minimum: number;
 }
 
-const TARGETS: readonly PolicyTarget[] = ['tool_calls', 'resource_calls', 'prompt_calls'].flatMap(
-  (table) => [
+const TARGETS: readonly PolicyTarget[] = [
+  ...['tool_calls', 'resource_calls', 'prompt_calls'].flatMap((table) => [
     {
       relation: table,
       variable: 'MCPSPAN_RETENTION_DAYS',
@@ -36,8 +36,15 @@ const TARGETS: readonly PolicyTarget[] = ['tool_calls', 'resource_calls', 'promp
       fallback: DEFAULT_ROLLUP_RETENTION_DAYS,
       minimum: MIN_RETENTION_DAYS,
     },
-  ],
-);
+  ]),
+  // What the server listed (contract, 3.11), kept as long as the calls it is read against.
+  {
+    relation: 'tool_listings',
+    variable: 'MCPSPAN_RETENTION_DAYS',
+    fallback: DEFAULT_RETENTION_DAYS,
+    minimum: MIN_RETENTION_DAYS,
+  },
+];
 
 /**
  * Brings the database's retention policies in line with the environment.

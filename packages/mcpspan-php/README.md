@@ -190,7 +190,10 @@ tool's definition as your server lists it (its name, title, description and
 input schema, hashed, so the dashboard can mark when you changed it), for a call your
 server refused for its arguments the names of those that did not match the
 tool's schema (never what was sent), which
-client called, and the SDK version. For a resource or a prompt, the same, under the name it was
+client called, and the SDK version. When your server answers a request for
+its list of tools: each tool's name, that fingerprint and the size of its
+definition in bytes, once per session, so the dashboard can show what the
+list costs an agent and which tools are never called. For a resource or a prompt, the same, under the name it was
 registered with: never the address a client read, only its template or, for
 an address the server does not have, its scheme.
 

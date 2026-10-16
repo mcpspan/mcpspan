@@ -142,11 +142,17 @@ impl<S: ServerHandler> ServerHandler for Instrumented<S> {
         request: Option<PaginatedRequestParams>,
         context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
+        // Who asked, read before the context goes to the server; recorded with the answer (contract, 3.11).
+        let call = self.begin("tools/list", None, &context);
         let result = self.inner.list_tools(request, context).await;
         if let Ok(listing) = &result
             && crate::collector::collecting()
         {
-            crate::definition::note_listing(&listing.tools);
+            let tools = crate::definition::note_listing(&listing.tools);
+            if let Some(mut call) = call {
+                call.kind = Some("listing");
+                crate::collector::record_listing(call, tools, |name| self.is_excluded(name));
+            }
         }
         result
     }

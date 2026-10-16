@@ -7,7 +7,7 @@ import { isExcluded, isMarked } from './marks.js';
 import { PRIMITIVE_METHODS, watchPrimitive } from './primitives.js';
 import { noteArguments } from './repeats.js';
 import { sessionFor } from './session.js';
-import { isRecording, recordRefusedCall, track } from './track.js';
+import { isRecording, recordListing, recordRefusedCall, track } from './track.js';
 import type { ErrorSource } from './types.js';
 
 /**
@@ -392,14 +392,27 @@ function interceptToolCalls(server: object, registry: Map<string, ToolEntry>): v
  * so the handler for any other method runs exactly as it did.
  */
 function watch(handler: AnyFunction, server: object, registry: Map<string, ToolEntry>): AnyFunction {
-  return watchListing(watchPrimitive(watchToolCalls(handler, server, registry), server));
+  return watchListing(watchPrimitive(watchToolCalls(handler, server, registry), server), server, registry);
 }
 
-/** Notes the tools a `tools/list` answer describes, for the fingerprint each call carries (contract, 3.8). */
-function watchListing(handler: AnyFunction): AnyFunction {
+/**
+ * Notes the tools a `tools/list` answer describes, for the fingerprint each
+ * call carries (contract, 3.8), and records the answer itself (3.11).
+ */
+function watchListing(handler: AnyFunction, server: object, registry: Map<string, ToolEntry>): AnyFunction {
   return async function watchedListing(this: unknown, request: { method?: unknown }, ...rest: unknown[]): Promise<unknown> {
     const result: unknown = await (handler as (...a: unknown[]) => unknown).call(this, request, ...rest);
-    if (request?.method === 'tools/list' && isRecording()) noteListing(result);
+    if (request?.method === 'tools/list' && isRecording()) {
+      const context = rest[0];
+      recordListing({
+        tools: noteListing(result),
+        excluded: (name) => registry.get(name)?.excluded === true,
+        timestamp: new Date().toISOString(),
+        sessionId: sessionFor(server, context),
+        client: clientFor(server, context),
+        serverVersion: serverVersionOf(server),
+      });
+    }
     return result;
   };
 }

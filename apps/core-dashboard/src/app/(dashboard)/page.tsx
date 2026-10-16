@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/page-header';
 import { OffsetPager } from '@/components/pager';
 import { RangePicker } from '@/components/range-picker';
 import { SummaryCards } from '@/components/summary-cards';
+import { ToolListing } from '@/components/tool-listing';
 import { ToolsTable } from '@/components/tools-table';
 import { hasResourcesOrPrompts, ResourcesAndPrompts } from '@/components/resources-and-prompts';
 import { UnknownTools } from '@/components/unknown-tools';
@@ -24,6 +25,7 @@ import {
   getTools,
   getResourcesAndPrompts,
   getUnknownTools,
+  getToolListing,
   getVersions,
 } from '@/lib/api';
 import { formatCount } from '@/lib/format';
@@ -106,7 +108,7 @@ export default async function OverviewPage({
     { text: 'NDJSON', kind: 'calls' as const, params: { ...query, format: 'ndjson' } },
   ];
 
-  const [summary, previous, timeseries, tools, options, unknownTools, latency, clients, primitives, versions] =
+  const [summary, previous, timeseries, tools, options, unknownTools, latency, clients, primitives, versions, listing] =
     await Promise.all([
       getSummary(session, query).catch(asApiError),
       // The same question about the window before, for the cards to compare
@@ -138,6 +140,8 @@ export default async function OverviewPage({
       }).catch(() => undefined),
       // Losing it loses the version marks and card, not the page.
       getVersions(session, query).catch(() => undefined),
+      // Narrowed by client only, like the resources. Losing it loses the card.
+      getToolListing(session, { ...serverWide, ...pick(params, ['clientType']) }).catch(() => undefined),
     ]);
 
   return (
@@ -240,6 +244,14 @@ export default async function OverviewPage({
             <Card className="mt-6" id="versions">
               <CardHeader title="Versions" hint="Tool calls by the server version that answered them" />
               <VersionsTable data={versions} carried={pick(params, ['serverId', 'range'])} />
+            </Card>
+          )}
+
+          {/* Only from SDKs that report what the server lists (0.7.0 and later). */}
+          {listing === undefined || listing.latest === null ? null : (
+            <Card className="mt-6" id="listing">
+              <CardHeader title="What agents are shown" hint="The tools listed to each session, and how many of those sessions used each" />
+              <ToolListing data={listing} params={params} />
             </Card>
           )}
 

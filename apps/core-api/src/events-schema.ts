@@ -77,6 +77,17 @@ export const toolCallEventSchema = z.object({
   repeated: z.boolean().optional(),
   // For refused arguments: which ones did not match the tool's schema, by declared name (contract, 3.10).
   invalidArguments: z.array(z.string().min(1).max(200)).max(20).optional(),
+  // On a listing: the tools the server listed, by name, fingerprint and size (contract, 3.11).
+  listedTools: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(LIMITS.toolName),
+        definitionHash: z.string().max(64),
+        definitionBytes: z.number().int().min(0).max(2_147_483_647),
+      }),
+    )
+    .max(500)
+    .optional(),
 
   // Any valid instant is accepted, including implausible ones. This clock
   // belongs to the reporting machine and is sometimes wrong, and rejecting the

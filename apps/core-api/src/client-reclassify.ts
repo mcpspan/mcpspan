@@ -85,6 +85,15 @@ export async function reclassifyClients(): Promise<number> {
     changed += Number(row?.calls ?? 0);
   }
 
+  // Listings (contract, 3.11) carry the client too, and have no rollup.
+  const params: unknown[] = [];
+  const type = clientTypeSql(params);
+  const listings = await getPool().query(
+    `UPDATE tool_listings SET client_type = ${type} WHERE client_type IS DISTINCT FROM ${type}`,
+    params,
+  );
+  changed += listings.rowCount ?? 0;
+
   await getPool().query(
     `INSERT INTO settings (key, value) VALUES ($1, $2)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,

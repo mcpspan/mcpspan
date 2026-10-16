@@ -13,7 +13,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, NamedTuple
 
 _listed: dict[str, str] = {}
 
@@ -44,18 +44,30 @@ def schema_of(tool_name: str) -> Any:
     return _schemas.get(tool_name)
 
 
-def note_listing(tools: Iterable[Any]) -> None:
-    """Notes every tool in a listing: wire dicts, or models of them. Never raises."""
+class ListedDefinition(NamedTuple):
+    """A tool as a listing described it (contract, 3.11)."""
+
+    name: str
+    definition_hash: str
+    definition_bytes: int
+
+
+def note_listing(tools: Iterable[Any]) -> list[ListedDefinition]:
+    """Notes every tool in a listing: wire dicts, or models of them, and returns
+    them in its order, each with its fingerprint and size. Never raises."""
+    found: list[ListedDefinition] = []
     with contextlib.suppress(Exception):
         for tool in tools:
             wire = _wire(tool)
             if wire is None or not isinstance(wire.get("name"), str):
                 continue
             name = wire["name"]
-            fingerprint = definition_hash(wire)
-            if fingerprint is not None:
-                _listed[name] = fingerprint
+            written = fingerprint(wire)
+            if written is not None:
+                _listed[name] = written[0]
+                found.append(ListedDefinition(name, written[0], written[1]))
             _schemas[name] = wire.get("inputSchema")
+    return found
 
 
 def forget_listings() -> None:
@@ -67,11 +79,19 @@ def forget_listings() -> None:
 def definition_hash(tool: Mapping[str, Any]) -> str | None:
     """The first 16 hex characters of the SHA-256 of the canonical name, title,
     description and input schema; None for a definition that cannot be written so."""
+    written = fingerprint(tool)
+    return written[0] if written is not None else None
+
+
+def fingerprint(tool: Mapping[str, Any]) -> tuple[str, int] | None:
+    """The fingerprint, and the size in UTF-8 bytes of the canonical JSON it is
+    taken from (contract, 3.11); None for a definition that cannot be written so."""
     hashed = {field: tool[field] for field in _HASHED if tool.get(field) is not None}
     try:
-        return hashlib.sha256(_canonical(hashed).encode("utf-8")).hexdigest()[:16]
+        written = _canonical(hashed).encode("utf-8")
     except (TypeError, ValueError):
         return None
+    return hashlib.sha256(written).hexdigest()[:16], len(written)
 
 
 def _wire(tool: Any) -> Mapping[str, Any] | None:
