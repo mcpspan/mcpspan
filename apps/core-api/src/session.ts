@@ -1,8 +1,7 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import { getCookie } from 'hono/cookie';
 
-import { SESSION_COOKIE, userForSession } from './accounts.ts';
-import { getPool } from './db.ts';
+import { type AccountStore, selfHostedAccounts, SESSION_COOKIE, userForSession } from './accounts.ts';
 
 /**
  * What a signed-in developer is allowed to look at.
@@ -34,7 +33,10 @@ export interface SessionVariables {
  * until accounts did. Nothing downstream noticed the change, which was the
  * point of giving it this shape in the first place.
  */
-export function requireSession(): MiddlewareHandler<{ Variables: SessionVariables }> {
+export function requireSession(
+  /** Decides which servers the session reaches. */
+  accounts: AccountStore = selfHostedAccounts,
+): MiddlewareHandler<{ Variables: SessionVariables }> {
   return async (c, next) => {
     const token = getCookie(c, SESSION_COOKIE);
     const user = token === undefined ? undefined : await userForSession(token);
@@ -46,7 +48,7 @@ export function requireSession(): MiddlewareHandler<{ Variables: SessionVariable
     c.set('session', {
       userId: user.id,
       email: user.email,
-      serverIds: await serverIdsFor(user.id),
+      serverIds: await accounts.serverIdsFor(user.id),
     });
 
     await next();
@@ -84,25 +86,4 @@ export function resolveServerId(
   }
 
   return { serverId: requested };
-}
-
-/**
- * The servers behind one account.
- *
- * Keys minted before accounts existed have no owner and so belong to nobody.
- * That is the safe direction for the mistake to fall: an orphaned key keeps
- * accepting telemetry, and the events it writes simply wait for somebody to
- * claim them, rather than becoming visible to the first person who signs up.
- */
-async function serverIdsFor(userId: string): Promise<string[]> {
-  // From the servers table, not from keys. A server whose only key has been
-  // revoked still exists and still holds everything it recorded; reading this
-  // from keys made it vanish from the interface while its events sat in the
-  // table, which looked exactly like data loss.
-  const result = await getPool().query<{ id: string }>(
-    `SELECT id FROM servers WHERE user_id = $1 ORDER BY created_at, id`,
-    [userId],
-  );
-
-  return result.rows.map((row) => row.id);
 }

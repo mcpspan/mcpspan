@@ -20,14 +20,14 @@ interface ServerRow {
 }
 
 /**
- * Every server an account owns, oldest first.
+ * The servers a session reaches, oldest first.
  *
  * Read from the servers table rather than from keys. Those are two different
  * questions: a server whose only key has been revoked still exists and still
  * holds everything it ever recorded, and answering from keys made it vanish
  * from the interface while its events sat in the table.
  */
-export async function listServers(userId: string): Promise<ServerRecord[]> {
+export async function listServers(serverIds: readonly string[]): Promise<ServerRecord[]> {
   const result = await getPool().query<ServerRow>(
     `SELECT s.id, s.name, s.created_at,
             EXISTS (
@@ -35,9 +35,9 @@ export async function listServers(userId: string): Promise<ServerRecord[]> {
               WHERE k.server_id = s.id AND k.revoked_at IS NULL
             ) AS has_active_key
      FROM servers s
-     WHERE s.user_id = $1
+     WHERE s.id = ANY($1::uuid[])
      ORDER BY s.created_at, s.id`,
-    [userId],
+    [serverIds],
   );
 
   return result.rows.map((row) => ({
@@ -74,16 +74,18 @@ export async function createServer(
   return row;
 }
 
-/** Renames a server. False when the account does not own one by that identifier. */
+/** Renames a server. False when the session reaches none by that identifier. */
 export async function renameServer(
-  userId: string,
+  serverIds: readonly string[],
   serverId: string,
   name: string,
 ): Promise<boolean> {
-  const result = await getPool().query(
-    `UPDATE servers SET name = $3 WHERE id = $2 AND user_id = $1`,
-    [userId, serverId, cleanName(name)],
-  );
+  if (!serverIds.includes(serverId)) return false;
+
+  const result = await getPool().query(`UPDATE servers SET name = $2 WHERE id = $1`, [
+    serverId,
+    cleanName(name),
+  ]);
 
   return (result.rowCount ?? 0) > 0;
 }
@@ -100,18 +102,20 @@ export async function renameServer(
  * seven days, so anything older would keep answering with figures for a server
  * that no longer exists. Somebody who deletes a server means it.
  */
-export async function deleteServer(userId: string, serverId: string): Promise<boolean> {
+export async function deleteServer(
+  serverIds: readonly string[],
+  serverId: string,
+): Promise<boolean> {
+  if (!serverIds.includes(serverId)) return false;
+
   const client = await getPool().connect();
 
   try {
     await client.query('BEGIN');
 
-    const owned = await client.query(`SELECT 1 FROM servers WHERE id = $1 AND user_id = $2`, [
-      serverId,
-      userId,
-    ]);
+    const found = await client.query(`SELECT 1 FROM servers WHERE id = $1 FOR UPDATE`, [serverId]);
 
-    if (owned.rowCount === 0) {
+    if (found.rowCount === 0) {
       await client.query('ROLLBACK');
       return false;
     }
@@ -144,7 +148,7 @@ export async function deleteServer(userId: string, serverId: string): Promise<bo
   return true;
 }
 
-/** Whether an account owns a server, for the routes that act on one by name. */
+/** Whether an account created a server. Alert rules and webhooks still belong to one account. */
 export async function ownsServer(userId: string, serverId: string): Promise<boolean> {
   const result = await getPool().query(`SELECT 1 FROM servers WHERE id = $1 AND user_id = $2`, [
     serverId,

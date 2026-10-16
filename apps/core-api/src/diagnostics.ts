@@ -83,7 +83,6 @@ export interface Diagnostics {
  * version would have to leave them out.
  */
 export async function getDiagnostics(
-  userId: string,
   serverIds: readonly string[],
   refusals: RefusalLog,
 ): Promise<Diagnostics> {
@@ -116,7 +115,7 @@ export async function getDiagnostics(
     currentRetentionDays('tool_calls'),
     currentRetentionDays('tool_calls_hourly'),
     signingSecretChange(serverIds),
-    listServers(userId),
+    listServers(serverIds),
     lastEventPerServer(serverIds),
     lastContactPerServer(serverIds),
     refusals.counts(serverIds),

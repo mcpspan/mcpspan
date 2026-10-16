@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 
+import { type AccountStore, selfHostedAccounts } from '../accounts.ts';
 import { getDiagnostics } from '../diagnostics.ts';
 import { refusalLog, type RefusalLog } from '../refusals.ts';
 import { requireSession, type SessionVariables } from '../session.ts';
@@ -14,15 +15,16 @@ import { requireSession, type SessionVariables } from '../session.ts';
 export function createDiagnosticsRoutes(
   /** Injected so a test can read counts it made itself. */
   refusals: RefusalLog = refusalLog,
+  accounts: AccountStore = selfHostedAccounts,
 ) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
-  app.use('*', requireSession());
+  app.use('*', requireSession(accounts));
 
   app.get('/', async (c) => {
-    const { userId, serverIds } = c.get('session');
+    const { serverIds } = c.get('session');
 
-    return c.json(await getDiagnostics(userId, serverIds, refusals));
+    return c.json(await getDiagnostics(serverIds, refusals));
   });
 
   return app;

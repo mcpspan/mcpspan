@@ -128,7 +128,8 @@ on a million generated calls. Each says how to run it at the top.
 | `packages/mcpspan-ruby` | The Ruby SDK, the gem `mcpspan`, for the `mcp` gem. |
 | `packages/mcpspan-php` | The PHP SDK, `mcpspan/mcpspan` on Packagist, for Laravel MCP and `mcp/sdk`. |
 | `apps/core-api` | Ingest and aggregation. Runs TypeScript directly, no build step. |
-| `apps/core-dashboard` | Next, App Router. Everything renders on the server unless it cannot. |
+| `apps/core-dashboard` | Next, App Router. Its routes are one line each, mounting the pages below. |
+| `packages/dashboard-ui` | The dashboard's pages, components and styles. Everything renders on the server unless it cannot. |
 | `docs/sdk-contract.md` | What every SDK must do, in any language. Read it before changing what the SDK sends or how. |
 | `conformance` | Checks an SDK against that contract, in any language, through a small adapter. |
 

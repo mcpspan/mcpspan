@@ -14,5 +14,7 @@ describe('the Core API and dashboard versions', () => {
     // shows both side by side. Two different numbers there should mean two
     // different builds are running, never that somebody bumped one file.
     expect(versionOf('../../core-dashboard/package.json')).toBe(versionOf('../package.json'));
+    // The number the dashboard shows is read from the package its pages live in.
+    expect(versionOf('../../../packages/dashboard-ui/package.json')).toBe(versionOf('../package.json'));
   });
 });

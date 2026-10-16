@@ -10,6 +10,7 @@ import {
   sendWebhook,
   type WebhookSender,
 } from '../alerts.ts';
+import { type AccountStore, selfHostedAccounts } from '../accounts.ts';
 import { getPool } from '../db.ts';
 import { parsePage, takePage } from '../paging.ts';
 import { ownsServer } from '../servers.ts';
@@ -40,10 +41,11 @@ interface RuleInput {
 export function createAlertRoutes(
   /** Injected so a test can receive the test notification itself. */
   send: WebhookSender = sendWebhook,
+  accounts: AccountStore = selfHostedAccounts,
 ) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
-  app.use('*', requireSession());
+  app.use('*', requireSession(accounts));
 
   app.get('/', async (c) => {
     const { userId } = c.get('session');

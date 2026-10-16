@@ -209,12 +209,9 @@ importers:
 
   apps/core-dashboard:
     dependencies:
-      '@mcpspan/client-types':
+      '@mcpspan/dashboard-ui':
         specifier: workspace:*
-        version: link:../../packages/client-types
-      lucide-react:
-        specifier: ^1.47.0
-        version: 1.47.0(react@19.3.0)
+        version: link:../../packages/dashboard-ui
       next:
         specifier: ^16.3.6
         version: 16.3.8(@types/node@22.20.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -224,9 +221,6 @@ importers:
       react-dom:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
-      recharts:
-        specifier: 3.10.1
-        version: 3.10.1(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react-is@19.3.0)(react@19.3.0)(redux@5.0.1)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.3.3
@@ -240,15 +234,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.3.0
         version: 19.3.0(@types/react@19.3.0)
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
       playwright:
         specifier: ^1.63.0
         version: 1.63.0
-      tailwind-merge:
-        specifier: ^3.7.0
-        version: 3.7.0
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
@@ -284,6 +272,46 @@ importers:
         version: 4.6.5
 
   packages/client-types: {}
+
+  packages/dashboard-ui:
+    dependencies:
+      '@mcpspan/client-types':
+        specifier: workspace:*
+        version: link:../client-types
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      lucide-react:
+        specifier: ^1.47.0
+        version: 1.47.0(react@19.3.0)
+      recharts:
+        specifier: 3.10.1
+        version: 3.10.1(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react-is@19.3.0)(react@19.3.0)(redux@5.0.1)
+      tailwind-merge:
+        specifier: ^3.7.0
+        version: 3.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.3
+        version: 22.20.3
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      next:
+        specifier: ^16.3.6
+        version: 16.3.8(@types/node@22.20.3)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.3.0
+        version: 19.3.0(react@19.3.0)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
   packages/mcpspan:
     devDependencies:

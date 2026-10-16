@@ -20,11 +20,13 @@ COPY apps/core-api/package.json apps/core-api/
 COPY apps/core-dashboard/package.json apps/core-dashboard/
 COPY packages/mcpspan/package.json packages/mcpspan/
 COPY packages/client-types/package.json packages/client-types/
+COPY packages/dashboard-ui/package.json packages/dashboard-ui/
 
 # Development dependencies included on purpose: Tailwind and the TypeScript
 # compiler are what turn the sources into a build, so a --prod install here
-# would produce nothing to ship.
-RUN pnpm install --frozen-lockfile --filter @mcpspan/core-dashboard
+# would produce nothing to ship. The trailing dots take in the workspace
+# packages the app is built from, whose own dependencies it needs too.
+RUN pnpm install --frozen-lockfile --filter @mcpspan/core-dashboard...
 
 
 FROM node:24.21.0-alpine AS build
@@ -35,7 +37,8 @@ WORKDIR /app
 
 COPY --from=deps /app ./
 COPY apps/core-dashboard ./apps/core-dashboard
-# The client-type table the dashboard names clients from.
+# The pages and components, and the client-type table they name clients from.
+COPY packages/dashboard-ui ./packages/dashboard-ui
 COPY packages/client-types ./packages/client-types
 
 ENV NEXT_TELEMETRY_DISABLED=1

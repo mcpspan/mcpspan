@@ -21,6 +21,10 @@ export type RefusalReason =
   | 'invalid_batch'
   /** Over the server's rate limit. The SDK keeps the batch and sends it again. */
   | 'rate_limited'
+  /** Turned away by the installation's admission rule, to be sent again later. */
+  | 'deferred'
+  /** Turned away by the installation's admission rule, for good. The SDK drops the batch. */
+  | 'not_admitted'
   /** Accepted, then not written. The SDK keeps the batch and sends it again. */
   | 'storage_failed';
 

@@ -17,6 +17,10 @@ const config: NextConfig = {
   // pulled in from elsewhere in the workspace are followed instead of missed.
   outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
 
+  // The pages themselves live in a workspace package, shipped as TypeScript
+  // source rather than built output, so this app compiles them.
+  transpilePackages: ['@mcpspan/dashboard-ui'],
+
   // The version is shown in the interface, so a self-hoster reporting a
   // problem can say which build they are looking at.
   env: {

@@ -2,12 +2,11 @@ import { type Context, Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 
 import {
-  authenticate,
+  type AccountStore,
   changePassword,
   createSession,
   endSession,
-  isRegistrationOpen,
-  register,
+  selfHostedAccounts,
   SESSION_COOKIE,
   userForSession,
 } from '../accounts.ts';
@@ -28,13 +27,17 @@ interface Credentials {
  * self-hosted instance that keeps accepting sign-ups hands its telemetry to
  * whoever finds the address.
  */
-export function createAuthRoutes(throttle: LoginThrottle = loginThrottle) {
+export function createAuthRoutes(
+  throttle: LoginThrottle = loginThrottle,
+  /** Who may sign up and who a sign-in belongs to. */
+  accounts: AccountStore = selfHostedAccounts,
+) {
   const app = new Hono();
 
   /** Lets the sign-in page know whether to offer signing up at all. */
   app.get('/status', async (c) => {
     const [open, signedIn] = await Promise.all([
-      isRegistrationOpen(),
+      accounts.isRegistrationOpen(),
       currentUser(c.req.header('cookie')),
     ]);
 
@@ -46,7 +49,7 @@ export function createAuthRoutes(throttle: LoginThrottle = loginThrottle) {
 
     if (body === undefined) return c.json({ error: 'Send an email and a password' }, 400);
 
-    const result = await register(body.email, body.password);
+    const result = await accounts.register(body.email, body.password);
 
     if (!result.ok) return c.json({ error: explainRegistration(result.reason) }, refusalStatus(result.reason));
 
@@ -82,7 +85,7 @@ export function createAuthRoutes(throttle: LoginThrottle = loginThrottle) {
     const wait = throttle.retryAfterSeconds();
     if (wait > 0) return tooManyTries(c, wait);
 
-    const user = await authenticate(body.email, body.password);
+    const user = await accounts.authenticate(body.email, body.password);
 
     if (user === undefined) {
       throttle.recordFailure();

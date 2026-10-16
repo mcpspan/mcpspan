@@ -2,6 +2,7 @@ import { clientTypeOf } from '@mcpspan/client-types';
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 
+import { admitEverything, type Admission } from '../admission.ts';
 import { type AuthVariables, requireApiKey } from '../auth.ts';
 import { contactLog, type ContactLog } from '../contacts.ts';
 import { describeIssues, eventBatchSchema } from '../events-schema.ts';
@@ -20,8 +21,9 @@ import { refusalLog, type RefusalLog } from '../refusals.ts';
  * and shape is checked on a body already known to be small enough and to
  * belong to somebody.
  *
- * The rate limit comes last, once the events have been counted, and that
- * ordering is deliberate. Checking it earlier would save a parse of at most
+ * Admission and the rate limit come last, once the events have been counted,
+ * admission first so that a batch it turns away costs no share of the limit.
+ * The rate limit's place there is deliberate. Checking it earlier would save a parse of at most
  * the body limit, and would have to answer "wait a second" without knowing how
  * large the batch was - so a sender told to wait a second would come back and
  * be refused again. One check, after counting, tells the truth the first time.
@@ -36,6 +38,8 @@ export function createEventRoutes(
   refusals: RefusalLog = refusalLog,
   /** Likewise: a test waits for the contact it caused to be written. */
   contacts: ContactLog = contactLog,
+  /** Whether a batch may be stored at all. A self-hosted install takes everything. */
+  admission: Admission = admitEverything,
 ) {
   const app = new Hono<{ Variables: AuthVariables }>();
 
@@ -89,6 +93,21 @@ export function createEventRoutes(
           },
           413,
         );
+      }
+
+      const admitted = await admission({ serverId, events: events.length });
+
+      if (!admitted.allowed) {
+        if (admitted.retryAfterSeconds !== undefined) {
+          refusals.record('deferred', serverId);
+          c.header('Retry-After', String(admitted.retryAfterSeconds));
+
+          return c.json({ error: admitted.error }, 429);
+        }
+
+        refusals.record('not_admitted', serverId);
+
+        return c.json({ error: admitted.error }, 402);
       }
 
       // Charged by the event rather than by the request. A batch of a thousand

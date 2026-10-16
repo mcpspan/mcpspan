@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 
+import { type AccountStore, selfHostedAccounts } from './accounts.ts';
+import { admitEverything, type Admission } from './admission.ts';
 import { isDatabaseUnavailable } from './db.ts';
 import { createAlertRoutes } from './routes/alerts.ts';
 import { createAuthRoutes } from './routes/auth.ts';
@@ -9,13 +11,29 @@ import { createEventRoutes } from './routes/events.ts';
 import { createServerRoutes } from './routes/servers.ts';
 
 /**
+ * The points where another installation can differ from a self-hosted one.
+ *
+ * Left out, each is the self-hosted behaviour, which is what the running API
+ * uses.
+ */
+export interface AppOptions {
+  /** Who may sign up, and which servers a signed-in person reaches. */
+  accounts?: AccountStore;
+  /** Whether a batch from a known server is stored at all. */
+  admission?: Admission;
+}
+
+/**
  * The HTTP application, with no server attached.
  *
  * Kept separate from the process that listens on a port so that tests can call
  * it directly through `app.request()`, without binding a socket or racing a
  * startup.
  */
-export function createApp(): Hono {
+export function createApp({
+  accounts = selfHostedAccounts,
+  admission = admitEverything,
+}: AppOptions = {}): Hono {
   const app = new Hono();
 
   /**
@@ -31,25 +49,25 @@ export function createApp(): Hono {
   // Versioned from the start. The SDK posts to a fixed path, and every copy of
   // it already in somebody's server keeps posting there after we change our
   // minds about something.
-  app.route('/v1', createEventRoutes());
+  app.route('/v1', createEventRoutes(undefined, undefined, undefined, admission));
 
   // Separate branch from the ingest endpoint, because the two are read by
   // different things through different credentials: one by a developer's
   // server writing telemetry, the other by a developer reading it.
-  app.route('/v1/dashboard', createDashboardRoutes());
+  app.route('/v1/dashboard', createDashboardRoutes(accounts));
 
   // Signing in is not telemetry and not a dashboard query; it is what decides
   // whether either is allowed, so it sits on its own.
-  app.route('/v1/auth', createAuthRoutes());
+  app.route('/v1/auth', createAuthRoutes(undefined, accounts));
 
   // Behind the session: a key can write events, not replace itself.
-  app.route('/v1/servers', createServerRoutes());
+  app.route('/v1/servers', createServerRoutes(accounts));
 
   // Rules that watch a server, and where to say when one trips.
-  app.route('/v1/alerts', createAlertRoutes());
+  app.route('/v1/alerts', createAlertRoutes(undefined, accounts));
 
   // Why a dashboard might be empty, for the person running the installation.
-  app.route('/v1/diagnostics', createDiagnosticsRoutes());
+  app.route('/v1/diagnostics', createDiagnosticsRoutes(undefined, accounts));
 
   // Every answer this API gives is JSON, including the ones nobody planned.
   // A developer working out why their integration is quiet should not have to

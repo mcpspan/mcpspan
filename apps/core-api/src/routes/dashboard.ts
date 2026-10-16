@@ -14,6 +14,7 @@ import {
   MAX_ERROR_LIMIT,
   type ToolSort,
 } from '../analytics.ts';
+import { type AccountStore, selfHostedAccounts } from '../accounts.ts';
 import { chooseBucketSeconds } from '../buckets.ts';
 import { getCall, isCallKind, isOutcome, listCalls } from '../calls.ts';
 import { getClientsOverTime } from '../clients.ts';
@@ -37,10 +38,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * Every route here answers for one server over one window, and works out both
  * the same way, so the frontend can treat them interchangeably.
  */
-export function createDashboardRoutes() {
+export function createDashboardRoutes(accounts: AccountStore = selfHostedAccounts) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
-  app.use('*', requireSession());
+  app.use('*', requireSession(accounts));
 
   app.get('/summary', async (c) => {
     const scope = resolveScope(c);

@@ -4,7 +4,7 @@ import {
   compareCalls,
   compareDuration,
   compareErrorRate,
-} from '../../core-dashboard/src/lib/compare.ts';
+} from '../../../packages/dashboard-ui/src/lib/compare.ts';
 
 /**
  * How the dashboard words a change against the window before.

@@ -14,6 +14,26 @@ export interface User {
   email: string;
 }
 
+/**
+ * Who may sign up, who a sign-in belongs to, and which servers they reach.
+ *
+ * The parts of having accounts that differ between one installation and
+ * another. Sessions, passwords and the throttle on wrong ones are the same
+ * everywhere and stay out of it. The default below is the self-hosted rule:
+ * one account, made on first run, reaching the servers it created.
+ */
+export interface AccountStore {
+  isRegistrationOpen(): Promise<boolean>;
+  register(email: string, password: string): Promise<RegisterResult>;
+  /** Undefined for anything that should not sign in, whatever the reason. */
+  authenticate(email: string, password: string): Promise<User | undefined>;
+  /**
+   * Every server the user may read and manage, oldest first. The only answer
+   * the dashboard, settings and diagnostics consult about who reaches what.
+   */
+  serverIdsFor(userId: string): Promise<string[]>;
+}
+
 export type RegisterResult =
   | { ok: true; user: User }
   | { ok: false; reason: 'closed' | 'taken' | 'invalid-email' | 'empty-password' };
@@ -161,6 +181,35 @@ export async function resetPassword(): Promise<{ email: string; password: string
 
   return row && { email: row.email, password };
 }
+
+/**
+ * The servers behind one account.
+ *
+ * Keys minted before accounts existed have no owner and so belong to nobody.
+ * That is the safe direction for the mistake to fall: an orphaned key keeps
+ * accepting telemetry, and the events it writes simply wait for somebody to
+ * claim them, rather than becoming visible to the first person who signs up.
+ */
+export async function serverIdsFor(userId: string): Promise<string[]> {
+  // From the servers table, not from keys. A server whose only key has been
+  // revoked still exists and still holds everything it recorded; reading this
+  // from keys made it vanish from the interface while its events sat in the
+  // table, which looked exactly like data loss.
+  const result = await getPool().query<{ id: string }>(
+    `SELECT id FROM servers WHERE user_id = $1 ORDER BY created_at, id`,
+    [userId],
+  );
+
+  return result.rows.map((row) => row.id);
+}
+
+/** The self-hosted rules, and what every caller gets unless it passes others. */
+export const selfHostedAccounts: AccountStore = {
+  isRegistrationOpen,
+  register,
+  authenticate,
+  serverIdsFor,
+};
 
 export interface IssuedSession {
   /** Goes to the browser. Never stored. */

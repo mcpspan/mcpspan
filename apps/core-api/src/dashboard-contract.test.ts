@@ -20,7 +20,7 @@ import {
   getVersions,
   getCalls,
   getToolListing,
-} from '../../core-dashboard/src/lib/api.ts';
+} from '../../../packages/dashboard-ui/src/lib/api.ts';
 import { createAccount, createApiKey, resetDatabase, seedEvents, type TestAccount } from '../test/fixtures.ts';
 import { createApp } from './app.ts';
 import { closePool, getPool } from './db.ts';

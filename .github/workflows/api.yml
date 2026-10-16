@@ -82,6 +82,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: pnpm --filter @mcpspan/dashboard-ui typecheck
+
       - run: pnpm --filter @mcpspan/core-dashboard typecheck
 
       # No database and no API here on purpose. This asks whether the pages

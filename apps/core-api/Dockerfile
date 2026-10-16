@@ -26,6 +26,7 @@ COPY apps/core-api/package.json apps/core-api/
 COPY apps/core-dashboard/package.json apps/core-dashboard/
 COPY packages/mcpspan/package.json packages/mcpspan/
 COPY packages/client-types/package.json packages/client-types/
+COPY packages/dashboard-ui/package.json packages/dashboard-ui/
 
 # --prod leaves out vitest and the compiler. They are needed to develop this
 # app and not to run it, and an unused dependency in a deployed image is

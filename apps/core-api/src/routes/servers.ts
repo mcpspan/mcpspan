@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 
+import { type AccountStore, selfHostedAccounts } from '../accounts.ts';
 import { issueApiKey } from '../api-key.ts';
 import { getPool } from '../db.ts';
 import { requireSession, type SessionVariables } from '../session.ts';
@@ -7,7 +8,6 @@ import {
   createServer,
   deleteServer,
   listServers,
-  ownsServer,
   parseServerName,
   renameServer,
 } from '../servers.ts';
@@ -19,14 +19,14 @@ import {
  * managed. A key is a credential a server holds, and it is replaceable; the
  * server is what owns the data and what somebody picks between.
  */
-export function createServerRoutes() {
+export function createServerRoutes(accounts: AccountStore = selfHostedAccounts) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
-  app.use('*', requireSession());
+  app.use('*', requireSession(accounts));
 
   /** What exists. Never what a key says: only its hash is stored. */
   app.get('/', async (c) => {
-    return c.json({ servers: await listServers(c.get('session').userId) });
+    return c.json({ servers: await listServers(c.get('session').serverIds) });
   });
 
   /** A new server, with the key it needs to say anything. */
@@ -73,10 +73,10 @@ export function createServerRoutes() {
    * in which the suspect credential still works is the opposite of the point.
    */
   app.post('/:serverId/key', async (c) => {
-    const { userId, email } = c.get('session');
+    const { userId, email, serverIds } = c.get('session');
     const serverId = c.req.param('serverId');
 
-    if (!(await ownsServer(userId, serverId))) {
+    if (!serverIds.includes(serverId)) {
       return c.json({ error: 'No such server' }, 404);
     }
 
@@ -106,13 +106,13 @@ export function createServerRoutes() {
   });
 
   app.patch('/:serverId', async (c) => {
-    const { userId } = c.get('session');
+    const { serverIds } = c.get('session');
     const body = await readBody(c.req.raw);
     const name = parseServerName(body?.['name']);
 
     if ('error' in name) return c.json({ error: name.error }, 400);
 
-    const renamed = await renameServer(userId, c.req.param('serverId'), name.name);
+    const renamed = await renameServer(serverIds, c.req.param('serverId'), name.name);
 
     if (!renamed) return c.json({ error: 'No such server' }, 404);
 
@@ -127,17 +127,16 @@ export function createServerRoutes() {
    * line - which is a corner nobody should be able to reach by clicking.
    */
   app.delete('/:serverId', async (c) => {
-    const { userId } = c.get('session');
-    const servers = await listServers(userId);
+    const { serverIds } = c.get('session');
 
-    if (servers.length <= 1) {
+    if (serverIds.length <= 1) {
       return c.json(
         { error: 'This is the only server. Create another one before removing this.' },
         409,
       );
     }
 
-    const removed = await deleteServer(userId, c.req.param('serverId'));
+    const removed = await deleteServer(serverIds, c.req.param('serverId'));
 
     if (!removed) return c.json({ error: 'No such server' }, 404);
 
