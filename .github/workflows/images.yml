@@ -1,0 +1,98 @@
+name: Images
+
+# The server's images, from a GitHub release tagged core/vX.Y.Z:
+#
+#   ghcr.io/mcpspan/core-api:X.Y.Z        the API, and the migrations it runs
+#   ghcr.io/mcpspan/core-dashboard:X.Y.Z  the dashboard
+#
+# Each for amd64 and arm64, built on a machine of that architecture rather than
+# emulated, then joined under one tag, and `latest`. docker-compose.yml names
+# the version, and builds from source when an image is not there.
+#
+# Approved in the `release` environment, like every other release.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.release.tag_name }}
+
+jobs:
+  build:
+    # Only in the public repository, where Actions costs nothing.
+    if: github.repository == 'mcpspan/mcpspan' && startsWith(github.event.release.tag_name, 'core/v')
+    name: ${{ matrix.image }}, ${{ matrix.platform.arch }}
+    strategy:
+      matrix:
+        image: [core-api, core-dashboard]
+        platform:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.platform.runner }}
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # The version in the tag, in both apps and in the compose file that will ask for it.
+      - name: Version matches the tag
+        id: version
+        run: |
+          version="${TAG##*/v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          for app in core-api core-dashboard; do
+            test "$(jq -r .version "apps/$app/package.json")" = "$version"
+            grep -q "image: ghcr.io/mcpspan/$app:$version$" docker-compose.yml
+          done
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/${{ matrix.image }}/Dockerfile
+          platforms: linux/${{ matrix.platform.arch }}
+          push: true
+          provenance: false
+          tags: ghcr.io/mcpspan/${{ matrix.image }}:${{ steps.version.outputs.version }}-${{ matrix.platform.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/mcpspan/mcpspan
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+  join:
+    needs: build
+    name: ${{ matrix.image }}, both architectures
+    strategy:
+      matrix:
+        image: [core-api, core-dashboard]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: One tag for both architectures, and latest
+        run: |
+          image="ghcr.io/mcpspan/${{ matrix.image }}"
+          version="${TAG##*/v}"
+          docker buildx imagetools create -t "$image:$version" -t "$image:latest" \
+            "$image:$version-amd64" "$image:$version-arm64"
+          docker buildx imagetools inspect "$image:$version"

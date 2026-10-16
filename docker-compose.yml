@@ -60,7 +60,7 @@ services:
     build:
       context: .
       dockerfile: apps/core-api/Dockerfile
-    image: mcpspan/core-api
+    image: ghcr.io/mcpspan/core-api:0.6.0
     container_name: mcpspan-migrate
     restart: 'no'
     depends_on:
@@ -74,7 +74,7 @@ services:
     build:
       context: .
       dockerfile: apps/core-api/Dockerfile
-    image: mcpspan/core-api
+    image: ghcr.io/mcpspan/core-api:0.6.0
     container_name: mcpspan-api
     restart: unless-stopped
     depends_on:
@@ -127,7 +127,7 @@ services:
     build:
       context: .
       dockerfile: apps/core-dashboard/Dockerfile
-    image: mcpspan/core-dashboard
+    image: ghcr.io/mcpspan/core-dashboard:0.6.0
     container_name: mcpspan-dashboard
     restart: unless-stopped
     depends_on:
