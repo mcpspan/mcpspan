@@ -1,6 +1,7 @@
 name: Images
 
-# The server's images, from a GitHub release tagged core/vX.Y.Z:
+# The server's images, from a GitHub release tagged core/vX.Y.Z, or all/vX.Y.Z
+# for the server and every SDK at once (release.yml):
 #
 #   ghcr.io/mcpspan/core-api:X.Y.Z        the API, and the migrations it runs
 #   ghcr.io/mcpspan/core-dashboard:X.Y.Z  the dashboard
@@ -28,7 +29,7 @@ env:
 jobs:
   build:
     # Only in the public repository, where Actions costs nothing.
-    if: github.repository == 'mcpspan/mcpspan' && startsWith(github.event.release.tag_name, 'core/v')
+    if: github.repository == 'mcpspan/mcpspan' && (startsWith(github.event.release.tag_name, 'core/v') || startsWith(github.event.release.tag_name, 'all/v'))
     name: ${{ matrix.image }}, ${{ matrix.platform.arch }}
     strategy:
       matrix:
