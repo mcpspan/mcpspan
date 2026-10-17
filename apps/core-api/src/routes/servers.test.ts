@@ -36,6 +36,30 @@ const rename = (serverId: string, name: unknown) =>
 const remove = (serverId: string, cookie?: string | null) =>
   call(`/${serverId}`, { method: 'DELETE' }, cookie === undefined ? account.cookie : cookie);
 
+const deleteData = (serverId: string, body: Record<string, unknown>, cookie?: string | null) =>
+  call(
+    `/${serverId}/data/delete`,
+    { method: 'POST', body: JSON.stringify(body) },
+    cookie === undefined ? account.cookie : cookie,
+  );
+
+/** Calls a table holds for a server; an hourly summary counts what each of its rows stands for. */
+async function countFor(table: string, serverId: string): Promise<number> {
+  const counted = table.endsWith('_hourly') ? 'calls' : '1';
+  const result = await getPool().query<{ c: string }>(
+    `SELECT coalesce(sum(${counted}), 0) AS c FROM ${table} WHERE server_id = $1`,
+    [serverId],
+  );
+
+  return Number(result.rows[0]?.c);
+}
+
+async function refreshRollups(): Promise<void> {
+  for (const rollup of ['tool_calls_hourly', 'resource_calls_hourly', 'prompt_calls_hourly']) {
+    await getPool().query(`CALL refresh_continuous_aggregate('${rollup}', NULL, NULL)`);
+  }
+}
+
 /** Whether a key still opens the ingest endpoint. */
 async function keyWorks(key: string): Promise<boolean> {
   const app = new Hono<{ Variables: AuthVariables }>();
@@ -245,6 +269,67 @@ describe('renaming a server', () => {
     const stranger = await createAccount();
 
     expect((await rename(stranger.serverId, 'Mine now')).status).toBe(404);
+  });
+});
+
+describe('deleting what a server recorded', () => {
+  async function seeded(): Promise<void> {
+    await seedEvents(account.serverId, [
+      { kind: 'tool', toolName: 'kept_before', occurredAt: '2026-01-05T09:30:00Z' },
+      { kind: 'tool', toolName: 'leaked', occurredAt: '2026-01-05T10:15:00Z' },
+      { kind: 'resource', toolName: 'file:///leaked', occurredAt: '2026-01-05T10:20:00Z' },
+      { kind: 'tool', toolName: 'kept_same_hour', occurredAt: '2026-01-05T10:50:00Z' },
+      { kind: 'tool', toolName: 'kept_after', occurredAt: '2026-01-06T12:00:00Z' },
+    ]);
+    await refreshRollups();
+  }
+
+  const range = { from: '2026-01-05T10:00:00Z', to: '2026-01-05T10:30:00Z' };
+
+  it('says first how many calls it would take, and takes none', async () => {
+    await seeded();
+
+    const response = await deleteData(account.serverId, { ...range, dryRun: true });
+
+    await expect(response.json()).resolves.toEqual({ calls: 2, deleted: false });
+    expect(await countFor('tool_calls', account.serverId)).toBe(4);
+  });
+
+  it('takes the calls in the range and their place in the hourly summaries, and nothing else', async () => {
+    await seeded();
+
+    const response = await deleteData(account.serverId, range);
+
+    await expect(response.json()).resolves.toEqual({ calls: 2, deleted: true });
+    const names = await getPool().query<{ tool_name: string }>(
+      'SELECT tool_name FROM tool_calls WHERE server_id = $1 ORDER BY occurred_at',
+      [account.serverId],
+    );
+    expect(names.rows.map((row) => row.tool_name)).toEqual(['kept_before', 'kept_same_hour', 'kept_after']);
+    expect(await countFor('resource_calls', account.serverId)).toBe(0);
+    // The 10:00 hour is counted again from what is left of it: one call, not three.
+    expect(await countFor('tool_calls_hourly', account.serverId)).toBe(3);
+    expect(await countFor('resource_calls_hourly', account.serverId)).toBe(0);
+    expect(await keyWorks(account.key)).toBe(true);
+  });
+
+  it('takes everything with no range, and keeps the server', async () => {
+    await seeded();
+
+    await expect((await deleteData(account.serverId, {})).json()).resolves.toEqual({ calls: 5, deleted: true });
+    expect(await countFor('tool_calls', account.serverId)).toBe(0);
+    expect(await countFor('tool_calls_hourly', account.serverId)).toBe(0);
+    const servers = (await (await list()).json()) as { servers: { id: string }[] };
+    expect(servers.servers.map((s) => s.id)).toEqual([account.serverId]);
+  });
+
+  it("refuses a range that ends before it starts, and another account's server", async () => {
+    const other = await createAccount();
+
+    expect((await deleteData(account.serverId, { from: range.to, to: range.from })).status).toBe(400);
+    expect((await deleteData(account.serverId, { from: 'yesterday' })).status).toBe(400);
+    expect((await deleteData(other.serverId, {})).status).toBe(404);
+    expect((await deleteData(account.serverId, {}, null)).status).toBe(401);
   });
 });
 

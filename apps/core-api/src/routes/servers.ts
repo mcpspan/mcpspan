@@ -7,7 +7,9 @@ import { requireSession, type SessionVariables } from '../session.ts';
 import {
   createServer,
   deleteServer,
+  deleteServerData,
   listServers,
+  parseDataRange,
   parseServerName,
   renameServer,
 } from '../servers.ts';
@@ -107,6 +109,26 @@ export function createServerRoutes(accounts: AccountStore = selfHostedAccounts) 
     } finally {
       client.release();
     }
+  });
+
+  /**
+   * Deletes what a server recorded between two moments, keeping the server.
+   * With dryRun, only says how many calls that would be, for the question
+   * asked before anything goes.
+   */
+  app.post('/:serverId/data/delete', async (c) => {
+    const { serverIds } = c.get('session');
+    const body = await readBody(c.req.raw);
+    const range = parseDataRange(body?.['from'], body?.['to']);
+
+    if ('error' in range) return c.json({ error: range.error }, 400);
+
+    const dryRun = body?.['dryRun'] === true;
+    const calls = await deleteServerData(serverIds, c.req.param('serverId'), range, { dryRun });
+
+    if (calls === undefined) return c.json({ error: 'No such server' }, 404);
+
+    return c.json({ calls, deleted: !dryRun });
   });
 
   app.patch('/:serverId', async (c) => {

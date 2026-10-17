@@ -155,6 +155,126 @@ export async function deleteServer(
   return true;
 }
 
+/** A stretch of time to delete in. Either end left out reaches as far as the data does. */
+export interface DataRange {
+  from: Date | null;
+  to: Date | null;
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * Deletes what one server recorded in a range, keeping the server and its key.
+ *
+ * For a call that should not have been recorded, such as an error message
+ * carrying a token, and for clearing out test traffic. Takes the calls of
+ * every kind and the tool listings, and the definitions and versions seen
+ * only inside the range; a definition also seen outside it is still true of
+ * the server and stays.
+ *
+ * The hourly summaries are rebuilt over the range, widened to whole hours.
+ * Within an hour the range cuts through, what stays outside it is counted
+ * again from the calls that are left, while those are still kept; past that
+ * the hour goes with the range. With dryRun nothing is deleted and the count
+ * says what would be.
+ *
+ * Returns how many calls it took (or would take), or undefined for a server
+ * the caller cannot reach. Not taken off any monthly count: what was
+ * received was received.
+ */
+export async function deleteServerData(
+  serverIds: readonly string[],
+  serverId: string,
+  range: DataRange,
+  options: { dryRun?: boolean } = {},
+): Promise<number | undefined> {
+  if (!serverIds.includes(serverId)) return undefined;
+
+  const within = (column: string) =>
+    `${column} >= coalesce($2::timestamptz, '-infinity') AND ${column} < coalesce($3::timestamptz, 'infinity')`;
+  const params = [serverId, range.from, range.to];
+  const client = await getPool().connect();
+  let calls = 0;
+
+  try {
+    await client.query('BEGIN');
+
+    for (const { raw } of Object.values(CALL_TABLES)) {
+      const result = options.dryRun
+        ? await client.query<{ c: string }>(
+            `SELECT count(*) AS c FROM ${raw} WHERE server_id = $1 AND ${within('occurred_at')}`,
+            params,
+          )
+        : await client.query(`DELETE FROM ${raw} WHERE server_id = $1 AND ${within('occurred_at')}`, params);
+
+      calls += options.dryRun ? Number(result.rows[0]?.c ?? 0) : (result.rowCount ?? 0);
+    }
+
+    if (options.dryRun) {
+      await client.query('ROLLBACK');
+      return calls;
+    }
+
+    await client.query(`DELETE FROM tool_listings WHERE server_id = $1 AND ${within('occurred_at')}`, params);
+
+    for (const table of ['tool_definitions', 'server_versions']) {
+      await client.query(
+        `DELETE FROM ${table} WHERE server_id = $1 AND ${within('first_seen_at')} AND ${within('last_seen_at')}`,
+        params,
+      );
+    }
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  const from = range.from === null ? null : new Date(Math.floor(range.from.getTime() / HOUR_MS) * HOUR_MS);
+  const to = range.to === null ? null : new Date(Math.ceil(range.to.getTime() / HOUR_MS) * HOUR_MS);
+
+  // Outside the transaction, as in deleteServer: a continuous aggregate
+  // cannot be refreshed inside one.
+  for (const { rollup } of Object.values(CALL_TABLES)) {
+    try {
+      await getPool().query(
+        `CALL refresh_continuous_aggregate('${rollup}', $1::timestamptz, $2::timestamptz)`,
+        [from, to],
+      );
+    } catch (error) {
+      console.error(
+        `mcpspan core-api deleted the calls but could not rebuild ${rollup}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  return calls;
+}
+
+/** Reads a range from a request, or says what is wrong with it. */
+export function parseDataRange(from: unknown, to: unknown): DataRange | { error: string } {
+  const read = (value: unknown): Date | null | 'invalid' => {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'string') return 'invalid';
+
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime()) ? 'invalid' : date;
+  };
+  const range = { from: read(from), to: read(to) };
+
+  if (range.from === 'invalid' || range.to === 'invalid') return { error: 'Send from and to as dates' };
+  if (range.from !== null && range.to !== null && range.from.getTime() >= range.to.getTime()) {
+    return { error: 'The range has to end after it starts' };
+  }
+
+  return { from: range.from, to: range.to };
+}
+
 /**
  * Reads a name from a request, or says what is wrong with it.
  *
