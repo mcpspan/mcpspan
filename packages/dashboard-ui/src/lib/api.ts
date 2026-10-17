@@ -683,9 +683,8 @@ async function request<T>(path: string, session: Session, query: Query): Promise
     // implying the opposite about versions where it mattered.
     response = await fetch(url, { headers: { cookie: session } });
   } catch (cause) {
-    throw new ApiError(0, `Could not reach the Core API at ${coreApiUrl()}. Is it running?`, {
-      cause,
-    });
+    // Where it looked is in the advice beside this, which depends on who reads it.
+    throw new ApiError(0, 'The dashboard could not reach the mcpspan API.', { cause });
   }
 
   // Several servers and none named: the API asks which one rather than

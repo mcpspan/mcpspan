@@ -148,16 +148,6 @@ export async function deleteServer(
   return true;
 }
 
-/** Whether an account created a server. Alert rules and webhooks still belong to one account. */
-export async function ownsServer(userId: string, serverId: string): Promise<boolean> {
-  const result = await getPool().query(`SELECT 1 FROM servers WHERE id = $1 AND user_id = $2`, [
-    serverId,
-    userId,
-  ]);
-
-  return (result.rowCount ?? 0) > 0;
-}
-
 /**
  * Reads a name from a request, or says what is wrong with it.
  *

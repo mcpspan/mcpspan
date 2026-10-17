@@ -13,7 +13,6 @@ import {
 import { type AccountStore, selfHostedAccounts } from '../accounts.ts';
 import { getPool } from '../db.ts';
 import { parsePage, takePage } from '../paging.ts';
-import { ownsServer } from '../servers.ts';
 import { requireSession, type SessionVariables } from '../session.ts';
 
 /** Longest webhook address accepted. Slack's and Discord's are well under this. */
@@ -36,7 +35,7 @@ interface RuleInput {
  * Alert rules and where they are sent, for the signed-in account.
  *
  * Every rule belongs to a server, and every request that names one is checked
- * against the servers the session owns, the same way every other route is.
+ * against the servers the session reaches, the same way every other route is.
  */
 export function createAlertRoutes(
   /** Injected so a test can receive the test notification itself. */
@@ -48,7 +47,7 @@ export function createAlertRoutes(
   app.use('*', requireSession(accounts));
 
   app.get('/', async (c) => {
-    const { userId } = c.get('session');
+    const { userId, serverIds } = c.get('session');
     const page = parsePage(
       (name) => c.req.query(name),
       { limit: RECENT_EVENTS, max: 100 },
@@ -90,9 +89,9 @@ export function createAlertRoutes(
                 ) AS firing_targets
          FROM alert_rules r
          JOIN servers s ON s.id = r.server_id
-         WHERE s.user_id = $1
+         WHERE r.server_id = ANY($1::uuid[])
          ORDER BY s.created_at, r.created_at`,
-        [userId],
+        [serverIds],
       ),
       getPool().query<{
         id: string;
@@ -114,10 +113,10 @@ export function createAlertRoutes(
          FROM alert_events e
          JOIN alert_rules r ON r.id = e.rule_id
          JOIN servers s ON s.id = r.server_id
-         WHERE s.user_id = $1
+         WHERE r.server_id = ANY($1::uuid[])
          ORDER BY e.occurred_at DESC, e.id
          LIMIT $2 OFFSET $3`,
-        [userId, page.limit + 1, page.offset],
+        [serverIds, page.limit + 1, page.offset],
       ),
     ]);
 
@@ -233,12 +232,11 @@ export function createAlertRoutes(
   });
 
   app.post('/rules', async (c) => {
-    const { userId } = c.get('session');
+    const { serverIds } = c.get('session');
     const body = await readBody(c.req.raw);
     const serverId = body?.['serverId'];
 
-    const owned =
-      typeof serverId === 'string' && UUID.test(serverId) && (await ownsServer(userId, serverId));
+    const owned = typeof serverId === 'string' && serverIds.includes(serverId);
 
     if (!owned) {
       return c.json({ error: 'No such server' }, 404);
@@ -274,9 +272,9 @@ export function createAlertRoutes(
   });
 
   app.patch('/rules/:ruleId', async (c) => {
-    const { userId } = c.get('session');
+    const { serverIds } = c.get('session');
     const ruleId = c.req.param('ruleId');
-    const current = await ownedRule(userId, ruleId);
+    const current = await ownedRule(serverIds, ruleId);
 
     if (current === undefined) return c.json({ error: 'No such rule' }, 404);
 
@@ -352,10 +350,10 @@ export function createAlertRoutes(
   });
 
   app.delete('/rules/:ruleId', async (c) => {
-    const { userId } = c.get('session');
+    const { serverIds } = c.get('session');
     const ruleId = c.req.param('ruleId');
 
-    if ((await ownedRule(userId, ruleId)) === undefined) {
+    if ((await ownedRule(serverIds, ruleId)) === undefined) {
       return c.json({ error: 'No such rule' }, 404);
     }
 
@@ -376,14 +374,18 @@ interface StoredRule {
   tool_names: string[] | null;
 }
 
-async function ownedRule(userId: string, ruleId: string): Promise<StoredRule | undefined> {
+/** A rule on one of the servers the session reaches. */
+async function ownedRule(
+  serverIds: readonly string[],
+  ruleId: string,
+): Promise<StoredRule | undefined> {
   if (!UUID.test(ruleId)) return undefined;
 
   const result = await getPool().query<StoredRule>(
     `SELECT r.kind, r.threshold, r.window_minutes, r.min_calls, r.notify_resolved, r.tool_names
-     FROM alert_rules r JOIN servers s ON s.id = r.server_id
-     WHERE r.id = $1 AND s.user_id = $2`,
-    [ruleId, userId],
+     FROM alert_rules r
+     WHERE r.id = $1 AND r.server_id = ANY($2::uuid[])`,
+    [ruleId, serverIds],
   );
 
   return result.rows[0];

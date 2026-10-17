@@ -603,14 +603,17 @@ describe('what the client does with a refusal', () => {
     expect(error.message).toBe('No such server');
   });
 
-  it('says where it tried to reach when nothing answers', async () => {
+  // Where it looked is left to the advice beside the message, which says it
+  // only to whoever runs the installation.
+  it('tells nothing answering apart from a refusal', async () => {
     const saved = process.env['CORE_API_URL'];
     process.env['CORE_API_URL'] = 'http://127.0.0.1:1';
 
     const error = (await getSummary(account.cookie).catch((caught: unknown) => caught)) as ApiError;
-
-    expect(error.message).toContain('127.0.0.1:1');
     process.env['CORE_API_URL'] = saved;
+
+    expect(error.status).toBe(0);
+    expect(error.message).toBe('The dashboard could not reach the mcpspan API.');
   });
 
 

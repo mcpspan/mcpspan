@@ -1,5 +1,7 @@
 import { AlertTriangle, CheckCircle2, Circle, XCircle } from 'lucide-react';
 
+import { installation } from '#installation';
+
 import { Facts } from '../components/facts';
 import { LocalTime } from '../components/local-time';
 import { CannotReachApi, Notice } from '../components/notice';
@@ -64,10 +66,14 @@ function StatusReport({ diagnostics }: { diagnostics: Diagnostics }) {
     ),
   ];
   const staleServers = diagnostics.signingSecret?.staleServerIds.length ?? 0;
+  // Left out of the answer for an account that shares the installation with others.
+  const runsInstallation = diagnostics.versions !== null;
 
   return (
     <>
-      {diagnostics.signingSecret !== null && staleServers > 0 ? (
+      {/* About the installation's secret and .env, which only whoever runs it
+          can act on; anybody else is told on each server what to do. */}
+      {runsInstallation && diagnostics.signingSecret !== null && staleServers > 0 ? (
         <Notice title="API_KEY_SECRET has changed">
           <p>
             It changed on <LocalTime iso={diagnostics.signingSecret.changedAt} />, after{' '}
@@ -114,7 +120,7 @@ function StatusReport({ diagnostics }: { diagnostics: Diagnostics }) {
         <CardHeader title="Refused requests" hint="Kept across restarts" />
 
         {diagnostics.refusals.length === 0 ? (
-          <p className="text-sm text-ink-muted">The API has not refused anything.</p>
+          <p className="text-sm text-ink-muted">{installation.nothingRefused}</p>
         ) : (
           // A list rather than a table. Each entry carries a sentence of
           // explanation, and four columns beside it cut the date off on a phone.

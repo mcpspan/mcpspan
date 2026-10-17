@@ -153,6 +153,37 @@ describe('an account store', () => {
     expect(renamed.status).toBe(404);
   });
 
+  it('decides which servers alert rules may watch', async () => {
+    const other = await createApiKey({ serverName: 'Shared server' });
+    const accounts: AccountStore = {
+      ...selfHostedAccounts,
+      serverIdsFor: async () => [other.serverId],
+    };
+    const app = createApp({ accounts });
+    const rule = (serverId: string) =>
+      app.request('/v1/alerts/rules', {
+        method: 'POST',
+        headers: { cookie: account.cookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ serverId, kind: 'silence', windowMinutes: 60 }),
+      });
+
+    const shared = await rule(other.serverId);
+    const own = await rule(account.serverId);
+    const { id } = (await shared.json()) as { id: string };
+    const listed = (await (
+      await app.request('/v1/alerts', { headers: { cookie: account.cookie } })
+    ).json()) as { rules: { id: string }[] };
+    const removed = await app.request(`/v1/alerts/rules/${id}`, {
+      method: 'DELETE',
+      headers: { cookie: account.cookie },
+    });
+
+    expect(shared.status).toBe(201);
+    expect(own.status).toBe(404);
+    expect(listed.rules.map((listedRule) => listedRule.id)).toEqual([id]);
+    expect(removed.status).toBe(204);
+  });
+
   it('decides who may register and sign in', async () => {
     const accounts: AccountStore = {
       ...selfHostedAccounts,

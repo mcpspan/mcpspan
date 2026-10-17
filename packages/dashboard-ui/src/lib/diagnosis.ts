@@ -1,3 +1,5 @@
+import { installation } from '#installation';
+
 import type { Diagnostics, RefusalCount, ServerHealth } from './api';
 
 export type Tone = 'good' | 'warning' | 'critical' | 'neutral';
@@ -130,8 +132,7 @@ export function diagnose(
     return {
       tone: 'critical',
       title: 'Key issued under an old API_KEY_SECRET',
-      detail:
-        'API_KEY_SECRET changed after this key was created, so the key can no longer be verified. Restore the previous .env, or generate a new key in Settings.',
+      detail: installation.staleKey,
     };
   }
 

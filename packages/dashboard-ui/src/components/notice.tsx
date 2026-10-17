@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { installation } from '#installation';
+
 import { ingestUrl } from '../lib/ingest-url';
 import { snippets } from '../lib/snippets';
 import { ConnectSnippets } from './connect-snippets';
@@ -61,13 +63,7 @@ export function CannotReachApi({ reason, status }: { reason: string; status?: nu
   return (
     <Notice title="Cannot read your data">
       <p>{reason}</p>
-      <p className="mt-2">
-        {/* 503 is the API up and its database not: the advice for the other
-            case would send somebody checking the one part that works. */}
-        {status === 503
-          ? 'Check that the database is running, for example with docker compose ps. Events sent meanwhile are kept by the SDK and delivered once it is back.'
-          : 'The dashboard talks to the Core API on the server. Check that it is running and that this app is configured to reach it.'}
-      </p>
+      <p className="mt-2">{installation.outage(status)}</p>
     </Notice>
   );
 }

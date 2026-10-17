@@ -5,6 +5,9 @@
   "description": "The mcpspan dashboard's pages, components and styles, for a Next.js app to mount",
   "license": "MIT",
   "type": "module",
+  "imports": {
+    "#installation": "./src/installation.tsx"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
