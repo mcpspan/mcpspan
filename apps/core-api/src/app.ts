@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 
 import { type AccountStore, selfHostedAccounts } from './accounts.ts';
-import { admitEverything, type Admission } from './admission.ts';
+import { admitEverything, type Admission, meterNothing, type UsageMeter } from './admission.ts';
 import { isDatabaseUnavailable } from './db.ts';
 import { createAlertRoutes } from './routes/alerts.ts';
 import { createAuthRoutes } from './routes/auth.ts';
@@ -21,6 +21,8 @@ export interface AppOptions {
   accounts?: AccountStore;
   /** Whether a batch from a known server is stored at all. */
   admission?: Admission;
+  /** Told how many events each batch stored, for counting them. */
+  usage?: UsageMeter;
 }
 
 /**
@@ -33,6 +35,7 @@ export interface AppOptions {
 export function createApp({
   accounts = selfHostedAccounts,
   admission = admitEverything,
+  usage = meterNothing,
 }: AppOptions = {}): Hono {
   const app = new Hono();
 
@@ -49,7 +52,7 @@ export function createApp({
   // Versioned from the start. The SDK posts to a fixed path, and every copy of
   // it already in somebody's server keeps posting there after we change our
   // minds about something.
-  app.route('/v1', createEventRoutes(undefined, undefined, undefined, admission));
+  app.route('/v1', createEventRoutes(undefined, undefined, undefined, admission, usage));
 
   // Separate branch from the ingest endpoint, because the two are read by
   // different things through different credentials: one by a developer's

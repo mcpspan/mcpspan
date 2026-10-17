@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createAccount, createApiKey, resetDatabase, type TestAccount } from '../test/fixtures.ts';
 import { type AccountStore, selfHostedAccounts } from './accounts.ts';
-import type { Admission, AdmissionRequest } from './admission.ts';
+import type { Admission, AdmissionRequest, Usage } from './admission.ts';
 import { createApp } from './app.ts';
 import { closePool, getPool } from './db.ts';
 
@@ -105,6 +105,38 @@ describe('admission', () => {
   it('lets everything through when left out', async () => {
     expect((await send(createApp(), 2)).status).toBe(202);
     expect(await storedCalls()).toBe(2);
+  });
+});
+
+describe('a usage meter', () => {
+  function post(app: ReturnType<typeof createApp>, events: Record<string, unknown>[]) {
+    return app.request('/v1/events', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${account.key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ events }),
+    });
+  }
+
+  it('is told what was stored, and a batch sent again counts once', async () => {
+    const told: Usage[] = [];
+    const app = createApp({ usage: async (usage) => void told.push(usage) });
+    const batch = [event(), event(), event()];
+
+    expect((await post(app, batch)).status).toBe(202);
+    expect((await post(app, batch)).status).toBe(202);
+
+    expect(told).toEqual([{ serverId: account.serverId, stored: 3 }]);
+  });
+
+  it('does not make the SDK send a stored batch again when counting fails', async () => {
+    const app = createApp({
+      usage: async () => {
+        throw new Error('counter unavailable');
+      },
+    });
+
+    expect((await post(app, [event()])).status).toBe(202);
+    expect(await storedCalls()).toBe(1);
   });
 });
 

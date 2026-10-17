@@ -2,7 +2,7 @@ import { clientTypeOf } from '@mcpspan/client-types';
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 
-import { admitEverything, type Admission } from '../admission.ts';
+import { admitEverything, type Admission, meterNothing, type UsageMeter } from '../admission.ts';
 import { type AuthVariables, requireApiKey } from '../auth.ts';
 import { contactLog, type ContactLog } from '../contacts.ts';
 import { describeIssues, eventBatchSchema } from '../events-schema.ts';
@@ -40,6 +40,8 @@ export function createEventRoutes(
   contacts: ContactLog = contactLog,
   /** Whether a batch may be stored at all. A self-hosted install takes everything. */
   admission: Admission = admitEverything,
+  /** Told what each batch stored. A self-hosted install counts nothing. */
+  usage: UsageMeter = meterNothing,
 ) {
   const app = new Hono<{ Variables: AuthVariables }>();
 
@@ -126,6 +128,18 @@ export function createEventRoutes(
 
         // Only what was new, so a redelivered batch is not forwarded twice.
         forwardToOpenTelemetry(serverId, stored);
+
+        if (stored.length > 0) {
+          // The events are stored either way; a count that failed must not
+          // make the SDK send them again.
+          await usage({ serverId, stored: stored.length }).catch((error: unknown) => {
+            console.error(
+              `mcpspan core-api could not count a stored batch: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          });
+        }
 
         // Both numbers, because they differ when a batch was redelivered, and
         // "I sent a hundred and see ninety-eight" is otherwise a mystery.

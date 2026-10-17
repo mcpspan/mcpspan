@@ -32,3 +32,20 @@ export type Admission = (request: AdmissionRequest) => Promise<AdmissionVerdict>
 
 /** A self-hosted installation stores everything its own servers send. */
 export const admitEverything: Admission = async () => ({ allowed: true });
+
+/**
+ * Told how many of a batch's events were stored, once they are.
+ *
+ * Only what was new: a batch the SDK sent again after a timeout or a 429 is
+ * stored once and counted once, which is what makes this, rather than
+ * admission, the place to count usage.
+ */
+export interface Usage {
+  serverId: string;
+  stored: number;
+}
+
+export type UsageMeter = (usage: Usage) => Promise<void>;
+
+/** A self-hosted installation counts nothing. */
+export const meterNothing: UsageMeter = async () => {};

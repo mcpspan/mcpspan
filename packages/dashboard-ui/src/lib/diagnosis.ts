@@ -61,20 +61,17 @@ const REASONS: Record<string, ReasonInfo> = {
   rate_limited: {
     label: 'Rate limited',
     lost: false,
-    explanation:
-      'Sent faster than MCPSPAN_INGEST_EVENTS_PER_SECOND allows. The SDK keeps these and sends them again.',
+    explanation: installation.refusals.rate_limited,
   },
   deferred: {
     label: 'Deferred',
     lost: false,
-    explanation:
-      'Turned away for now by a rule of this installation. The SDK keeps these and sends them again.',
+    explanation: installation.refusals.deferred,
   },
   not_admitted: {
     label: 'Not admitted',
     lost: true,
-    explanation:
-      'Turned away for good by a rule of this installation. The SDK drops these batches and keeps collecting.',
+    explanation: installation.refusals.not_admitted,
   },
   storage_failed: {
     label: 'Not stored',

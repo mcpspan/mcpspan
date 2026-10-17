@@ -19,6 +19,12 @@ export interface InstallationText {
   staleKey: string;
   /** On Status, when no request has been refused. */
   nothingRefused: string;
+  /** What the refusals that come from this installation's own rules mean. */
+  refusals: {
+    rate_limited: string;
+    deferred: string;
+    not_admitted: string;
+  };
 }
 
 export const installation: InstallationText = {
@@ -39,4 +45,12 @@ export const installation: InstallationText = {
   staleKey:
     'API_KEY_SECRET changed after this key was created, so the key can no longer be verified. Restore the previous .env, or generate a new key in Settings.',
   nothingRefused: 'The API has not refused anything.',
+  refusals: {
+    rate_limited:
+      'Sent faster than MCPSPAN_INGEST_EVENTS_PER_SECOND allows. The SDK keeps these and sends them again.',
+    deferred:
+      'Turned away for now by a rule of this installation. The SDK keeps these and sends them again.',
+    not_admitted:
+      'Turned away for good by a rule of this installation. The SDK drops these batches and keeps collecting.',
+  },
 };
