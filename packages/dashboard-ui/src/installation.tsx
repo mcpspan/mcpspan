@@ -30,7 +30,7 @@ export interface InstallationText {
 export const installation: InstallationText = {
   forgottenPassword: (
     <>
-      Forgotten, rather than changed? On the machine running mcpspan,{' '}
+      Forgot your password? On the machine running mcpspan,{' '}
       <code className="font-mono text-xs [overflow-wrap:anywhere]">
         docker compose exec api node scripts/reset-password.ts
       </code>{' '}

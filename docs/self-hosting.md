@@ -27,8 +27,8 @@ given new keys, or removed - removing one deletes everything it recorded, so
 the last one cannot be removed at all.
 
 To delete only part of what a server recorded, such as an error message that
-carried something it should not have, or a burst of test traffic, use the
-eraser beside it in Settings: pick the last hour, day, week or month, two
+carried something it should not have, or a burst of test traffic, use Delete
+data in Settings: pick the server and the last hour, day, week or month, two
 dates, or everything. It says how many calls that is before anything goes,
 and keeps the server and its key.
 

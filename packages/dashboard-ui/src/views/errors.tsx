@@ -4,7 +4,7 @@ import { FilterBar } from '../components/filter-bar';
 import { CannotReachApi, NothingConnectedYet } from '../components/notice';
 import { PageHeader } from '../components/page-header';
 import { CursorPager } from '../components/pager';
-import { RangePicker } from '../components/range-picker';
+import { RangeLabel, RangePicker } from '../components/range-picker';
 import { Card, CardHeader } from '../components/ui/card';
 import { ApiError, getFailures, getFilterOptions } from '../lib/api';
 import { resolveRange } from '../lib/range';
@@ -39,10 +39,10 @@ export default async function ErrorsPage({
 
   const [failures, options] = await Promise.all([
     getFailures(session, {
-      from: range.from,
+      ...range.window,
       ...carried(['serverId', 'toolName', 'clientType', 'errorSource', 'before']),
     }).catch(asApiError),
-    getFilterOptions(session, { from: range.from, ...carried(['serverId']) }).catch(asApiError),
+    getFilterOptions(session, { ...range.window, ...carried(['serverId']) }).catch(asApiError),
   ]);
 
   // Every failure in the window, where the list stops at the newest few dozen.
@@ -51,7 +51,7 @@ export default async function ErrorsPage({
       text: 'CSV',
       kind: 'calls' as const,
       params: {
-        from: range.from,
+        ...range.window,
         ...carried(['serverId', 'toolName', 'clientType', 'errorSource']),
         failedOnly: 'true',
       },
@@ -62,7 +62,7 @@ export default async function ErrorsPage({
     <main className="mx-auto max-w-4xl px-6 py-10">
       <PageHeader
         title="Errors"
-        subtitle={range.label}
+        subtitle={<RangeLabel range={range} />}
         actions={<RangePicker current={range.key} params={params} />}
       />
 

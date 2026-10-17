@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Button } from './ui/button';
@@ -59,23 +60,16 @@ function rangeFor(choice: Choice, fromDay: string, toDay: string): Range | { err
 }
 
 /**
- * Deletes part of what one server recorded, keeping the server and its key.
+ * Deletes part of what a server recorded, keeping the server and its key.
  *
  * Asks the API how many calls the range holds before anything goes, and says
  * that number in the question: "delete 3 calls" and "delete 40,000 calls" are
  * different decisions, and the reader should know which one they are making.
  */
-export function DeleteServerData({
-  serverId,
-  serverName,
-  onClose,
-  onDeleted,
-}: {
-  serverId: string;
-  serverName: string;
-  onClose: () => void;
-  onDeleted: () => void;
-}) {
+export function DeleteServerData({ servers }: { servers: { id: string; name: string }[] }) {
+  const router = useRouter();
+  const [serverId, setServerId] = useState(servers[0]?.id ?? '');
+  const serverName = servers.find((server) => server.id === serverId)?.name ?? 'This server';
   const [choice, setChoice] = useState<Choice>('day');
   const [fromDay, setFromDay] = useState('');
   const [toDay, setToDay] = useState('');
@@ -138,20 +132,34 @@ export function DeleteServerData({
     if (calls === undefined) return;
 
     setNote(`Deleted ${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'}.`);
-    onDeleted();
+    router.refresh();
   }
 
   const count = pending?.calls.toLocaleString('en-US');
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface p-3">
-      <p className="text-sm text-ink">
-        Delete what <strong>{serverName}</strong> recorded, and keep the server and its key.
-      </p>
+    <div className="space-y-3">
 
       {pending === undefined ? (
         <>
           <div className="flex flex-wrap items-end gap-2">
+            {servers.length > 1 ? (
+              <select
+                aria-label="Server"
+                value={serverId}
+                onChange={(event) => {
+                  setServerId(event.target.value);
+                  setNote(undefined);
+                }}
+                className={FIELD}
+              >
+                {servers.map((server) => (
+                  <option key={server.id} value={server.id}>
+                    {server.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <select
               aria-label="What to delete"
               value={choice}
@@ -187,11 +195,8 @@ export function DeleteServerData({
             ) : null}
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => void check()} disabled={busy}>
-              {busy ? 'Counting...' : 'Continue'}
-            </Button>
-            <Button variant="secondary" onClick={onClose} disabled={busy}>
-              Close
+            <Button variant="secondary" onClick={() => void check()} disabled={busy || serverId === ''}>
+              {busy ? 'Counting...' : 'Delete data...'}
             </Button>
           </div>
         </>

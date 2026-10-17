@@ -1,10 +1,9 @@
 'use client';
 
-import { AlertTriangle, Eraser, KeyRound, Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, KeyRound, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { DeleteServerData } from './delete-server-data';
 import { NewKey } from './new-key';
 import { Button } from './ui/button';
 import type { ServerRecord } from '../lib/api';
@@ -80,7 +79,6 @@ export function ManageServers({ servers }: { servers: ServerRecord[] }) {
             server={server}
             busy={busy === server.id}
             onlyOne={servers.length === 1}
-            onDataDeleted={() => router.refresh()}
             onRename={async (name) => {
               await act(server.id, () =>
                 fetch(`/api/servers/${server.id}`, {
@@ -143,12 +141,10 @@ function ServerRow({
   onRename,
   onRegenerate,
   onRemove,
-  onDataDeleted,
 }: {
   server: ServerRecord;
   busy: boolean;
   onlyOne: boolean;
-  onDataDeleted: () => void;
   onRename: (name: string) => Promise<void>;
   onRegenerate: () => Promise<void>;
   onRemove: () => Promise<void>;
@@ -157,7 +153,6 @@ function ServerRow({
   const [name, setName] = useState(server.name);
   const [confirmingRemoval, setConfirmingRemoval] = useState(false);
   const [confirmingKey, setConfirmingKey] = useState(false);
-  const [deletingData, setDeletingData] = useState(false);
 
   return (
     <li className="py-3">
@@ -230,15 +225,6 @@ function ServerRow({
             </Button>
             <Button
               variant="secondary"
-              onClick={() => setDeletingData(true)}
-              disabled={busy}
-              title={`Delete data from ${server.name}`}
-            >
-              <Eraser aria-hidden className="size-4" />
-              <span className="sr-only">Delete data from {server.name}</span>
-            </Button>
-            <Button
-              variant="secondary"
               onClick={() => setConfirmingRemoval(true)}
               disabled={busy || onlyOne}
               title={
@@ -267,15 +253,6 @@ function ServerRow({
             void onRegenerate();
           }}
           onCancel={() => setConfirmingKey(false)}
-        />
-      ) : null}
-
-      {deletingData ? (
-        <DeleteServerData
-          serverId={server.id}
-          serverName={server.name}
-          onClose={() => setDeletingData(false)}
-          onDeleted={onDataDeleted}
         />
       ) : null}
 

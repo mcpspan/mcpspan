@@ -21,6 +21,7 @@ const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 interface Errors {
   email?: string;
   password?: string;
+  confirm?: string;
   form?: string;
 }
 
@@ -28,6 +29,7 @@ export function SignInForm({ registrationOpen }: { registrationOpen: boolean | u
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [issuedKey, setIssuedKey] = useState<string>();
@@ -42,6 +44,11 @@ export function SignInForm({ registrationOpen }: { registrationOpen: boolean | u
     else if (!LOOKS_LIKE_EMAIL.test(address)) found.email = 'That does not look like an email address';
 
     if (password.length === 0) found.password = signingUp ? 'Enter a password' : 'Enter your password';
+
+    // A typo in a password nobody has seen yet locks the account on its first day.
+    if (signingUp && found.password === undefined && confirm !== password) {
+      found.confirm = 'The two passwords are not the same';
+    }
 
     return found;
   }
@@ -144,6 +151,18 @@ export function SignInForm({ registrationOpen }: { registrationOpen: boolean | u
           onChange={(event) => setPassword(event.target.value)}
           {...(errors.password === undefined ? {} : { error: errors.password })}
         />
+
+        {signingUp ? (
+          <Field
+            id="confirm-password"
+            label="Password again"
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
+            {...(errors.confirm === undefined ? {} : { error: errors.confirm })}
+          />
+        ) : null}
 
         {errors.form === undefined ? null : (
           <p role="alert" className="text-sm text-status-critical">

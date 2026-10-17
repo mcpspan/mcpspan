@@ -7,7 +7,7 @@ import { LatencyChart } from '../components/latency-chart';
 import { CannotReachApi, NothingConnectedYet } from '../components/notice';
 import { PageHeader } from '../components/page-header';
 import { OffsetPager } from '../components/pager';
-import { RangePicker } from '../components/range-picker';
+import { RangeLabel, RangePicker } from '../components/range-picker';
 import { SummaryCards } from '../components/summary-cards';
 import { ToolListing } from '../components/tool-listing';
 import { ToolsTable } from '../components/tools-table';
@@ -91,7 +91,7 @@ export default async function OverviewPage({
   // address use the same names for these, so there is nothing to translate and
   // nothing to forget to translate.
   const query = {
-    from: range.from,
+    ...range.window,
     ...pick(params, ['serverId', 'toolName', 'clientType', 'sort']),
   };
 
@@ -100,7 +100,7 @@ export default async function OverviewPage({
   // at an empty page for no reason at all.
   // The window and server alone, for the lists that must not narrow with the
   // filters they offer or that do not describe any one tool.
-  const serverWide = { from: range.from, ...pick(params, ['serverId']) };
+  const serverWide = { ...range.window, ...pick(params, ['serverId']) };
 
   // Every call the page is about, tools, resources and prompts alike.
   const exportLinks = [
@@ -154,7 +154,7 @@ export default async function OverviewPage({
     <main className="mx-auto max-w-6xl px-6 py-10">
       <PageHeader
         title="Overview"
-        subtitle={range.label}
+        subtitle={<RangeLabel range={range} />}
         actions={<RangePicker current={range.key} params={params} />}
       />
 

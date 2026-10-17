@@ -5,7 +5,7 @@ import { FilterBar } from '../components/filter-bar';
 import { CannotReachApi, NothingConnectedYet } from '../components/notice';
 import { PageHeader } from '../components/page-header';
 import { CursorPager } from '../components/pager';
-import { RangePicker } from '../components/range-picker';
+import { RangeLabel, RangePicker } from '../components/range-picker';
 import { Card, CardHeader } from '../components/ui/card';
 import { ApiError, getCalls, getFilterOptions } from '../lib/api';
 import { resolveRange } from '../lib/range';
@@ -45,10 +45,10 @@ export default async function CallsPage({
 
   const [calls, options] = await Promise.all([
     getCalls(session, {
-      from: range.from,
+      ...range.window,
       ...carried(['serverId', 'toolName', 'clientType', 'outcome', 'kind', 'serverVersion', 'before']),
     }).catch(asApiError),
-    getFilterOptions(session, { from: range.from, ...carried(['serverId']) }).catch(asApiError),
+    getFilterOptions(session, { ...range.window, ...carried(['serverId']) }).catch(asApiError),
   ]);
 
   const exportLinks = [
@@ -56,7 +56,7 @@ export default async function CallsPage({
       text: 'CSV',
       kind: 'calls' as const,
       params: {
-        from: range.from,
+        ...range.window,
         format: 'csv',
         ...carried(['serverId', 'toolName', 'clientType']),
         ...(params['outcome'] === 'failed' ? { failedOnly: 'true' } : {}),
@@ -68,7 +68,7 @@ export default async function CallsPage({
     <main className="mx-auto max-w-4xl px-6 py-10">
       <PageHeader
         title="Calls"
-        subtitle={range.label}
+        subtitle={<RangeLabel range={range} />}
         actions={<RangePicker current={range.key} params={params} />}
       />
 

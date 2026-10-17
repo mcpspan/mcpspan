@@ -6,7 +6,7 @@ import { CannotReachApi, Notice, NothingConnectedYet } from '../components/notic
 import { PageHeader } from '../components/page-header';
 import { ParamSelect } from '../components/param-select';
 import { OffsetPager } from '../components/pager';
-import { RangePicker } from '../components/range-picker';
+import { RangeLabel, RangePicker } from '../components/range-picker';
 import { Card, CardHeader } from '../components/ui/card';
 import {
   ApiError,
@@ -44,7 +44,7 @@ export default async function SessionsPage({
   const range = resolveRange(params['range']);
   const session = await currentSession();
   const query = {
-    from: range.from,
+    ...range.window,
     ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }),
   };
   // The page's filters narrow both cards; "with" is the session list's own.
@@ -72,7 +72,7 @@ export default async function SessionsPage({
     <main className="mx-auto max-w-4xl space-y-6 px-6 py-10">
       <PageHeader
         title="Sessions"
-        subtitle={range.label}
+        subtitle={<RangeLabel range={range} />}
         actions={<RangePicker current={range.key} params={params} />}
       />
 

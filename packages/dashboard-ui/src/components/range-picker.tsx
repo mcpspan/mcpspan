@@ -2,7 +2,15 @@ import Link from 'next/link';
 
 import { cn } from '../lib/cn';
 import { withoutPaging } from '../lib/query';
-import { RANGES, type RangeKey } from '../lib/range';
+import { CUSTOM, RANGES, type RangeKey, type ResolvedRange } from '../lib/range';
+import { CustomRange, LocalRange } from './custom-range';
+
+/** What the page header says about the window: its name, or its dates. */
+export function RangeLabel({ range }: { range: ResolvedRange }) {
+  if (range.label !== undefined || range.to === undefined) return <>{range.label}</>;
+
+  return <LocalRange from={range.from} to={range.to} />;
+}
 
 /**
  * Choosing how far back to look.
@@ -14,8 +22,9 @@ import { RANGES, type RangeKey } from '../lib/range';
  * refresh, and the back button undoes it - none of which a component holding
  * the choice in memory would manage.
  *
- * Not a client component either, for the same reason: there is nothing here
- * for the browser to run.
+ * Not a client component either, for the same reason: the named windows need
+ * nothing from the browser. Only choosing dates does, and that is CustomRange,
+ * which ends in the same place: a new address.
  */
 export function RangePicker({
   current,
@@ -25,17 +34,19 @@ export function RangePicker({
   /** Everything else in the address, so switching a window keeps the rest. */
   params?: Record<string, string | undefined>;
 }) {
+  const kept: Record<string, string> = {};
+
+  // A different window is a different list, so every list starts again
+  // from its first page.
+  for (const [key, value] of Object.entries(withoutPaging(params ?? {}))) {
+    if (value !== undefined && key !== 'range') kept[key] = value;
+  }
+
   return (
     <nav aria-label="Time range" className="flex gap-1 rounded-lg border border-border bg-raised p-1">
       {RANGES.map((range) => {
         const active = range.key === current;
-        const query = new URLSearchParams();
-
-        // A different window is a different list, so every list starts
-        // again from its first page.
-        for (const [key, value] of Object.entries(withoutPaging(params ?? {}))) {
-          if (value !== undefined && key !== 'range') query.set(key, value);
-        }
+        const query = new URLSearchParams(kept);
         query.set('range', range.key);
 
         return (
@@ -53,6 +64,7 @@ export function RangePicker({
           </Link>
         );
       })}
+      <CustomRange active={current === CUSTOM} value={params?.['range']} params={kept} />
     </nav>
   );
 }

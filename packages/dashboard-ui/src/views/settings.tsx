@@ -1,7 +1,9 @@
 import { installation } from '#installation';
+import type { ReactNode } from 'react';
 
 import { ChangePassword } from '../components/change-password';
 import { ConnectSnippets } from '../components/connect-snippets';
+import { DeleteServerData } from '../components/delete-server-data';
 import { ManageAlerts } from '../components/manage-alerts';
 import { ManageServers } from '../components/manage-servers';
 import { OffsetPager } from '../components/pager';
@@ -18,8 +20,11 @@ const TOOL_LOOKBACK_DAYS = 30;
 
 export default async function SettingsPage({
   searchParams,
+  first,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
+  /** A card of the installation's own, above the shared ones: the hosted service's plan. */
+  first?: ReactNode;
 }) {
   const params = await searchParams;
   const session = await currentSession();
@@ -47,6 +52,8 @@ export default async function SettingsPage({
     <main className="mx-auto max-w-2xl space-y-6 px-6 py-10">
       <PageHeader title="Settings" />
 
+      {first}
+
       <Card>
         <CardHeader title="Connecting a server" />
         <p className="mb-3 text-sm text-ink-muted">
@@ -70,6 +77,16 @@ export default async function SettingsPage({
         </p>
 
         <ManageServers servers={servers} />
+      </Card>
+
+      <Card id="delete-data">
+        <CardHeader title="Delete data" />
+        <p className="mb-4 text-sm text-ink-muted">
+          Deletes part of what a server recorded, such as an error message that carried something
+          it should not have, or a burst of test traffic. The server and its key stay. You are told
+          how many calls that is before anything goes.
+        </p>
+        <DeleteServerData servers={servers.map((server) => ({ id: server.id, name: server.name }))} />
       </Card>
 
       <Card id="notifications">

@@ -9,7 +9,7 @@ import { CannotReachApi } from '../components/notice';
 import { PageHeader } from '../components/page-header';
 import { ParamSelect } from '../components/param-select';
 import { OffsetPager } from '../components/pager';
-import { RangePicker } from '../components/range-picker';
+import { RangeLabel, RangePicker } from '../components/range-picker';
 import { SummaryCards } from '../components/summary-cards';
 import { tokens } from '../components/tool-listing';
 import { Card, CardHeader } from '../components/ui/card';
@@ -62,7 +62,7 @@ export default async function ToolPage({
   const range = resolveRange(params['range']);
   const session = await currentSession();
   const query = {
-    from: range.from,
+    ...range.window,
     toolName,
     ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }),
   };
@@ -81,11 +81,11 @@ export default async function ToolPage({
     }).catch(asApiError),
     getLatency(session, query).catch(asApiError),
     getVersions(session, query).catch(() => undefined),
-    getFilterOptions(session, { from: range.from, ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }) }).catch(
+    getFilterOptions(session, { ...range.window, ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }) }).catch(
       () => undefined,
     ),
     // The whole list, for this tool's row and its share of the list. Losing it loses the card.
-    getToolListing(session, { from: range.from, ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }) }).catch(
+    getToolListing(session, { ...range.window, ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }) }).catch(
       () => undefined,
     ),
   ]);
@@ -97,7 +97,7 @@ export default async function ToolPage({
     <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
       <PageHeader
         title={toolName}
-        subtitle={range.label}
+        subtitle={<RangeLabel range={range} />}
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <Link
