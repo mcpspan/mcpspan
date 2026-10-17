@@ -8,7 +8,7 @@ Everything about running your own installation, past the quick start in the
 There is no default login or password. The first visit offers to create the
 account, with the email and password you choose. Registration closes once it
 exists, so nobody can wander in behind you. A password is checked at most ten
-times a minute, wrong ones counted for the whole installation.
+times a minute.
 
 Change the password under Settings. Forgot it? On the machine running
 mcpspan:

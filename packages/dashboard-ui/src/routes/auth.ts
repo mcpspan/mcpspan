@@ -38,6 +38,10 @@ export async function POST(
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        // How the browser reached this app, so a session cookie set over HTTPS
+        // is marked as one that never travels over plain HTTP.
+        'x-forwarded-proto':
+          request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', ''),
         // Signing out needs the session it is ending, and changing the
         // password the session of whoever is changing it.
         ...(request.headers.get('cookie') === null

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { createAccount, createApiKey, resetDatabase, type TestAccount } from '../../test/fixtures.ts';
+import { createAccount, createApiKey, resetDatabase, seedEvents, type TestAccount } from '../../test/fixtures.ts';
 import { createApp } from '../app.ts';
 import { requireApiKey, type AuthVariables } from '../auth.ts';
 import { closePool, getPool } from '../db.ts';
@@ -249,22 +249,37 @@ describe('renaming a server', () => {
 });
 
 describe('removing a server', () => {
-  it('takes its key and its events with it', async () => {
+  it('takes its key and everything it recorded with it', async () => {
     const created = (await (await create('Bookings')).json()) as { server: { id: string } };
+    const serverId = created.server.id;
 
+    await seedEvents(serverId, [
+      { kind: 'tool', toolName: 'doomed', occurredAt: '2026-01-05T10:00:00Z' },
+      { kind: 'resource', toolName: 'file:///doomed', occurredAt: '2026-01-05T10:00:00Z' },
+      { kind: 'prompt', toolName: 'doomed', occurredAt: '2026-01-05T10:00:00Z' },
+    ]);
     await getPool().query(
-      `INSERT INTO tool_calls (id, server_id, occurred_at, tool_name, duration_ms, success, client_type, sdk_version)
-       VALUES (gen_random_uuid(), $1, now(), 'doomed', 5, true, 'claude', '0.1.0')`,
-      [created.server.id],
+      `INSERT INTO tool_listings (id, server_id, occurred_at, client_type, sdk_version, tool_names, definition_hashes, definition_bytes)
+       VALUES (gen_random_uuid(), $1, now(), 'claude', '0.1.0', '{doomed}', '{abc}', '{10}')`,
+      [serverId],
     );
 
-    expect((await remove(created.server.id)).status).toBe(204);
+    expect((await remove(serverId)).status).toBe(204);
 
-    const events = await getPool().query('SELECT count(*) AS c FROM tool_calls WHERE server_id = $1', [
-      created.server.id,
-    ]);
+    for (const table of [
+      'tool_calls',
+      'resource_calls',
+      'prompt_calls',
+      'tool_listings',
+      // Rebuilt, not just marked stale: these buckets are months old.
+      'tool_calls_hourly',
+      'resource_calls_hourly',
+      'prompt_calls_hourly',
+    ]) {
+      const left = await getPool().query(`SELECT count(*) AS c FROM ${table} WHERE server_id = $1`, [serverId]);
 
-    expect(Number((events.rows[0] as { c: string }).c)).toBe(0);
+      expect({ table, left: Number((left.rows[0] as { c: string }).c) }).toEqual({ table, left: 0 });
+    }
   });
 
   it('leaves the other servers alone', async () => {

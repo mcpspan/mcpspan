@@ -306,6 +306,20 @@ describe('changing the password when signed in', () => {
   });
 });
 
+describe('the session cookie', () => {
+  it('is only sent over HTTPS once the browser arrived over HTTPS', async () => {
+    const plain = await post('/register', { email: 'me@example.com', password: GOOD_PASSWORD });
+    expect(plain.headers.get('set-cookie')).not.toMatch(/Secure/);
+
+    const secure = await createApp().request('/v1/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-proto': 'https' },
+      body: JSON.stringify({ email: 'me@example.com', password: GOOD_PASSWORD }),
+    });
+    expect(secure.headers.get('set-cookie')).toMatch(/Secure/);
+  });
+});
+
 describe('guessing passwords', () => {
   beforeEach(async () => {
     await post('/register', { email: 'me@example.com', password: GOOD_PASSWORD });

@@ -1,4 +1,5 @@
 import { getPool } from './db.ts';
+import { CALL_TABLES } from './rollup.ts';
 import type { PoolClient } from 'pg';
 
 /** Longest a server name may be. Long enough to describe one, short enough to fit a menu. */
@@ -93,9 +94,10 @@ export async function renameServer(
 /**
  * Removes a server, its keys and everything it recorded.
  *
- * Keys go with it through a foreign key. Events do not: they live in a
- * hypertable that a foreign key cannot reach across, so they are deleted here,
- * in the same transaction, and the hourly rollup is rebuilt afterwards.
+ * Keys go with it through a foreign key. Calls and tool listings do not: they
+ * live in hypertables that a foreign key cannot reach across, so they are
+ * deleted here, every kind of them, in the same transaction, and the hourly
+ * rollups are rebuilt afterwards.
  *
  * That rebuild is the expensive part and it is deliberate. Deleting raw rows
  * only marks the rollup's buckets as stale, and the refresh policy looks back
@@ -120,7 +122,10 @@ export async function deleteServer(
       return false;
     }
 
-    await client.query('DELETE FROM tool_calls WHERE server_id = $1', [serverId]);
+    for (const { raw } of Object.values(CALL_TABLES)) {
+      await client.query(`DELETE FROM ${raw} WHERE server_id = $1`, [serverId]);
+    }
+    await client.query('DELETE FROM tool_listings WHERE server_id = $1', [serverId]);
     await client.query('DELETE FROM servers WHERE id = $1', [serverId]);
 
     await client.query('COMMIT');
@@ -135,14 +140,16 @@ export async function deleteServer(
   // refreshed inside one. If this fails the deletion still stands; the rollup
   // catches up on its own schedule for recent buckets, and a line on stderr
   // says why an old one might still show figures.
-  try {
-    await getPool().query(`CALL refresh_continuous_aggregate('tool_calls_hourly', NULL, NULL)`);
-  } catch (error) {
-    console.error(
-      `mcpspan core-api deleted the server but could not rebuild the rollup: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
+  for (const { rollup } of Object.values(CALL_TABLES)) {
+    try {
+      await getPool().query(`CALL refresh_continuous_aggregate('${rollup}', NULL, NULL)`);
+    } catch (error) {
+      console.error(
+        `mcpspan core-api deleted the server but could not rebuild ${rollup}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   return true;

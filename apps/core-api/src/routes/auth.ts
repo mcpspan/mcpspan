@@ -87,13 +87,13 @@ export function createAuthRoutes(
 
     // Refused before the password is checked, right or wrong: checking it and
     // answering differently would tell a guesser when they had it.
-    const wait = throttle.retryAfterSeconds();
+    const wait = throttle.retryAfterSeconds(body.email);
     if (wait > 0) return tooManyTries(c, wait);
 
     const user = await accounts.authenticate(body.email, body.password);
 
     if (user === undefined) {
-      throttle.recordFailure();
+      throttle.recordFailure(body.email);
 
       // One answer for a wrong password and for an address with no account.
       // Telling them apart is a way to find out who has an account here.
@@ -120,12 +120,12 @@ export function createAuthRoutes(
     }
 
     // The current password is a password to guess like any other.
-    const wait = throttle.retryAfterSeconds();
+    const wait = throttle.retryAfterSeconds(user.email);
     if (wait > 0) return tooManyTries(c, wait);
 
     const result = await changePassword(user.id, body.currentPassword, body.newPassword, token);
 
-    if (!result.ok && result.reason === 'wrong-password') throttle.recordFailure();
+    if (!result.ok && result.reason === 'wrong-password') throttle.recordFailure(user.email);
     if (!result.ok) {
       return result.reason === 'wrong-password'
         ? c.json({ error: 'That is not the current password' }, 403)
