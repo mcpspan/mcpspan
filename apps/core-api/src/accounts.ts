@@ -39,6 +39,12 @@ export interface AccountStore {
    * those describe everybody's data, not the user's.
    */
   seesInstallation(userId: string): Promise<boolean>;
+  /**
+   * Why the user may not add another server, in words they can act on, or
+   * undefined when they may. Left out, there is no limit: a self-hosted
+   * installation takes as many servers as its owner adds.
+   */
+  serverRefusal?(userId: string): Promise<string | undefined>;
 }
 
 export type RegisterResult =

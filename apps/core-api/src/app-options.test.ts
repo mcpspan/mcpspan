@@ -250,6 +250,24 @@ describe('an account store', () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'Use a longer password' });
   });
+
+  it('may refuse another server, and nothing is created', async () => {
+    const accounts: AccountStore = {
+      ...selfHostedAccounts,
+      serverRefusal: async () => 'Your plan covers one server',
+    };
+
+    const response = await createApp({ accounts }).request('/v1/servers', {
+      method: 'POST',
+      headers: { cookie: account.cookie, 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Second server' }),
+    });
+    const servers = await getPool().query('SELECT 1 FROM servers WHERE user_id = $1', [account.userId]);
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: 'Your plan covers one server' });
+    expect(servers.rowCount).toBe(1);
+  });
 });
 
 describe('a webhook sender', () => {

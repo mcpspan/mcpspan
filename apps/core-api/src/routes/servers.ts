@@ -37,6 +37,10 @@ export function createServerRoutes(accounts: AccountStore = selfHostedAccounts) 
 
     if ('error' in name) return c.json({ error: name.error }, 400);
 
+    const refusal = await accounts.serverRefusal?.(userId);
+
+    if (refusal !== undefined) return c.json({ error: refusal }, 403);
+
     const client = await getPool().connect();
 
     try {
