@@ -5,7 +5,7 @@ import { Logo } from '../components/logo';
 import { MobileMenu, Nav } from '../components/nav';
 import { ServerSwitcher } from '../components/server-switcher';
 import { SignOut } from '../components/sign-out';
-import { getServers } from '../lib/api';
+import { ApiError, getServers } from '../lib/api';
 import { currentSession } from '../lib/session';
 
 /**
@@ -26,10 +26,16 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   // Drawn here so the choice is in the same place on every page. Failing to
   // read it must not take the shell down with it: a dashboard that cannot
-  // list servers can still show the one it was asked about.
+  // list servers can still show the one it was asked about. Except when the
+  // session itself is gone (expired, or ended by a password change in another
+  // browser): then every page would only say it cannot read anything.
   const servers = await getServers(session)
     .then((body) => body.servers)
-    .catch(() => []);
+    .catch((error: unknown) => {
+      if (error instanceof ApiError && error.isUnauthenticated) redirect('/login');
+
+      return [];
+    });
 
   return (
     <div className="min-h-screen">

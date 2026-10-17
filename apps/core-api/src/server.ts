@@ -1,7 +1,8 @@
 import { serve } from '@hono/node-server';
+import type { Hono } from 'hono';
 
 import { sweepExpiredSessions } from './accounts.ts';
-import { type AppOptions, createApp } from './app.ts';
+import { createApp } from './app.ts';
 import { reclassifyClients } from './client-reclassify.ts';
 import { evaluateAlerts } from './alerts.ts';
 import { ping } from './db.ts';
@@ -16,11 +17,11 @@ import { loadSigningSecret } from './signing-secret.ts';
  * Runs the API: checks its settings, starts the background work, listens.
  *
  * Everything the process does, in one call, so that an installation which
- * differs only in the options it passes to the app runs the same checks and the
- * same housekeeping instead of a copy of them. Exits the process when a setting
- * makes serving pointless.
+ * serves an app of its own (made with createApp, with its own options and
+ * routes added) runs the same checks and the same housekeeping instead of a
+ * copy of them. Exits the process when a setting makes serving pointless.
  */
-export function startApi(options: AppOptions = {}): void {
+export function startApi(app: Hono = createApp()): void {
   const port = Number(process.env['PORT'] ?? 6271);
 
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
@@ -185,7 +186,7 @@ export function startApi(options: AppOptions = {}): void {
     }
   }
 
-  serve({ fetch: createApp(options).fetch, port }, (info) => {
+  serve({ fetch: app.fetch, port }, (info) => {
     console.log(`mcpspan core-api listening on http://localhost:${info.port}`);
     void reportDatabase();
   });
