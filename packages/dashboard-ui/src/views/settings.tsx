@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { ChangePassword } from '../components/change-password';
 import { ConnectSnippets } from '../components/connect-snippets';
 import { ManageAlerts } from '../components/manage-alerts';
@@ -14,10 +16,35 @@ import { currentSession } from '../lib/session';
 /** How far back to look for tool names to offer when setting up a rule. */
 const TOOL_LOOKBACK_DAYS = 30;
 
-export default async function SettingsPage({
+/** What a self-hoster does about a forgotten password: only whoever runs the machine can. */
+const SELF_HOSTED_PASSWORD_HELP = (
+  <>
+    Forgotten, rather than changed? On the machine running mcpspan,{' '}
+    <code className="font-mono text-xs [overflow-wrap:anywhere]">
+      docker compose exec api node scripts/reset-password.ts
+    </code>{' '}
+    prints a new one.
+  </>
+);
+
+type SearchParams = Promise<Record<string, string | undefined>>;
+
+export default function SettingsPage({ searchParams }: { searchParams: SearchParams }) {
+  return <Settings searchParams={searchParams} passwordHelp={SELF_HOSTED_PASSWORD_HELP} />;
+}
+
+/**
+ * The page itself, for an installation where a forgotten password is handled
+ * some other way. A page's own props are fixed by the framework, so this is
+ * the one that takes it.
+ */
+export async function Settings({
   searchParams,
+  passwordHelp,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: SearchParams;
+  /** Where to go for a forgotten password. */
+  passwordHelp: ReactNode;
 }) {
   const params = await searchParams;
   const session = await currentSession();
@@ -96,13 +123,7 @@ export default async function SettingsPage({
 
       <Card id="password">
         <CardHeader title="Password" />
-        <p className="mb-4 text-sm text-ink-muted">
-          Forgotten, rather than changed? On the machine running mcpspan,{' '}
-          <code className="font-mono text-xs [overflow-wrap:anywhere]">
-            docker compose exec api node scripts/reset-password.ts
-          </code>{' '}
-          prints a new one.
-        </p>
+        <p className="mb-4 text-sm text-ink-muted">{passwordHelp}</p>
         <ChangePassword />
       </Card>
     </main>

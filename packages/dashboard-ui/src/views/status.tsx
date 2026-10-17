@@ -150,59 +150,88 @@ function StatusReport({ diagnostics }: { diagnostics: Diagnostics }) {
         )}
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <Card>
-          <CardHeader title="Storage" />
-          <Facts
-            rows={[
-              ['Database size', formatBytes(diagnostics.storage.databaseBytes)],
-              [
-                'Oldest event',
-                diagnostics.storage.oldestEventAt === null ? (
-                  'None yet'
-                ) : (
-                  <LocalTime iso={diagnostics.storage.oldestEventAt} />
-                ),
-              ],
-              ['Events kept for', days(diagnostics.storage.retentionDays)],
-              ['Hourly summaries kept for', days(diagnostics.storage.rollupRetentionDays)],
-              [
-                'Forwarded to OpenTelemetry',
-                // Absent from an older Core API, which this page must still render for:
-                // telling versions apart is one of the things it is for.
-                (diagnostics.storage.openTelemetry ?? null) === null ? (
-                  'Off'
-                ) : (
-                  <span className="[overflow-wrap:anywhere]">{diagnostics.storage.openTelemetry?.join(', ')}</span>
-                ),
-              ],
-            ]}
-          />
-        </Card>
-
+      {diagnostics.storage === null || diagnostics.versions === null ? (
+        // An account that shares the installation with others sees only the
+        // part of it that is its own.
         <Card>
           <CardHeader title="Versions" />
           <Facts
-            rows={[
-              ['Dashboard', DASHBOARD_VERSION],
-              ['Core API', diagnostics.versions.api],
-              ['PostgreSQL', diagnostics.versions.postgres],
-              ['TimescaleDB', diagnostics.versions.timescaledb ?? 'Not installed'],
-              ['SDK in use', sdkVersions.length === 0 ? 'None seen yet' : sdkVersions.join(', ')],
-            ]}
+            rows={[['SDK in use', sdkVersions.length === 0 ? 'None seen yet' : sdkVersions.join(', ')]]}
           />
-          {/* The two are released together, so a difference means only one
-              image was rebuilt, which is worth knowing before anything else
-              on this page is trusted. */}
-          {diagnostics.versions.api === DASHBOARD_VERSION ? null : (
-            <p className="mt-3 text-xs text-status-warning-ink">
-              The dashboard and the Core API are different versions. Rebuild both, for example
-              with docker compose up -d --build.
-            </p>
-          )}
         </Card>
-      </div>
+      ) : (
+        <Installation
+          storage={diagnostics.storage}
+          versions={diagnostics.versions}
+          sdkVersions={sdkVersions}
+        />
+      )}
     </>
+  );
+}
+
+function Installation({
+  storage,
+  versions,
+  sdkVersions,
+}: {
+  storage: NonNullable<Diagnostics['storage']>;
+  versions: NonNullable<Diagnostics['versions']>;
+  sdkVersions: string[];
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <Card>
+        <CardHeader title="Storage" />
+        <Facts
+          rows={[
+            ['Database size', formatBytes(storage.databaseBytes)],
+            [
+              'Oldest event',
+              storage.oldestEventAt === null ? (
+                'None yet'
+              ) : (
+                <LocalTime iso={storage.oldestEventAt} />
+              ),
+            ],
+            ['Events kept for', days(storage.retentionDays)],
+            ['Hourly summaries kept for', days(storage.rollupRetentionDays)],
+            [
+              'Forwarded to OpenTelemetry',
+              // Absent from an older Core API, which this page must still render for:
+              // telling versions apart is one of the things it is for.
+              (storage.openTelemetry ?? null) === null ? (
+                'Off'
+              ) : (
+                <span className="[overflow-wrap:anywhere]">{storage.openTelemetry?.join(', ')}</span>
+              ),
+            ],
+          ]}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader title="Versions" />
+        <Facts
+          rows={[
+            ['Dashboard', DASHBOARD_VERSION],
+            ['Core API', versions.api],
+            ['PostgreSQL', versions.postgres],
+            ['TimescaleDB', versions.timescaledb ?? 'Not installed'],
+            ['SDK in use', sdkVersions.length === 0 ? 'None seen yet' : sdkVersions.join(', ')],
+          ]}
+        />
+        {/* The two are released together, so a difference means only one
+            image was rebuilt, which is worth knowing before anything else
+            on this page is trusted. */}
+        {versions.api === DASHBOARD_VERSION ? null : (
+          <p className="mt-3 text-xs text-status-warning-ink">
+            The dashboard and the Core API are different versions. Rebuild both, for example
+            with docker compose up -d --build.
+          </p>
+        )}
+      </Card>
+    </div>
   );
 }
 

@@ -480,7 +480,8 @@ export interface ServerHealth extends ServerRecord {
 }
 
 export interface Diagnostics {
-  versions: { api: string; postgres: string; timescaledb: string | null };
+  /** Null, like `storage`, for an account that does not see the installation as a whole. */
+  versions: { api: string; postgres: string; timescaledb: string | null } | null;
   storage: {
     databaseBytes: number;
     oldestEventAt: string | null;
@@ -488,7 +489,7 @@ export interface Diagnostics {
     rollupRetentionDays: number | null;
     /** Where calls are forwarded as well, over OTLP; null when they are not. */
     openTelemetry: string[] | null;
-  };
+  } | null;
   signingSecret: { changedAt: string; staleServerIds: string[] } | null;
   servers: ServerHealth[];
   refusals: RefusalCount[];

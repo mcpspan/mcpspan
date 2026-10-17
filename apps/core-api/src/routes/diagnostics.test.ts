@@ -11,6 +11,7 @@ import {
   seedEvents,
   type TestAccount,
 } from '../../test/fixtures.ts';
+import { type AccountStore, selfHostedAccounts } from '../accounts.ts';
 import { closePool, getPool } from '../db.ts';
 import type { Diagnostics } from '../diagnostics.ts';
 import { ContactLog } from '../contacts.ts';
@@ -26,10 +27,10 @@ let contacts: ContactLog;
 let app: Hono;
 
 /** Ingest and diagnostics sharing one log, the way the running API has them. */
-function build(): Hono {
+function build(accounts: AccountStore = selfHostedAccounts): Hono {
   const built = new Hono();
   built.route('/v1', createEventRoutes(new IngestRateLimiter(), refusals, contacts));
-  built.route('/v1/diagnostics', createDiagnosticsRoutes(refusals));
+  built.route('/v1/diagnostics', createDiagnosticsRoutes(refusals, accounts));
 
   return built;
 }
@@ -229,10 +230,10 @@ describe('GET /v1/diagnostics', () => {
 
     const { storage } = await diagnostics();
 
-    expect(storage.databaseBytes).toBeGreaterThan(0);
-    expect(storage.oldestEventAt).toBe(oldest.toISOString());
-    expect(storage.retentionDays).toBeGreaterThan(0);
-    expect(storage.rollupRetentionDays).toBeGreaterThan(0);
+    expect(storage?.databaseBytes).toBeGreaterThan(0);
+    expect(storage?.oldestEventAt).toBe(oldest.toISOString());
+    expect(storage?.retentionDays).toBeGreaterThan(0);
+    expect(storage?.rollupRetentionDays).toBeGreaterThan(0);
   });
 
   it('reports the versions of the parts it can see', async () => {
@@ -244,9 +245,28 @@ describe('GET /v1/diagnostics', () => {
 
     const { versions } = await diagnostics();
 
-    expect(versions.api).toBe(own);
-    expect(versions.postgres).toMatch(/^\d+/);
-    expect(versions.timescaledb).toMatch(/^\d+\.\d+/);
+    expect(versions?.api).toBe(own);
+    expect(versions?.postgres).toMatch(/^\d+/);
+    expect(versions?.timescaledb).toMatch(/^\d+\.\d+/);
+  });
+
+  describe('an account that does not see the installation', () => {
+    it("leaves out what describes everybody's data", async () => {
+      app = build({ ...selfHostedAccounts, seesInstallation: async () => false });
+      await seedEvents(account.serverId, [{}]);
+      await ingest('mcps_never_issued');
+      await ingest(account.key, { events: [{ id: randomUUID() }] });
+
+      const seen = await diagnostics();
+
+      expect(seen.versions).toBeNull();
+      expect(seen.storage).toBeNull();
+      // Its own server's refusals stay: those are the account's to fix.
+      expect(seen.refusals).toEqual([
+        expect.objectContaining({ serverId: account.serverId, reason: 'invalid_batch' }),
+      ]);
+      expect(seen.servers.map((server) => server.id)).toEqual([account.serverId]);
+    });
   });
 
   it('keeps an orphaned server out of every account', async () => {

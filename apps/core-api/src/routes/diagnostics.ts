@@ -22,9 +22,11 @@ export function createDiagnosticsRoutes(
   app.use('*', requireSession(accounts));
 
   app.get('/', async (c) => {
-    const { serverIds } = c.get('session');
+    const { userId, serverIds } = c.get('session');
 
-    return c.json(await getDiagnostics(serverIds, refusals));
+    return c.json(
+      await getDiagnostics(serverIds, refusals, await accounts.seesInstallation(userId)),
+    );
   });
 
   return app;

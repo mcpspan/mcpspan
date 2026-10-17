@@ -46,11 +46,12 @@ interface ServerHealth extends ServerRecord {
 }
 
 export interface Diagnostics {
+  /** Null, like `storage`, for an account that does not see the installation. */
   versions: {
     api: string;
     postgres: string;
     timescaledb: string | null;
-  };
+  } | null;
   storage: {
     databaseBytes: number;
     oldestEventAt: string | null;
@@ -58,7 +59,7 @@ export interface Diagnostics {
     rollupRetentionDays: number | null;
     /** Where calls are forwarded as well, over OTLP; null when they are not. */
     openTelemetry: string[] | null;
-  };
+  } | null;
   /**
    * Set once API_KEY_SECRET has changed under this database. `staleServerIds`
    * are the account's servers whose live key was issued before that, and so
@@ -78,13 +79,15 @@ export interface Diagnostics {
  * one leaves none here, since this needs the database to answer: it is told
  * apart by this request failing with a 503 that says so.
  *
- * Storage and versions describe the installation rather than the account.
- * A self-hosted install has one account, so that is the same thing; a hosted
- * version would have to leave them out.
+ * Storage, versions and refusals that name no server describe the
+ * installation rather than the account. A self-hosted install has one
+ * account, so that is the same thing; where accounts share a database, they
+ * are left out for anybody `installation` is false for.
  */
 export async function getDiagnostics(
   serverIds: readonly string[],
   refusals: RefusalLog,
+  installation = true,
 ): Promise<Diagnostics> {
   const pool = getPool();
 
@@ -118,24 +121,28 @@ export async function getDiagnostics(
     listServers(serverIds),
     lastEventPerServer(serverIds),
     lastContactPerServer(serverIds),
-    refusals.counts(serverIds),
+    refusals.counts(serverIds, installation),
   ]);
 
   const version = versions.rows[0];
 
   return {
-    versions: {
-      api: API_VERSION,
-      postgres: version?.postgres ?? 'unknown',
-      timescaledb: version?.timescaledb ?? null,
-    },
-    storage: {
-      databaseBytes: Number(size.rows[0]?.bytes ?? 0),
-      oldestEventAt: oldest.rows[0]?.occurred_at.toISOString() ?? null,
-      retentionDays: retention ?? null,
-      rollupRetentionDays: rollupRetention ?? null,
-      openTelemetry: openTelemetryTargets(),
-    },
+    versions: installation
+      ? {
+          api: API_VERSION,
+          postgres: version?.postgres ?? 'unknown',
+          timescaledb: version?.timescaledb ?? null,
+        }
+      : null,
+    storage: installation
+      ? {
+          databaseBytes: Number(size.rows[0]?.bytes ?? 0),
+          oldestEventAt: oldest.rows[0]?.occurred_at.toISOString() ?? null,
+          retentionDays: retention ?? null,
+          rollupRetentionDays: rollupRetention ?? null,
+          openTelemetry: openTelemetryTargets(),
+        }
+      : null,
     signingSecret: secret,
     servers: servers.map((server) => ({
       ...server,

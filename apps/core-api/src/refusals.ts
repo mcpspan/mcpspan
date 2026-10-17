@@ -130,12 +130,16 @@ export class RefusalLog {
   /**
    * Stored totals plus anything not yet flushed.
    *
-   * Scoped to the servers asked about, plus the refusals that named no server
-   * at all. Those belong to the installation rather than to any account; on a
-   * self-hosted install with one account that is the same thing, and a hosted
-   * version would need to keep them to itself.
+   * Scoped to the servers asked about, plus, unless told otherwise, the
+   * refusals that named no server at all. Those belong to the installation
+   * rather than to any account; on a self-hosted install with one account that
+   * is the same thing, and where accounts share a database it is not.
    */
-  async counts(serverIds: readonly string[]): Promise<RefusalCount[]> {
+  async counts(
+    serverIds: readonly string[],
+    /** Whether to include refusals no server could be named for, which may be anybody's. */
+    unidentified = true,
+  ): Promise<RefusalCount[]> {
     const stored = await getPool().query<{
       server_id: string | null;
       reason: RefusalReason;
@@ -144,8 +148,8 @@ export class RefusalLog {
     }>(
       `SELECT server_id, reason, requests, last_at
        FROM ingest_refusals
-       WHERE server_id IS NULL OR server_id = ANY($1::uuid[])`,
-      [serverIds],
+       WHERE (server_id IS NULL AND $2) OR server_id = ANY($1::uuid[])`,
+      [serverIds, unidentified],
     );
 
     const merged = new Map<string, Pending>();
@@ -160,7 +164,7 @@ export class RefusalLog {
     }
 
     for (const [key, entry] of this.pending) {
-      if (entry.serverId !== null && !serverIds.includes(entry.serverId)) continue;
+      if (entry.serverId === null ? !unidentified : !serverIds.includes(entry.serverId)) continue;
 
       const existing = merged.get(key);
 

@@ -32,6 +32,13 @@ export interface AccountStore {
    * the dashboard, settings and diagnostics consult about who reaches what.
    */
   serverIdsFor(userId: string): Promise<string[]>;
+  /**
+   * Whether the user may see the installation's own state: the database's
+   * size, the software's versions, where calls are forwarded, and refused
+   * requests no server can be named for. Where accounts share a database,
+   * those describe everybody's data, not the user's.
+   */
+  seesInstallation(userId: string): Promise<boolean>;
 }
 
 export type RegisterResult =
@@ -227,6 +234,8 @@ export const selfHostedAccounts: AccountStore = {
   register,
   authenticate,
   serverIdsFor,
+  // The one account is whoever runs the installation.
+  seesInstallation: async () => true,
 };
 
 export interface IssuedSession {
