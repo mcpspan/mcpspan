@@ -251,3 +251,26 @@ describe('an account store', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Use a longer password' });
   });
 });
+
+describe('a webhook sender', () => {
+  it('is what a test notification goes through', async () => {
+    const sent: string[] = [];
+    const app = createApp({
+      webhooks: async (url) => {
+        sent.push(url);
+        return 204;
+      },
+    });
+    const headers = { cookie: account.cookie, 'content-type': 'application/json' };
+
+    await app.request('/v1/alerts/webhook', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ url: 'https://hooks.example.com/mcpspan' }),
+    });
+    const response = await app.request('/v1/alerts/webhook/test', { method: 'POST', headers });
+
+    await expect(response.json()).resolves.toMatchObject({ ok: true, status: 204 });
+    expect(sent).toEqual(['https://hooks.example.com/mcpspan']);
+  });
+});

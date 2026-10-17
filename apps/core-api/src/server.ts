@@ -4,7 +4,7 @@ import type { Hono } from 'hono';
 import { sweepExpiredSessions } from './accounts.ts';
 import { createApp } from './app.ts';
 import { reclassifyClients } from './client-reclassify.ts';
-import { evaluateAlerts } from './alerts.ts';
+import { evaluateAlerts, sendWebhook, type WebhookSender } from './alerts.ts';
 import { ping } from './db.ts';
 import { startOpenTelemetry } from './otel.ts';
 import { ingestRateLimiter } from './rate-limit.ts';
@@ -21,7 +21,13 @@ import { loadSigningSecret } from './signing-secret.ts';
  * routes added) runs the same checks and the same housekeeping instead of a
  * copy of them. Exits the process when a setting makes serving pointless.
  */
-export function startApi(app: Hono = createApp()): void {
+export function startApi(
+  app: Hono = createApp(),
+  {
+    /** How alerts checked in the background reach a webhook; the same one given to createApp. */
+    webhooks = sendWebhook,
+  }: { webhooks?: WebhookSender } = {},
+): void {
   const port = Number(process.env['PORT'] ?? 6271);
 
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
@@ -151,7 +157,7 @@ export function startApi(app: Hono = createApp()): void {
   let alertsFailing = false;
 
   setInterval(() => {
-    evaluateAlerts().then(
+    evaluateAlerts(new Date(), webhooks).then(
       () => {
         alertsFailing = false;
       },

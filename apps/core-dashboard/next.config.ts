@@ -21,6 +21,23 @@ const config: NextConfig = {
   // source rather than built output, so this app compiles them.
   transpilePackages: ['@mcpspan/dashboard-ui'],
 
+  // Never shown inside another site's frame, where a page laid over it could
+  // trick somebody into clicking; files are taken as the type they are sent as;
+  // other sites are not told which page a link was followed from.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+    ];
+  },
+
   // The version is shown in the interface, so a self-hoster reporting a
   // problem can say which build they are looking at.
   env: {

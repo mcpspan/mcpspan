@@ -2,3 +2,10 @@ packages:
   - 'packages/*'
   - 'apps/*'
   - 'conformance'
+
+# Patched releases of what Next.js pulls in, ahead of a Next.js release that
+# asks for them: sharp for CVE-2026-96889 (GHSA-wq5f-xc86-pv6w), source-map-js
+# for GHSA-68fv-2mgg-jv7q. Drop each once Next.js depends on a fixed version.
+overrides:
+  sharp: '>=0.35.5'
+  source-map-js: '>=1.2.2'
