@@ -41,6 +41,8 @@ export function createAlertRoutes(
   /** Injected so a test can receive the test notification itself. */
   send: WebhookSender = sendWebhook,
   accounts: AccountStore = selfHostedAccounts,
+  /** Whether alerts can be mailed here (an AlertMailer was given to createApp). */
+  emailAvailable = false,
 ) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
@@ -56,7 +58,7 @@ export function createAlertRoutes(
 
     if ('error' in page) return c.json({ error: page.error }, 400);
 
-    const [webhook, rules, events] = await Promise.all([
+    const [webhook, rules, events, user] = await Promise.all([
       getPool().query<{
         url: string;
         last_attempt_at: Date | null;
@@ -78,10 +80,13 @@ export function createAlertRoutes(
         min_calls: number;
         enabled: boolean;
         notify_resolved: boolean;
+        notify_webhook: boolean;
+        notify_email: boolean;
         firing_targets: string[];
       }>(
         `SELECT r.id, r.server_id, s.name AS server_name, r.tool_names, r.kind, r.threshold,
                 r.window_minutes, r.min_calls, r.enabled, r.notify_resolved,
+                r.notify_webhook, r.notify_email,
                 ARRAY(
                   SELECT st.target FROM alert_states st
                   WHERE st.rule_id = r.id AND st.state = 'firing'
@@ -105,11 +110,16 @@ export function createAlertRoutes(
         delivered_at: Date | null;
         last_error: string | null;
         not_wanted: boolean;
+        webhook_wanted: boolean;
+        email_wanted: boolean;
+        email_delivered_at: Date | null;
+        email_error: string | null;
       }>(
         `SELECT e.id, e.rule_id, s.name AS server_name, NULLIF(e.target, '') AS tool_name,
                 r.kind AS rule_kind, e.kind,
                 e.value, e.occurred_at, e.delivered_at, e.last_error,
-                e.kind = 'resolved' AND NOT r.notify_resolved AS not_wanted
+                e.kind = 'resolved' AND NOT r.notify_resolved AS not_wanted,
+                e.webhook_wanted, e.email_wanted, e.email_delivered_at, e.email_error
          FROM alert_events e
          JOIN alert_rules r ON r.id = e.rule_id
          JOIN servers s ON s.id = r.server_id
@@ -118,12 +128,15 @@ export function createAlertRoutes(
          LIMIT $2 OFFSET $3`,
         [serverIds, page.limit + 1, page.offset],
       ),
+      getPool().query<{ email: string }>('SELECT email FROM users WHERE id = $1', [userId]),
     ]);
 
     const hook = webhook.rows[0];
     const recent = takePage(events.rows, page);
 
     return c.json({
+      // Where mailed alerts go, or null where none can be sent.
+      email: emailAvailable ? (user.rows[0]?.email ?? null) : null,
       webhook:
         hook === undefined
           ? null
@@ -144,6 +157,8 @@ export function createAlertRoutes(
         minCalls: row.min_calls,
         enabled: row.enabled,
         notifyResolved: row.notify_resolved,
+        notifyWebhook: row.notify_webhook,
+        notifyEmail: row.notify_email,
         // Firing when anything it watches is. The tools that are, by name; an
         // empty list with firing set means the whole server.
         firing: row.firing_targets.length > 0,
@@ -165,6 +180,10 @@ export function createAlertRoutes(
         // Not sent because the rule asks only for starts, which is a choice
         // rather than a failure and is shown as one.
         notWanted: row.not_wanted,
+        webhookWanted: row.webhook_wanted,
+        emailWanted: row.email_wanted,
+        emailDeliveredAt: row.email_delivered_at?.toISOString() ?? null,
+        emailError: row.email_error,
       })),
     });
   });
@@ -252,10 +271,15 @@ export function createAlertRoutes(
       return c.json({ error: toolNames.error }, 400);
     }
 
+    const channels = parseChannels(body ?? {}, { webhook: true, email: false }, emailAvailable);
+
+    if ('error' in channels) return c.json({ error: channels.error }, 400);
+
     const created = await getPool().query<{ id: string }>(
       `INSERT INTO alert_rules
-         (server_id, tool_names, kind, threshold, window_minutes, min_calls, notify_resolved)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (server_id, tool_names, kind, threshold, window_minutes, min_calls, notify_resolved,
+          notify_webhook, notify_email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
       [
         serverId,
@@ -265,6 +289,8 @@ export function createAlertRoutes(
         rule.windowMinutes,
         rule.minCalls,
         rule.notifyResolved,
+        channels.webhook,
+        channels.email,
       ],
     );
 
@@ -302,11 +328,19 @@ export function createAlertRoutes(
       return c.json({ error: toolNames.error }, 400);
     }
 
+    const channels = parseChannels(
+      body,
+      { webhook: current.notify_webhook, email: current.notify_email },
+      emailAvailable,
+    );
+
+    if ('error' in channels) return c.json({ error: channels.error }, 400);
+
     // A rule switched off, or with a changed condition, starts again from
     // "ok": its old states were verdicts on a condition that no longer
     // applies, and resolving one later would announce the end of something
-    // nobody is watching. Changing only whether ends are sent changes no
-    // condition, so it leaves the states alone.
+    // nobody is watching. Changing only whether ends are sent, or where to,
+    // changes no condition, so it leaves the states alone.
     const conditionChanged =
       enabled !== undefined ||
       rule.threshold !== current.threshold ||
@@ -321,7 +355,8 @@ export function createAlertRoutes(
       await client.query(
         `UPDATE alert_rules
          SET threshold = $2, window_minutes = $3, min_calls = $4,
-             enabled = coalesce($5, enabled), notify_resolved = $6, tool_names = $7
+             enabled = coalesce($5, enabled), notify_resolved = $6, tool_names = $7,
+             notify_webhook = $8, notify_email = $9
          WHERE id = $1`,
         [
           ruleId,
@@ -331,6 +366,8 @@ export function createAlertRoutes(
           enabled ?? null,
           rule.notifyResolved,
           toolNames,
+          channels.webhook,
+          channels.email,
         ],
       );
 
@@ -371,6 +408,8 @@ interface StoredRule {
   window_minutes: number;
   min_calls: number;
   notify_resolved: boolean;
+  notify_webhook: boolean;
+  notify_email: boolean;
   tool_names: string[] | null;
 }
 
@@ -382,7 +421,8 @@ async function ownedRule(
   if (!UUID.test(ruleId)) return undefined;
 
   const result = await getPool().query<StoredRule>(
-    `SELECT r.kind, r.threshold, r.window_minutes, r.min_calls, r.notify_resolved, r.tool_names
+    `SELECT r.kind, r.threshold, r.window_minutes, r.min_calls, r.notify_resolved, r.tool_names,
+            r.notify_webhook, r.notify_email
      FROM alert_rules r
      WHERE r.id = $1 AND r.server_id = ANY($2::uuid[])`,
     [ruleId, serverIds],
@@ -422,6 +462,27 @@ function parseWebhookUrl(value: unknown): { url: string } | { error: string } {
   }
 
   return { url: parsed.toString() };
+}
+
+/**
+ * Where a rule's alerts go: 'notifyWebhook' and 'notifyEmail', each true or
+ * false, falling back to what the rule had. At least one, and email only
+ * where mail can be sent.
+ */
+function parseChannels(
+  body: Record<string, unknown>,
+  current: { webhook: boolean; email: boolean },
+  emailAvailable: boolean,
+): { webhook: boolean; email: boolean } | { error: string } {
+  const webhook = body['notifyWebhook'] ?? current.webhook;
+  const email = body['notifyEmail'] ?? current.email;
+
+  if (typeof webhook !== 'boolean') return { error: "'notifyWebhook' must be true or false" };
+  if (typeof email !== 'boolean') return { error: "'notifyEmail' must be true or false" };
+  if (email && !emailAvailable) return { error: 'This installation does not send email; alerts go to the webhook' };
+  if (!webhook && !email) return { error: 'Choose where its alerts go: by email, to the webhook, or both' };
+
+  return { webhook, email };
 }
 
 /** Longest tool name accepted, matching what the events table stores. */

@@ -597,3 +597,117 @@ describe('the alert history', () => {
     expect(second.eventsHaveMore).toBe(false);
   });
 });
+
+describe('alerts by email', () => {
+  let mailed: { to: string; payload: WebhookPayload }[];
+  const mail = async (to: string, payload: WebhookPayload): Promise<void> => {
+    mailed.push({ to, payload });
+  };
+
+  beforeEach(() => {
+    mailed = [];
+  });
+
+  async function channels(ruleId: string, webhook: boolean, email: boolean): Promise<void> {
+    await getPool().query('UPDATE alert_rules SET notify_webhook = $2, notify_email = $3 WHERE id = $1', [
+      ruleId,
+      webhook,
+      email,
+    ]);
+  }
+
+  it('mails the account that made the server, and the webhook too when the rule says both', async () => {
+    await addWebhook();
+    const ruleId = await addRule({ kind: 'error_rate', threshold: 0.2, windowMinutes: 15, minCalls: 10 });
+    await channels(ruleId, true, true);
+    await spike();
+
+    for (let check = 0; check < 3; check += 1) await evaluateAlerts(new Date(), send, mail);
+
+    expect(mailed).toHaveLength(1);
+    expect(mailed[0]?.to).toBe(account.email);
+    expect(mailed[0]?.payload).toMatchObject({ event: 'firing', server: { name: 'Flights' } });
+    expect(sent).toHaveLength(1);
+  });
+
+  it('sends nothing to the webhook from a rule that only mails, and mails nothing from one that does not', async () => {
+    await addWebhook();
+    const mailOnly = await addRule({ kind: 'error_rate', threshold: 0.2, windowMinutes: 15, minCalls: 10 });
+    await channels(mailOnly, false, true);
+    await spike();
+
+    await evaluateAlerts(new Date(), send, mail);
+    expect(mailed).toHaveLength(1);
+    expect(sent).toHaveLength(0);
+
+    await channels(mailOnly, true, false);
+    await getPool().query('DELETE FROM alert_states');
+    await evaluateAlerts(new Date(), send, mail);
+    expect(mailed).toHaveLength(1);
+    expect(sent).toHaveLength(1);
+  });
+
+  it('does not mail what happened before email was switched on', async () => {
+    const ruleId = await addRule({ kind: 'error_rate', threshold: 0.2, windowMinutes: 15, minCalls: 10 });
+    await spike();
+    await evaluateAlerts(new Date(), send, mail);
+
+    await channels(ruleId, true, true);
+    await evaluateAlerts(new Date(), send, mail);
+
+    expect(mailed).toHaveLength(0);
+  });
+
+  it('tries a failing mail a few times, then stops and says why', async () => {
+    const ruleId = await addRule({ kind: 'error_rate', threshold: 0.2, windowMinutes: 15, minCalls: 10 });
+    await channels(ruleId, false, true);
+    await spike();
+    let tries = 0;
+    const failing = async (): Promise<void> => {
+      tries += 1;
+      throw new Error('Resend answered 500');
+    };
+
+    for (let check = 0; check < 5; check += 1) await evaluateAlerts(new Date(), send, failing);
+
+    expect(tries).toBe(3);
+    const event = await getPool().query<{ email_error: string }>('SELECT email_error FROM alert_events');
+    expect(event.rows[0]?.email_error).toContain('Resend answered 500');
+  });
+
+  it('is offered only where mail can be sent, and a rule needs somewhere to send', async () => {
+    const request = (emailAvailable: boolean, method: string, path: string, body?: unknown) => {
+      const built = new Hono();
+      built.route('/v1/alerts', createAlertRoutes(send, undefined, emailAvailable));
+      return built.request(`/v1/alerts${path}`, {
+        method,
+        headers: { cookie: account.cookie, 'content-type': 'application/json' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    };
+    const rule = { serverId: account.serverId, kind: 'silence', windowMinutes: 60 };
+
+    expect((await request(false, 'POST', '/rules', { ...rule, notifyEmail: true })).status).toBe(400);
+    expect(await (await request(false, 'GET', '')).json()).toMatchObject({ email: null });
+
+    expect(
+      (await request(true, 'POST', '/rules', { ...rule, notifyEmail: false, notifyWebhook: false })).status,
+    ).toBe(400);
+
+    const created = await request(true, 'POST', '/rules', { ...rule, notifyEmail: true, notifyWebhook: false });
+    expect(created.status).toBe(201);
+
+    const listed = (await (await request(true, 'GET', '')).json()) as {
+      email: string;
+      rules: { id: string; notifyEmail: boolean; notifyWebhook: boolean }[];
+    };
+    expect(listed.email).toBe(account.email);
+    expect(listed.rules[0]).toMatchObject({ notifyEmail: true, notifyWebhook: false });
+
+    const ruleId = listed.rules[0]?.id;
+    expect((await request(true, 'PATCH', `/rules/${ruleId}`, { notifyWebhook: true })).status).toBe(200);
+    expect((await request(true, 'PATCH', `/rules/${ruleId}`, { notifyEmail: false, notifyWebhook: false })).status).toBe(
+      400,
+    );
+  });
+});

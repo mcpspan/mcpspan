@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 
 import { type AccountStore, selfHostedAccounts } from './accounts.ts';
 import { admitEverything, type Admission, meterNothing, type UsageMeter } from './admission.ts';
-import { sendWebhook, type WebhookSender } from './alerts.ts';
+import { type AlertMailer, sendWebhook, type WebhookSender } from './alerts.ts';
 import { isDatabaseUnavailable } from './db.ts';
 import { createAlertRoutes } from './routes/alerts.ts';
 import { createAuthRoutes } from './routes/auth.ts';
@@ -26,6 +26,8 @@ export interface AppOptions {
   usage?: UsageMeter;
   /** How a notification reaches a webhook. Give startApi the same one, for alerts checked in the background. */
   webhooks?: WebhookSender;
+  /** Mails alerts, where the installation can; without it rules send to the webhook only. Give startApi the same one. */
+  alertMail?: AlertMailer;
 }
 
 /**
@@ -40,6 +42,7 @@ export function createApp({
   admission = admitEverything,
   usage = meterNothing,
   webhooks = sendWebhook,
+  alertMail,
 }: AppOptions = {}): Hono {
   const app = new Hono();
 
@@ -71,7 +74,7 @@ export function createApp({
   app.route('/v1/servers', createServerRoutes(accounts));
 
   // Rules that watch a server, and where to say when one trips.
-  app.route('/v1/alerts', createAlertRoutes(webhooks, accounts));
+  app.route('/v1/alerts', createAlertRoutes(webhooks, accounts, alertMail !== undefined));
 
   // Why a dashboard might be empty, for the person running the installation.
   app.route('/v1/diagnostics', createDiagnosticsRoutes(undefined, accounts));

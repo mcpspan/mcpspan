@@ -251,6 +251,7 @@ describe('page information', () => {
 describe('getAlerts', () => {
   it('parses the alert settings', async () => {
     expect(await getAlerts(account.cookie)).toEqual({
+      email: null,
       webhook: null,
       rules: [],
       events: [],
@@ -292,6 +293,8 @@ describe('getAlerts', () => {
         minCalls: 10,
         enabled: true,
         notifyResolved: true,
+        notifyWebhook: true,
+        notifyEmail: false,
         firing: false,
         firingTools: [],
       },
@@ -309,6 +312,10 @@ describe('getAlerts', () => {
         deliveredAt: null,
         error: null,
         notWanted: false,
+        webhookWanted: true,
+        emailWanted: false,
+        emailDeliveredAt: null,
+        emailError: null,
       },
     ]);
   });

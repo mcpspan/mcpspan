@@ -54,6 +54,16 @@ export interface WebhookPayload {
 export type WebhookSender = (url: string, payload: WebhookPayload) => Promise<number>;
 
 /**
+ * Mails one notification to an account's address. Rejects when it was not
+ * sent.
+ *
+ * An installation that can send mail gives one to createApp and startApi, and
+ * its rules can then send alerts by email as well as, or instead of, to the
+ * webhook. Without one, as self-hosted, alerts go to the webhook only.
+ */
+export type AlertMailer = (to: string, payload: WebhookPayload) => Promise<void>;
+
+/**
  * Posts one notification.
  *
  * Carries the message twice, as `text` and as `content`, because those are
@@ -87,6 +97,8 @@ interface RuleRow {
   threshold: number | null;
   window_minutes: number;
   min_calls: number;
+  notify_webhook: boolean;
+  notify_email: boolean;
 }
 
 /** How the whole server is written where a tool name would go. */
@@ -102,6 +114,7 @@ export const WHOLE_SERVER = '';
 export async function evaluateAlerts(
   now: Date = new Date(),
   send: WebhookSender = sendWebhook,
+  mail?: AlertMailer,
 ): Promise<void> {
   const client = await getPool().connect();
 
@@ -117,7 +130,7 @@ export async function evaluateAlerts(
       const [rules, states] = await Promise.all([
         getPool().query<RuleRow>(
           `SELECT r.id, r.server_id, s.name AS server_name, r.tool_names, r.kind, r.threshold,
-                  r.window_minutes, r.min_calls
+                  r.window_minutes, r.min_calls, r.notify_webhook, r.notify_email
            FROM alert_rules r
            JOIN servers s ON s.id = r.server_id
            WHERE r.enabled`,
@@ -139,6 +152,7 @@ export async function evaluateAlerts(
       }
 
       await deliverPending(send);
+      if (mail !== undefined) await mailPending(mail);
     } finally {
       await client.query('SELECT pg_advisory_unlock($1)', [EVALUATION_LOCK]);
     }
@@ -182,9 +196,18 @@ async function evaluateTarget(
 
     if ((moved.rowCount ?? 0) > 0) {
       await client.query(
-        `INSERT INTO alert_events (rule_id, target, kind, value, occurred_at)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [rule.id, target, next === 'firing' ? 'firing' : 'resolved', measured.value, now],
+        `INSERT INTO alert_events
+           (rule_id, target, kind, value, occurred_at, webhook_wanted, email_wanted)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          rule.id,
+          target,
+          next === 'firing' ? 'firing' : 'resolved',
+          measured.value,
+          now,
+          rule.notify_webhook,
+          rule.notify_email,
+        ],
       );
     }
 
@@ -271,7 +294,6 @@ interface PendingRow {
   server_id: string;
   server_name: string;
   user_id: string;
-  url: string;
 }
 
 /**
@@ -282,7 +304,7 @@ interface PendingRow {
  * end of an alert is sent only where the rule asks for it.
  */
 async function deliverPending(send: WebhookSender): Promise<void> {
-  const pending = await getPool().query<PendingRow>(
+  const pending = await getPool().query<PendingRow & { url: string }>(
     `SELECT e.id, e.kind, e.value, e.occurred_at, e.attempts,
             r.kind AS rule_kind, NULLIF(e.target, '') AS tool_name, r.threshold,
             r.window_minutes,
@@ -291,7 +313,9 @@ async function deliverPending(send: WebhookSender): Promise<void> {
      JOIN alert_rules r ON r.id = e.rule_id
      JOIN servers s ON s.id = r.server_id
      JOIN alert_webhooks w ON w.user_id = s.user_id
-     WHERE e.delivered_at IS NULL
+     WHERE e.webhook_wanted
+       AND r.notify_webhook
+       AND e.delivered_at IS NULL
        AND e.attempts < $1
        AND e.occurred_at >= w.created_at
        AND (e.kind = 'firing' OR r.notify_resolved)
@@ -300,21 +324,7 @@ async function deliverPending(send: WebhookSender): Promise<void> {
   );
 
   for (const event of pending.rows) {
-    const payload: WebhookPayload = {
-      ...message(event),
-      event: event.kind,
-      server: { id: event.server_id, name: event.server_name },
-      rule: {
-        kind: event.rule_kind,
-        toolName: event.tool_name,
-        threshold: event.threshold,
-        windowMinutes: event.window_minutes,
-      },
-      value: event.value,
-      occurredAt: event.occurred_at.toISOString(),
-    };
-
-    const outcome = await attempt(event.url, payload, send);
+    const outcome = await attempt(event.url, payloadOf(event), send);
 
     await getPool().query(
       `UPDATE alert_events
@@ -327,6 +337,67 @@ async function deliverPending(send: WebhookSender): Promise<void> {
 
     await recordAttempt(event.user_id, outcome);
   }
+}
+
+/**
+ * Mails every change of state owed an email and not yet sent, oldest first,
+ * to the address of the account that made the server. Tried a few times, like
+ * the webhook; a mail that never went says so in the history.
+ */
+async function mailPending(mail: AlertMailer): Promise<void> {
+  const pending = await getPool().query<PendingRow & { email: string }>(
+    `SELECT e.id, e.kind, e.value, e.occurred_at, e.email_attempts AS attempts,
+            r.kind AS rule_kind, NULLIF(e.target, '') AS tool_name, r.threshold,
+            r.window_minutes,
+            s.id AS server_id, s.name AS server_name, s.user_id, u.email
+     FROM alert_events e
+     JOIN alert_rules r ON r.id = e.rule_id
+     JOIN servers s ON s.id = r.server_id
+     JOIN users u ON u.id = s.user_id
+     WHERE e.email_wanted
+       AND r.notify_email
+       AND e.email_delivered_at IS NULL
+       AND e.email_attempts < $1
+       AND (e.kind = 'firing' OR r.notify_resolved)
+     ORDER BY e.occurred_at, e.id`,
+    [MAX_DELIVERY_ATTEMPTS],
+  );
+
+  for (const event of pending.rows) {
+    let error: string | null = null;
+
+    try {
+      await mail(event.email, payloadOf(event));
+    } catch (failure) {
+      error = `Could not send the email: ${failure instanceof Error ? failure.message : String(failure)}`;
+    }
+
+    await getPool().query(
+      `UPDATE alert_events
+       SET email_attempts = email_attempts + 1,
+           email_delivered_at = CASE WHEN $2 THEN now() END,
+           email_error = $3
+       WHERE id = $1`,
+      [event.id, error === null, error],
+    );
+  }
+}
+
+/** What a change of state says, to a webhook or in a mail. */
+function payloadOf(event: PendingRow): WebhookPayload {
+  return {
+    ...message(event),
+    event: event.kind,
+    server: { id: event.server_id, name: event.server_name },
+    rule: {
+      kind: event.rule_kind,
+      toolName: event.tool_name,
+      threshold: event.threshold,
+      windowMinutes: event.window_minutes,
+    },
+    value: event.value,
+    occurredAt: event.occurred_at.toISOString(),
+  };
 }
 
 export interface DeliveryOutcome {

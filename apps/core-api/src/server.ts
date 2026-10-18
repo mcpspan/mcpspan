@@ -4,7 +4,7 @@ import type { Hono } from 'hono';
 import { sweepExpiredSessions } from './accounts.ts';
 import { createApp } from './app.ts';
 import { reclassifyClients } from './client-reclassify.ts';
-import { evaluateAlerts, sendWebhook, type WebhookSender } from './alerts.ts';
+import { type AlertMailer, evaluateAlerts, sendWebhook, type WebhookSender } from './alerts.ts';
 import { ping } from './db.ts';
 import { startOpenTelemetry } from './otel.ts';
 import { ingestRateLimiter } from './rate-limit.ts';
@@ -26,7 +26,9 @@ export function startApi(
   {
     /** How alerts checked in the background reach a webhook; the same one given to createApp. */
     webhooks = sendWebhook,
-  }: { webhooks?: WebhookSender } = {},
+    /** How alerts are mailed, where they can be; the same one given to createApp. */
+    alertMail,
+  }: { webhooks?: WebhookSender; alertMail?: AlertMailer } = {},
 ): void {
   const port = Number(process.env['PORT'] ?? 6271);
 
@@ -157,7 +159,7 @@ export function startApi(
   let alertsFailing = false;
 
   setInterval(() => {
-    evaluateAlerts(new Date(), webhooks).then(
+    evaluateAlerts(new Date(), webhooks, alertMail).then(
       () => {
         alertsFailing = false;
       },

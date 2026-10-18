@@ -271,6 +271,10 @@ export interface AlertRule {
   enabled: boolean;
   /** Whether the end of an alert is sent as well as its start. */
   notifyResolved: boolean;
+  /** Whether its alerts go to the webhook. */
+  notifyWebhook: boolean;
+  /** Whether they are mailed; never where Alerts.email is null. */
+  notifyEmail: boolean;
   /** True while anything it watches is past its condition. */
   firing: boolean;
   /** Which of its tools are; empty while firing for the whole server. */
@@ -290,9 +294,17 @@ export interface AlertEvent {
   error: string | null;
   /** Not sent because the rule asks for starts only. */
   notWanted: boolean;
+  /** Owed to the webhook; deliveredAt and error are about that delivery. */
+  webhookWanted: boolean;
+  /** Owed an email, and how it went. */
+  emailWanted: boolean;
+  emailDeliveredAt: string | null;
+  emailError: string | null;
 }
 
 export interface Alerts {
+  /** Where mailed alerts go, or null where this installation sends no mail. */
+  email: string | null;
   webhook: {
     url: string;
     lastAttemptAt: string | null;

@@ -108,6 +108,7 @@ export function ManageAlerts({
               <RuleRow
                 key={rule.id}
                 rule={rule}
+                email={alerts.email}
                 busy={busy === rule.id}
                 onToggle={async () => {
                   await act(rule.id, () =>
@@ -119,6 +120,9 @@ export function ManageAlerts({
                     send('PATCH', `/rules/${rule.id}`, { notifyResolved }),
                   );
                 }}
+                onChannels={async (channels) => {
+                  await act(rule.id, () => send('PATCH', `/rules/${rule.id}`, channels));
+                }}
                 onRemove={async () => {
                   await act(rule.id, () => send('DELETE', `/rules/${rule.id}`));
                 }}
@@ -128,6 +132,8 @@ export function ManageAlerts({
         )}
 
         <AddRule
+          email={alerts.email}
+          hasWebhook={alerts.webhook !== null}
           servers={servers}
           toolsByServer={toolsByServer}
           preset={preset}
@@ -138,7 +144,9 @@ export function ManageAlerts({
         />
       </div>
 
-      {alerts.events.length === 0 ? null : <RecentEvents events={alerts.events} />}
+      {alerts.events.length === 0 ? null : (
+        <RecentEvents events={alerts.events} mailable={alerts.email !== null} />
+      )}
 
       {failure === undefined ? null : (
         <p role="alert" className="text-sm text-status-critical">
@@ -228,15 +236,19 @@ function Webhook({
 
 function RuleRow({
   rule,
+  email,
   busy,
   onToggle,
   onNotifyResolved,
+  onChannels,
   onRemove,
 }: {
   rule: AlertRule;
+  email: string | null;
   busy: boolean;
   onToggle: () => Promise<void>;
   onNotifyResolved: (notifyResolved: boolean) => Promise<void>;
+  onChannels: (channels: { notifyEmail: boolean; notifyWebhook: boolean }) => Promise<void>;
   onRemove: () => Promise<void>;
 }) {
   return (
@@ -257,7 +269,9 @@ function RuleRow({
               ? rule.firingTools.length > 0
                 ? `firing now for ${rule.firingTools.join(', ')}`
                 : 'firing now'
-              : 'quiet'}
+              : // On and watching, with nothing wrong. Not "quiet": on a rule
+                // about calls stopping, that reads as the alarm itself.
+                'all clear'}
         </p>
         <label className="mt-1.5 flex items-center gap-2 text-xs text-ink-muted">
           <input
@@ -269,6 +283,37 @@ function RuleRow({
           />
           Also tell me when it ends
         </label>
+        {email === null ? null : (
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+            {/* The last one ticked cannot be unticked: a rule has to send somewhere. */}
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={rule.notifyEmail}
+                disabled={busy || (rule.notifyEmail && !rule.notifyWebhook)}
+                title={rule.notifyEmail && !rule.notifyWebhook ? 'A rule has to send its alerts somewhere' : undefined}
+                onChange={(event) =>
+                  void onChannels({ notifyEmail: event.target.checked, notifyWebhook: rule.notifyWebhook })
+                }
+                className="size-3.5 accent-ink"
+              />
+              By email
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={rule.notifyWebhook}
+                disabled={busy || (rule.notifyWebhook && !rule.notifyEmail)}
+                title={rule.notifyWebhook && !rule.notifyEmail ? 'A rule has to send its alerts somewhere' : undefined}
+                onChange={(event) =>
+                  void onChannels({ notifyEmail: rule.notifyEmail, notifyWebhook: event.target.checked })
+                }
+                className="size-3.5 accent-ink"
+              />
+              To the webhook
+            </label>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -295,12 +340,16 @@ function RuleRow({
 }
 
 function AddRule({
+  email,
+  hasWebhook,
   servers,
   toolsByServer,
   preset,
   busy,
   onAdd,
 }: {
+  email: string | null;
+  hasWebhook: boolean;
   servers: ServerRecord[];
   toolsByServer: Record<string, string[]>;
   preset: { serverId: string | undefined; toolName: string | undefined };
@@ -324,6 +373,10 @@ function AddRule({
   const [windowMinutes, setWindowMinutes] = useState('15');
   const [minCalls, setMinCalls] = useState('10');
   const [notifyResolved, setNotifyResolved] = useState(true);
+  // Mail where it can be sent, since it needs nothing set up; the webhook
+  // as well once there is one.
+  const [notifyEmail, setNotifyEmail] = useState(email !== null);
+  const [notifyWebhook, setNotifyWebhook] = useState(email === null || hasWebhook);
 
   return (
     <form
@@ -336,6 +389,7 @@ function AddRule({
           kind,
           windowMinutes: Number(windowMinutes),
           notifyResolved,
+          ...(email === null ? {} : { notifyEmail, notifyWebhook }),
           ...(kind === 'error_rate'
             ? { threshold: Number(threshold) / 100, minCalls: Number(minCalls) }
             : {}),
@@ -408,8 +462,40 @@ function AddRule({
         Also tell me when it ends
       </label>
 
+      {email === null ? null : (
+        <fieldset className="flex flex-col gap-1.5 sm:col-span-2">
+          <legend className="mb-1.5 text-sm font-medium text-ink">Send to</legend>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <label className="flex min-w-0 items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={notifyEmail}
+                onChange={(event) => setNotifyEmail(event.target.checked)}
+                className="size-4 shrink-0 accent-ink"
+              />
+              <span className="truncate">Email, {email}</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={notifyWebhook}
+                onChange={(event) => setNotifyWebhook(event.target.checked)}
+                className="size-4 shrink-0 accent-ink"
+              />
+              Webhook
+            </label>
+          </div>
+          {notifyWebhook && !hasWebhook ? (
+            <p className="text-xs text-ink-muted">No webhook is set yet: add its address above.</p>
+          ) : null}
+        </fieldset>
+      )}
+
       <div className="flex items-end sm:col-span-2">
-        <Button type="submit" disabled={busy || serverId === ''}>
+        <Button
+          type="submit"
+          disabled={busy || serverId === '' || (email !== null && !notifyEmail && !notifyWebhook)}
+        >
           Add rule
         </Button>
       </div>
@@ -523,7 +609,7 @@ function Select({
   );
 }
 
-function RecentEvents({ events }: { events: AlertEvent[] }) {
+function RecentEvents({ events, mailable }: { events: AlertEvent[]; mailable: boolean }) {
   return (
     <div>
       <h3 className="mb-2 text-sm font-medium text-ink">Recent alerts</h3>
@@ -537,7 +623,9 @@ function RecentEvents({ events }: { events: AlertEvent[] }) {
             <p className="mt-0.5 text-xs text-ink-muted">
               <LocalTime iso={event.occurredAt} />
               {', '}
-              {event.deliveredAt !== null ? (
+              {mailable ? (
+                <Delivery event={event} />
+              ) : event.deliveredAt !== null ? (
                 'sent'
               ) : event.notWanted ? (
                 'not sent, this rule sends starts only'
@@ -551,6 +639,44 @@ function RecentEvents({ events }: { events: AlertEvent[] }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/** How an alert went out by each way it was owed, where mail is one of them. */
+function Delivery({ event }: { event: AlertEvent }) {
+  if (event.notWanted) return <>not sent, this rule sends starts only</>;
+
+  const parts: { text: string; failed: boolean }[] = [];
+
+  if (event.emailWanted) {
+    parts.push(
+      event.emailDeliveredAt !== null
+        ? { text: 'emailed', failed: false }
+        : event.emailError !== null
+          ? { text: `not emailed: ${event.emailError}`, failed: true }
+          : { text: 'email on its way', failed: false },
+    );
+  }
+
+  if (event.webhookWanted) {
+    parts.push(
+      event.deliveredAt !== null
+        ? { text: 'sent to the webhook', failed: false }
+        : event.error !== null
+          ? { text: `not sent to the webhook: ${event.error}`, failed: true }
+          : { text: 'not sent to the webhook, none was set', failed: false },
+    );
+  }
+
+  return (
+    <>
+      {parts.map((part, index) => (
+        <span key={part.text} className={part.failed ? 'text-status-critical' : undefined}>
+          {index === 0 ? '' : '; '}
+          {part.text}
+        </span>
+      ))}
+    </>
   );
 }
 
