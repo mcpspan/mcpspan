@@ -70,3 +70,38 @@
     color: var(--color-ink);
   }
 }
+
+/**
+ * The hand over whatever can be clicked. Tailwind 4 gives buttons the plain
+ * arrow, as browsers do; here every control says it acts. Left outside a
+ * layer, so a utility on one element cannot quietly take it away, and so the
+ * hover on a field's border wins over its resting colour.
+ */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+[role='tab'],
+summary,
+select:not(:disabled),
+input[type='checkbox']:not(:disabled),
+input[type='radio']:not(:disabled),
+input[type='file']:not(:disabled),
+label:has(> input[type='checkbox']:not(:disabled)),
+label:has(> input[type='radio']:not(:disabled)) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled {
+  cursor: not-allowed;
+}
+
+select:not(:disabled):hover {
+  border-color: var(--color-ink-muted);
+}
+
+/* An underlined link, or a button drawn as one, thickens its line under the pointer. */
+a:hover,
+button:not(:disabled):hover {
+  text-decoration-thickness: 2px;
+}
