@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { coreApiUrl } from './lib/api';
@@ -15,6 +16,8 @@ export interface InstallationText {
   forgottenPassword: ReactNode;
   /** Beside "Cannot read your data". 503 is the API up and its database not. */
   outage(status: number | undefined): string;
+  /** Above the snippets while no server has reported: where the key comes from, ending in a colon. */
+  connectFirst: ReactNode;
   /** For a server whose key was issued under an API_KEY_SECRET since replaced. */
   staleKey: string;
   /** On Status, when no request has been refused. */
@@ -42,6 +45,15 @@ export const installation: InstallationText = {
     status === 503
       ? 'Check that the database is running, for example with docker compose ps. Events sent meanwhile are kept by the SDK and delivered once it is back.'
       : `The dashboard looks for the Core API at ${coreApiUrl()}. Check that it is running and that this app is configured to reach it.`,
+  connectFirst: (
+    <>
+      Create an API key in{' '}
+      <Link href="/settings" className="text-ink underline underline-offset-2">
+        Settings
+      </Link>
+      , then point the SDK at this installation:
+    </>
+  ),
   staleKey:
     'API_KEY_SECRET changed after this key was created, so the key can no longer be verified. Restore the previous .env, or generate a new key in Settings.',
   nothingRefused: 'The API has not refused anything.',

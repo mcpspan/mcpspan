@@ -35,13 +35,7 @@ export function Notice({
 export function NothingConnectedYet() {
   return (
     <Notice title="No server is reporting yet">
-      <p>
-        Create an API key in{' '}
-        <Link href="/settings" className="text-ink underline underline-offset-2">
-          Settings
-        </Link>
-        , then point the SDK at this installation:
-      </p>
+      <p>{installation.connectFirst}</p>
       <div className="mt-3 text-left">
         <ConnectSnippets languages={snippets(ingestUrl())} />
       </div>

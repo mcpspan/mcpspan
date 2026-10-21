@@ -25,7 +25,7 @@ export function NewKey({ value }: { value: string }) {
         <code className="mx-1 font-mono text-xs text-ink">MCPSPAN_API_KEY</code>.
       </p>
 
-      <Copyable text={value} label="API key" />
+      <Copyable text={value} label="API key" wrap />
     </div>
   );
 }

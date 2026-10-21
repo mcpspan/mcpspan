@@ -10,7 +10,16 @@ import { useState } from 'react';
  * code with a mouse and missing the last character, then spending a while
  * finding out why their key is refused.
  */
-export function Copyable({ text, label }: { text: string; label: string }) {
+export function Copyable({
+  text,
+  label,
+  wrap = false,
+}: {
+  text: string;
+  label: string;
+  /** Breaks anywhere instead of scrolling: for a key, which has no line to keep whole and is read to the end. */
+  wrap?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function copy(): Promise<void> {
@@ -28,7 +37,11 @@ export function Copyable({ text, label }: { text: string; label: string }) {
     // The button beside the code rather than over it: a long line scrolls
     // sideways, and on a phone it used to slide under the button.
     <div className="flex items-start rounded-lg bg-surface">
-      <pre className="min-w-0 flex-1 overflow-x-auto p-3 font-mono text-xs text-ink">{text}</pre>
+      <pre
+        className={`min-w-0 flex-1 p-3 font-mono text-xs text-ink ${wrap ? 'break-all whitespace-pre-wrap' : 'overflow-x-auto'}`}
+      >
+        {text}
+      </pre>
 
       <button
         type="button"
