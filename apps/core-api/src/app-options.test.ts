@@ -268,6 +268,20 @@ describe('an account store', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Your plan covers one server' });
     expect(servers.rowCount).toBe(1);
   });
+
+  it('says why before a server is named, with the list', async () => {
+    const refusing: AccountStore = {
+      ...selfHostedAccounts,
+      serverRefusal: async () => 'Your plan covers one server',
+    };
+    const request = { headers: { cookie: account.cookie } };
+
+    const refused = await createApp({ accounts: refusing }).request('/v1/servers', request);
+    const selfHosted = await createApp().request('/v1/servers', request);
+
+    await expect(refused.json()).resolves.toMatchObject({ addRefusal: 'Your plan covers one server' });
+    await expect(selfHosted.json()).resolves.toMatchObject({ addRefusal: null });
+  });
 });
 
 describe('a webhook sender', () => {

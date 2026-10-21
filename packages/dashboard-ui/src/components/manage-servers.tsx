@@ -23,7 +23,14 @@ const INPUT =
  * list being patched in place. The server rendered it; letting it render again
  * is both shorter and incapable of disagreeing with what is actually stored.
  */
-export function ManageServers({ servers }: { servers: ServerRecord[] }) {
+export function ManageServers({
+  servers,
+  addRefusal,
+}: {
+  servers: ServerRecord[];
+  /** Why another server may not be added, said in place of the form; null when it may. */
+  addRefusal: string | null;
+}) {
   const router = useRouter();
   const [newKey, setNewKey] = useState<{ serverName: string; key: string }>();
   const [failure, setFailure] = useState<string>();
@@ -106,24 +113,28 @@ export function ManageServers({ servers }: { servers: ServerRecord[] }) {
         ))}
       </ul>
 
-      <AddServer
-        onAdd={async (name) => {
-          const body = await act('new', () =>
-            fetch('/api/servers', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ name }),
-            }),
-          );
+      {addRefusal !== null ? (
+        <p className="border-t border-border pt-4 text-sm text-ink-muted">{addRefusal}</p>
+      ) : (
+        <AddServer
+          onAdd={async (name) => {
+            const body = await act('new', () =>
+              fetch('/api/servers', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ name }),
+              }),
+            );
 
-          const server = body?.['server'] as { name?: string } | undefined;
+            const server = body?.['server'] as { name?: string } | undefined;
 
-          if (typeof body?.['apiKey'] === 'string') {
-            setNewKey({ serverName: server?.name ?? name, key: body['apiKey'] });
-          }
-        }}
-        busy={busy === 'new'}
-      />
+            if (typeof body?.['apiKey'] === 'string') {
+              setNewKey({ serverName: server?.name ?? name, key: body['apiKey'] });
+            }
+          }}
+          busy={busy === 'new'}
+        />
+      )}
 
       {failure === undefined ? null : (
         <p role="alert" className="text-sm text-status-critical">

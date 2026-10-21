@@ -26,9 +26,19 @@ export function createServerRoutes(accounts: AccountStore = selfHostedAccounts) 
 
   app.use('*', requireSession(accounts));
 
-  /** What exists. Never what a key says: only its hash is stored. */
+  /**
+   * What exists. Never what a key says: only its hash is stored. Also why
+   * another server may not be added, or null when it may, so the page says so
+   * before somebody names one rather than after.
+   */
   app.get('/', async (c) => {
-    return c.json({ servers: await listServers(c.get('session').serverIds) });
+    const { serverIds, userId } = c.get('session');
+    const [servers, addRefusal] = await Promise.all([
+      listServers(serverIds),
+      accounts.serverRefusal?.(userId),
+    ]);
+
+    return c.json({ servers, addRefusal: addRefusal ?? null });
   });
 
   /** A new server, with the key it needs to say anything. */

@@ -88,6 +88,8 @@ export interface ServerRecord {
 
 export interface ServerList {
   servers: ServerRecord[];
+  /** Why another server may not be added, or null when it may. Absent from servers before 0.8.1. */
+  addRefusal?: string | null;
 }
 
 export interface FilterOptions {

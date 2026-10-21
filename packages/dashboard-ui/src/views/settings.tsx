@@ -28,7 +28,7 @@ export default async function SettingsPage({
 }) {
   const params = await searchParams;
   const session = await currentSession();
-  const [{ servers }, alerts] = await Promise.all([
+  const [{ servers, addRefusal }, alerts] = await Promise.all([
     getServers(session),
     getAlerts(session, { eventsOffset: offsetParam(params, 'eventsOffset') }),
   ]);
@@ -76,7 +76,7 @@ export default async function SettingsPage({
           should not have been, generate a new one: the old one stops working immediately.
         </p>
 
-        <ManageServers servers={servers} />
+        <ManageServers servers={servers} addRefusal={addRefusal ?? null} />
       </Card>
 
       <Card id="delete-data">

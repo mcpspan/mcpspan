@@ -91,6 +91,8 @@ describe('listing servers', () => {
           hasActiveKey: true,
         },
       ],
+      // A self-hosted installation never refuses another server.
+      addRefusal: null,
     });
   });
 
