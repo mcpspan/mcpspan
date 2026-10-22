@@ -42,6 +42,11 @@ export async function POST(
         // is marked as one that never travels over plain HTTP.
         'x-forwarded-proto':
           request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', ''),
+        // Who is asking, when Cloudflare sits in front and has said so: an
+        // API may limit sign-ups by it. Self-hosted, nothing reads it.
+        ...(request.headers.get('cf-connecting-ip') === null
+          ? {}
+          : { 'cf-connecting-ip': request.headers.get('cf-connecting-ip') as string }),
         // Signing out needs the session it is ending, and changing the
         // password the session of whoever is changing it.
         ...(request.headers.get('cookie') === null
