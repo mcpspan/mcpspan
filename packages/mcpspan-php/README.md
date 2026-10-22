@@ -15,7 +15,7 @@ composer require mcpspan/mcpspan
 ```
 
 For a server built on Laravel MCP, `laravel/mcp` 1.0 or newer, or on the
-official PHP MCP SDK, `mcp/sdk` 0.8 or newer. Needs PHP 8.2 or newer.
+official PHP MCP SDK, `mcp/sdk` 0.8 or 0.9. Needs PHP 8.2 or newer.
 Nothing else: delivery uses PHP's own HTTP streams.
 
 ## Use

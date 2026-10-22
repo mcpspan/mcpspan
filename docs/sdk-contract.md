@@ -994,9 +994,9 @@ Known limits:
 ## 18. Where the PHP SDK stands
 
 `packages/mcpspan-php` (Composer `mcpspan/mcpspan`, namespace `McpSpan`)
-passes the conformance suite on Laravel MCP, on both protocol revisions, and
-on the official PHP MCP SDK, `mcp/sdk`, on 2025-11-25: that SDK speaks
-2026-07-28 over HTTP only, where a test covers it.
+passes the conformance suite on Laravel MCP and on the official PHP MCP SDK,
+`mcp/sdk` 0.9, on both protocol revisions, and on `mcp/sdk` 0.8 on
+2025-11-25: 0.8 speaks 2026-07-28 over HTTP only, where a test covers it.
 
 - **One package.** PHP loads a class only when it is used, so both
   integrations live in the one package, with the MCP SDKs as suggestions, not
@@ -1032,6 +1032,12 @@ on the official PHP MCP SDK, `mcp/sdk`, on 2025-11-25: that SDK speaks
   registry is a missing tool, an error before the tool was reached is refused
   arguments. The one private part read is the builder's assembled parts, to
   find the SDK's handler and registry; a test fails if it moves.
+- **Sessions on 2026-07-28** come from the transport, which the SDK's handlers
+  are not told: it makes a throwaway session for every such request, over
+  HTTP and, from 0.9, over stdio too. So the call stack is asked once whether
+  the SDK's stdio transport is answering; if so, the process is one connection
+  and one session (8), and over HTTP there is none. Since 0.7.1, which also
+  takes `mcp/sdk` 0.9.
 - **Resources and prompts** (3.5) take the same routes: `resources/read` and
   `prompts/get` handlers on the official SDK, named from its registry, and
   swapped methods on Laravel MCP, named by Laravel's own lookup. The official

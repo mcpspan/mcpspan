@@ -60,8 +60,9 @@ jobs:
     runs-on: ubuntu-latest
 
     # The same suite the other SDKs pass, through a real MCP client over
-    # stdio. The official PHP MCP SDK speaks 2026-07-28 over HTTP only, so it
-    # runs on 2025-11-25; Laravel MCP speaks both over stdio.
+    # stdio. The official PHP MCP SDK speaks 2026-07-28 over stdio from 0.9;
+    # 0.8, which users may still have, runs on 2025-11-25 alone. Laravel MCP
+    # speaks both.
     strategy:
       fail-fast: false
       matrix:
@@ -70,6 +71,15 @@ jobs:
             adapter: php-mcpsdk
             protocol: '2025'
             command: '["php", "adapters/php-mcpsdk/server.php"]'
+          - name: official PHP MCP SDK, protocol 2026-07-28
+            adapter: php-mcpsdk
+            protocol: '2026'
+            command: '["php", "adapters/php-mcpsdk/server.php"]'
+          - name: official PHP MCP SDK 0.8, protocol 2025-11-25
+            adapter: php-mcpsdk
+            protocol: '2025'
+            command: '["php", "adapters/php-mcpsdk/server.php"]'
+            pin: '--with mcp/sdk:0.8.*'
           - name: Laravel MCP, protocol 2025-11-25
             adapter: php-laravel
             protocol: '2025'
@@ -96,7 +106,7 @@ jobs:
           php-version: '8.5'
           coverage: none
 
-      - run: composer update --no-interaction --no-progress
+      - run: composer update --no-interaction --no-progress ${{ matrix.pin }}
         working-directory: conformance/adapters/${{ matrix.adapter }}
 
       - run: pnpm --filter @mcpspan/conformance test

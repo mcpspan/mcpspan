@@ -8,6 +8,7 @@ use Mcp\Schema\Implementation;
 use Mcp\Server\Builder;
 use Mcp\Server\Session\SessionInterface;
 use Mcp\Server\Stateless\RequestMeta;
+use Mcp\Server\Transport\StdioTransport;
 use McpSpan\Core\Event;
 
 /**
@@ -23,6 +24,12 @@ final class Connections
 
     /** @var array<string, string> the SDK's session identifier, to ours */
     private array $sessions = [];
+
+    /** Whether this server answers over stdio; null until a 2026-07-28 request has said. */
+    private ?bool $stdio = null;
+
+    /** Ours for the one connection a server has over stdio on 2026-07-28. */
+    private ?string $stdioSession = null;
 
     /**
      * The client's name and version: from the request itself on 2026-07-28, else from its connection's handshake.
@@ -51,13 +58,17 @@ final class Connections
     }
 
     /**
-     * Our identifier for the connection, or null on 2026-07-28, which has no sessions: the SDK makes a throwaway
-     * one for each request there. It is random, and never derived from the SDK's own, which travels in HTTP headers.
+     * Our identifier for the connection. It is random, and never derived from the SDK's own, which travels in HTTP
+     * headers.
+     *
+     * 2026-07-28 has no sessions: the SDK makes a throwaway one for each request, so over HTTP there is none. Over
+     * stdio (mcp/sdk 0.9 on) the process is still one connection to one client, so it is one session, as it is on
+     * every other SDK.
      */
     public function session(SessionInterface $session): ?string
     {
         if ($session->get(RequestMeta::class) instanceof RequestMeta) {
-            return null;
+            return $this->overStdio() ? ($this->stdioSession ??= Event::uuid()) : null;
         }
         $key = (string) $session->getId();
         if (!isset($this->sessions[$key])) {
@@ -68,5 +79,24 @@ final class Connections
         }
 
         return $this->sessions[$key];
+    }
+
+    /**
+     * Whether the request being answered came through the SDK's stdio transport. The handlers are not told which
+     * transport they serve, so the call stack is asked, once: a server runs on one transport.
+     */
+    private function overStdio(): bool
+    {
+        if (null === $this->stdio) {
+            $this->stdio = false;
+            foreach (debug_backtrace(\DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
+                if (isset($frame['class']) && is_a($frame['class'], StdioTransport::class, true)) {
+                    $this->stdio = true;
+                    break;
+                }
+            }
+        }
+
+        return $this->stdio;
     }
 }
