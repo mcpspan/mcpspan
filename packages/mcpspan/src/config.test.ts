@@ -211,6 +211,14 @@ describe('configure with bad options', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('maxBatchSize'));
   });
 
+  it('tells the diagnostic callback instead, when there is one', () => {
+    const said: string[] = [];
+    configure({ apiKey: 'key-123', maxBatchSize: -5, onDiagnostic: (message) => said.push(message) });
+
+    expect(said).toEqual([expect.stringContaining('maxBatchSize')]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('says nothing when debug is off', () => {
     configure({ apiKey: 'key-123', maxBatchSize: -5 });
 

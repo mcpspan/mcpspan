@@ -147,13 +147,22 @@ func resolve(settings Settings, debug bool) *resolved {
 		next.diagnostic = reflect.ValueOf(settings.OnDiagnostic).Pointer()
 	}
 
-	// A malformed setting falls back to its default, and says so when asked.
+	// A malformed setting falls back to its default, and says so when asked:
+	// to the developer's callback, as every other diagnostic, else stderr.
+	say := func(message string) {
+		defer func() { _ = recover() }()
+		if settings.OnDiagnostic != nil {
+			settings.OnDiagnostic(message)
+		} else {
+			fmt.Fprintln(os.Stderr, message)
+		}
+	}
 	positive := func(name string, value int64, apply func()) {
 		switch {
 		case value > 0:
 			apply()
 		case value < 0 && debug:
-			fmt.Fprintf(os.Stderr, "mcpspan: ignoring %s=%d, expected a positive value\n", name, value)
+			say(fmt.Sprintf("mcpspan: ignoring %s=%d, expected a positive value", name, value))
 		}
 	}
 	positive("FlushInterval", int64(settings.FlushInterval), func() { next.interval = settings.FlushInterval })

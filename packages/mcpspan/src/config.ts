@@ -172,9 +172,18 @@ export function configure(config: McpspanConfig = {}): void {
     debug,
     ...(config.onDiagnostic !== undefined && { onDiagnostic: config.onDiagnostic }),
   };
-  assignPositive(options, 'flushIntervalMs', config.flushIntervalMs, debug);
-  assignPositive(options, 'maxBatchSize', config.maxBatchSize, debug);
-  assignPositive(options, 'maxQueueSize', config.maxQueueSize, debug);
+  // Where every other diagnostic goes: the developer's callback, else stderr.
+  const say = (message: string): void => {
+    if (!debug) return;
+    try {
+      (config.onDiagnostic ?? console.error)(message);
+    } catch {
+      // A broken logger must not stop the server starting.
+    }
+  };
+  assignPositive(options, 'flushIntervalMs', config.flushIntervalMs, say);
+  assignPositive(options, 'maxBatchSize', config.maxBatchSize, say);
+  assignPositive(options, 'maxQueueSize', config.maxQueueSize, say);
 
   reporter = new EventReporter(options);
   active = { settings, onDiagnostic: config.onDiagnostic };
@@ -283,14 +292,12 @@ function assignPositive(
   options: ReporterOptions,
   name: NumericOption,
   value: number | undefined,
-  debug: boolean,
+  say: (message: string) => void,
 ): void {
   if (value === undefined) return;
 
   if (!Number.isInteger(value) || value < 1) {
-    if (debug) {
-      console.error(`mcpspan: ignoring ${name}=${String(value)}, expected a positive integer`);
-    }
+    say(`mcpspan: ignoring ${name}=${String(value)}, expected a positive integer`);
     return;
   }
 

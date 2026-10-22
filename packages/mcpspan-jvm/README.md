@@ -15,7 +15,7 @@ from Java or Kotlin:
 
 ```kotlin
 dependencies {
-    implementation("com.mcpspan:mcpspan-java-sdk:0.7.0")
+    implementation("com.mcpspan:mcpspan-java-sdk:0.7.1")
 }
 ```
 

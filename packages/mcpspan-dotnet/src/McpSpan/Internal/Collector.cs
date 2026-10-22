@@ -73,15 +73,16 @@ internal static class Collector
     private static void ConfigureCore(McpSpanOptions options)
     {
         var debug = options.Debug || options.OnDiagnostic is not null;
+        var note = debug ? Say(options.OnDiagnostic) : null;
         var settings = new Settings(
             FirstNonEmpty(options.ApiKey, Environment.GetEnvironmentVariable("MCPSPAN_API_KEY")),
             FirstNonEmpty(options.Endpoint, Environment.GetEnvironmentVariable("MCPSPAN_ENDPOINT")),
             debug,
             options.OnDiagnostic,
             options.FlushOnExit,
-            Positive(options.FlushInterval, Reporter.DefaultFlushInterval, "FlushInterval", debug),
-            Math.Min(Positive(options.MaxBatchSize, Reporter.DefaultMaxBatchSize, "MaxBatchSize", debug), 1_000),
-            Positive(options.MaxQueueSize, Reporter.DefaultMaxQueueSize, "MaxQueueSize", debug),
+            Positive(options.FlushInterval, Reporter.DefaultFlushInterval, "FlushInterval", note),
+            Math.Min(Positive(options.MaxBatchSize, Reporter.DefaultMaxBatchSize, "MaxBatchSize", note), 1_000),
+            Positive(options.MaxQueueSize, Reporter.DefaultMaxQueueSize, "MaxQueueSize", note),
             options.CaptureParameterNames,
             options.CaptureErrorMessages,
             FirstNonEmpty(options.ServerVersion, Environment.GetEnvironmentVariable("MCPSPAN_SERVER_VERSION")));
@@ -217,7 +218,27 @@ internal static class Collector
     private static string? FirstNonEmpty(params string?[] values) =>
         values.Select(value => value?.Trim()).FirstOrDefault(value => !string.IsNullOrEmpty(value));
 
-    private static T Positive<T>(T? value, T fallback, string name, bool debug)
+    /// <summary>Where every other diagnostic goes: the developer's callback, else stderr. A failing callback is ignored.</summary>
+    private static Action<string> Say(Action<string>? onDiagnostic) => message =>
+    {
+        try
+        {
+            if (onDiagnostic is not null)
+            {
+                onDiagnostic(message);
+            }
+            else
+            {
+                Console.Error.WriteLine(message);
+            }
+        }
+        catch (Exception)
+        {
+            // A broken logger must not stop the server starting.
+        }
+    };
+
+    private static T Positive<T>(T? value, T fallback, string name, Action<string>? say)
         where T : struct, IComparable<T>
     {
         if (value is not { } given)
@@ -230,10 +251,7 @@ internal static class Collector
             return given;
         }
 
-        if (debug)
-        {
-            Console.Error.WriteLine($"mcpspan: ignoring {name}={given}, expected a positive value");
-        }
+        say?.Invoke($"mcpspan: ignoring {name}={given}, expected a positive value");
 
         return fallback;
     }

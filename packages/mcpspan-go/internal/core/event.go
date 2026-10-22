@@ -63,4 +63,4 @@ const (
 
 // Version is the SDK's own version, reported in every event and in the
 // User-Agent.
-const Version = "0.7.0"
+const Version = "0.7.1"

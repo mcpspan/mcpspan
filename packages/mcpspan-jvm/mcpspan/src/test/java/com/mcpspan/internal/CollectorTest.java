@@ -67,10 +67,14 @@ class CollectorTest {
     @Test
     void aMalformedSettingFallsBackAndNeverThrows() {
         Collector.useSender(events -> { });
+        List<String> said = new CopyOnWriteArrayList<>();
         McpSpan.configure(McpSpanOptions.builder().apiKey("k").flushInterval(Duration.ofSeconds(-1))
-            .maxBatchSize(0).debug(true).onDiagnostic(note -> { }).build());
+            .maxBatchSize(0).debug(true).onDiagnostic(said::add).build());
 
         assertTrue(McpSpan.isCollecting());
+        // To the callback, as every other diagnostic, not to stderr.
+        assertEquals(List.of("mcpspan: ignoring flushInterval=PT-1S, expected a positive value",
+            "mcpspan: ignoring maxBatchSize=0, expected a positive value"), said);
     }
 
     @Test

@@ -92,6 +92,7 @@ public final class Collector {
 
     private static void configureCore(McpSpanOptions options) {
         boolean debug = options.debug() || options.onDiagnostic() != null;
+        Consumer<String> note = debug ? say(options.onDiagnostic()) : null;
         String apiKey = firstNonEmpty(options.apiKey(), System.getenv("MCPSPAN_API_KEY"));
         String endpoint = firstNonEmpty(options.endpoint(), System.getenv("MCPSPAN_ENDPOINT"));
         Settings settings = new Settings(
@@ -100,9 +101,9 @@ public final class Collector {
             debug,
             options.onDiagnostic(),
             options.flushOnExit(),
-            positive(options.flushInterval(), Reporter.DEFAULT_FLUSH_INTERVAL, "flushInterval", debug),
-            Math.min(positive(options.maxBatchSize(), Reporter.DEFAULT_MAX_BATCH_SIZE, "maxBatchSize", debug), 1_000),
-            positive(options.maxQueueSize(), Reporter.DEFAULT_MAX_QUEUE_SIZE, "maxQueueSize", debug),
+            positive(options.flushInterval(), Reporter.DEFAULT_FLUSH_INTERVAL, "flushInterval", note),
+            Math.min(positive(options.maxBatchSize(), Reporter.DEFAULT_MAX_BATCH_SIZE, "maxBatchSize", note), 1_000),
+            positive(options.maxQueueSize(), Reporter.DEFAULT_MAX_QUEUE_SIZE, "maxQueueSize", note),
             options.captureParameterNames(),
             options.captureErrorMessages(),
             firstNonEmpty(options.serverVersion(), System.getenv("MCPSPAN_SERVER_VERSION")));
@@ -216,31 +217,46 @@ public final class Collector {
         return null;
     }
 
-    private static Duration positive(Duration value, Duration fallback, String name, boolean debug) {
+    private static Duration positive(Duration value, Duration fallback, String name, Consumer<String> note) {
         if (value == null) {
             return fallback;
         }
         if (!value.isNegative() && !value.isZero()) {
             return value;
         }
-        note(debug, name, value);
+        ignored(note, name, value);
         return fallback;
     }
 
-    private static int positive(Integer value, int fallback, String name, boolean debug) {
+    private static int positive(Integer value, int fallback, String name, Consumer<String> note) {
         if (value == null) {
             return fallback;
         }
         if (value > 0) {
             return value;
         }
-        note(debug, name, value);
+        ignored(note, name, value);
         return fallback;
     }
 
-    private static void note(boolean debug, String name, Object value) {
-        if (debug) {
-            System.err.println("mcpspan: ignoring " + name + "=" + value + ", expected a positive value");
+    private static void ignored(Consumer<String> note, String name, Object value) {
+        if (note != null) {
+            note.accept("mcpspan: ignoring " + name + "=" + value + ", expected a positive value");
         }
+    }
+
+    /** Where every other diagnostic goes: the developer's callback, else stderr. A failing callback is ignored. */
+    private static Consumer<String> say(Consumer<String> onDiagnostic) {
+        return message -> {
+            try {
+                if (onDiagnostic != null) {
+                    onDiagnostic.accept(message);
+                } else {
+                    System.err.println(message);
+                }
+            } catch (RuntimeException ignored) {
+                // A broken logger must not stop the server starting.
+            }
+        };
     }
 }

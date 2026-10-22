@@ -38,7 +38,7 @@ def _first_non_empty(*values: str | None) -> str | None:
     return None
 
 
-def _positive(name: str, value: Any, debug: bool, *, integer: bool) -> Any:
+def _positive(name: str, value: Any, say: Callable[[str], None], *, integer: bool) -> Any:
     """The value if it is usable, otherwise None and, when asked, a note why."""
     if value is None:
         return None
@@ -46,9 +46,8 @@ def _positive(name: str, value: Any, debug: bool, *, integer: bool) -> Any:
     kinds: tuple[type, ...] = (int,) if integer else (int, float)
     usable = isinstance(value, kinds) and not isinstance(value, bool)
     if not usable or value <= 0:
-        if debug:
-            expected = "a positive integer" if integer else "a positive number"
-            print(f"mcpspan: ignoring {name}={value!r}, expected {expected}", file=sys.stderr)
+        expected = "a positive integer" if integer else "a positive number"
+        say(f"mcpspan: ignoring {name}={value!r}, expected {expected}")
         return None
 
     return value
@@ -182,15 +181,27 @@ def _configure(
                     pass
             return
 
+        def say(message: str) -> None:
+            # Where every other diagnostic goes: the developer's callback, else stderr.
+            if not verbose:
+                return
+            try:
+                if on_diagnostic is not None:
+                    on_diagnostic(message)
+                else:
+                    print(message, file=sys.stderr)
+            except Exception:
+                pass
+
         options: dict[str, Any] = {}
-        interval = _positive("flush_interval", flush_interval, verbose, integer=False)
+        interval = _positive("flush_interval", flush_interval, say, integer=False)
         if interval is not None:
             options["flush_interval"] = float(interval)
-        batch = _positive("max_batch_size", max_batch_size, verbose, integer=True)
+        batch = _positive("max_batch_size", max_batch_size, say, integer=True)
         if batch is not None:
             # The API takes at most 1,000 events per request.
             options["max_batch_size"] = min(batch, 1_000)
-        queue = _positive("max_queue_size", max_queue_size, verbose, integer=True)
+        queue = _positive("max_queue_size", max_queue_size, say, integer=True)
         if queue is not None:
             options["max_queue_size"] = queue
 

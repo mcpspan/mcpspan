@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -63,6 +64,10 @@ func TestAMalformedSettingFallsBack(t *testing.T) {
 
 	if current.flushInterval != DefaultFlushInterval || current.maxBatchSize != 1_000 {
 		t.Fatalf("interval %v, batch %d", current.flushInterval, current.maxBatchSize)
+	}
+	// Told to the callback, not to stderr: the batch size was only too large, and is capped.
+	if len(notes) != 1 || !strings.Contains(notes[0], "ignoring FlushInterval") {
+		t.Fatalf("notes %q", notes)
 	}
 }
 

@@ -64,6 +64,24 @@ public sealed class ConfigurationTests
     }
 
     [Fact]
+    public async Task Tells_a_malformed_setting_to_the_diagnostic_callback()
+    {
+        Collector.SendOverride = (_, _) => Task.CompletedTask;
+        try
+        {
+            var said = new List<string>();
+            McpSpanSdk.Configure(new McpSpanOptions { ApiKey = "k", MaxQueueSize = 0, OnDiagnostic = said.Add });
+
+            Assert.Equal(["mcpspan: ignoring MaxQueueSize=0, expected a positive value"], said);
+        }
+        finally
+        {
+            await McpSpanSdk.ShutdownAsync(TestContext.Current.CancellationToken);
+            Collector.SendOverride = null;
+        }
+    }
+
+    [Fact]
     public async Task Reads_the_key_from_the_environment()
     {
         Environment.SetEnvironmentVariable("MCPSPAN_API_KEY", "env-key");

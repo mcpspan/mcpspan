@@ -78,6 +78,18 @@ def test_a_malformed_option_falls_back_and_never_raises(capsys: pytest.CaptureFi
     ingest.server.shutdown()
 
 
+def test_a_malformed_option_is_told_to_the_diagnostic_callback(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    said: list[str] = []
+    mcpspan.configure(
+        api_key="k", endpoint="http://127.0.0.1:9", max_queue_size=0, on_diagnostic=said.append
+    )
+
+    assert said == ["mcpspan: ignoring max_queue_size=0, expected a positive integer"]
+    assert capsys.readouterr() == ("", "")
+
+
 def test_shutdown_stops_collecting() -> None:
     mcpspan.configure(api_key="k", endpoint="http://127.0.0.1:9")
     mcpspan.shutdown()
