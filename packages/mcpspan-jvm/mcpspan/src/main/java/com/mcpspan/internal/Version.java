@@ -4,7 +4,7 @@ package com.mcpspan.internal;
 public final class Version {
 
     /** Reported with every event and in the User-Agent. */
-    public static final String CURRENT = "0.7.1";
+    public static final String CURRENT = "0.8.1";
 
     private Version() {
     }

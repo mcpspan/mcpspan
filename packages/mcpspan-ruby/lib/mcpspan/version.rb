@@ -2,5 +2,5 @@
 
 module McpSpan
   # The SDK's own version, reported with every event.
-  VERSION = "0.7.1"
+  VERSION = "0.8.1"
 end
