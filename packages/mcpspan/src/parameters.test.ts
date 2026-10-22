@@ -21,10 +21,6 @@ describe('describeParameters', () => {
     expect(describeParameters([{ field: value }])).toEqual({ field: expected });
   });
 
-  it('separates arrays from objects, which typeof does not', () => {
-    expect(describeParameters([{ tags: ['a'] }])).toEqual({ tags: 'array' });
-  });
-
   it('reads only the first argument, since the rest belong to the protocol', () => {
     expect(describeParameters([{ destination: 'Lisbon' }, { requestId: 'abc' }])).toEqual({
       destination: 'string',

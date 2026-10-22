@@ -165,7 +165,22 @@ public sealed class DeliveryTests
     }
 
     [Fact]
-    public async Task Delivers_on_the_interval_and_a_full_batch_at_once()
+    public async Task Delivers_on_the_interval()
+    {
+        var script = new Script();
+        var reporter = NewReporter(script);
+        reporter.Start();
+
+        reporter.Record(QueueTests.Event(1));
+
+        // One event, far short of a batch: only the interval sends it.
+        await Eventually(() => script.WithEvents().Length == 1);
+        Assert.Equal(["1"], script.WithEvents()[0]);
+        await reporter.StopAsync(Stop);
+    }
+
+    [Fact]
+    public async Task Delivers_a_full_batch_at_once()
     {
         var script = new Script();
         var reporter = NewReporter(script, interval: TimeSpan.FromHours(1), batch: 2);

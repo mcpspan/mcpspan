@@ -120,13 +120,12 @@ describe('listing servers', () => {
     expect(body.servers.find((s) => s.id === revoked.serverId)?.hasActiveKey).toBe(false);
   });
 
-  it.each([
-    ['without a session', null],
-    ['with an API key instead of a session', 'placeholder'],
-  ])('refuses %s', async (label, cookie) => {
-    const sent = label.includes('API key') ? `mcpspan_session=${account.key}` : cookie;
+  it('refuses without a session', async () => {
+    expect((await list(null)).status).toBe(401);
+  });
 
-    expect((await list(sent)).status).toBe(401);
+  it('refuses an API key in place of a session', async () => {
+    expect((await list(`mcpspan_session=${account.key}`)).status).toBe(401);
   });
 });
 

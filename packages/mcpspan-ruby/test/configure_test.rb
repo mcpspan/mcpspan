@@ -34,8 +34,9 @@ class ConfigureTest < Minitest::Test
 
     assert_equal("mk_env", settings[:api_key])
     assert_equal("http://mcpspan.internal", settings[:endpoint])
-    assert_equal("", McpSpan::Collector.send(:resolve, { endpoint: " " })[:endpoint]
-      .then { ENV.delete("MCPSPAN_ENDPOINT") && McpSpan::Collector.send(:resolve, {})[:endpoint] },)
+
+    ENV.delete("MCPSPAN_ENDPOINT")
+    assert_equal("", McpSpan::Collector.send(:resolve, { endpoint: " " })[:endpoint])
   ensure
     ENV.delete("MCPSPAN_API_KEY")
     ENV.delete("MCPSPAN_ENDPOINT")

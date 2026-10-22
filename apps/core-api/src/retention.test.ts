@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { closePool, getPool } from './db.ts';
 import {
@@ -63,10 +63,16 @@ describe('reconcileRetention', () => {
     // who typed two days meant something by it, and quietly giving them eight
     // would leave them trusting a bound that is not there.
     process.env[VARIABLE] = value;
+    const complained = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    await reconcileRetention();
+    try {
+      await reconcileRetention();
 
-    expect(await retentionDays('tool_calls')).toBe(DEFAULT_RETENTION_DAYS);
+      expect(await retentionDays('tool_calls')).toBe(DEFAULT_RETENTION_DAYS);
+      expect(complained).toHaveBeenCalledWith(expect.stringContaining(`ignoring ${VARIABLE}`));
+    } finally {
+      complained.mockRestore();
+    }
   });
 
   it('does nothing at all when the policy already says the right thing', async () => {

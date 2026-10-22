@@ -156,13 +156,21 @@ describe('sorting the tool ranking', () => {
   });
 
   it('sorts by rate rather than count, so a quiet broken tool still surfaces', async () => {
-    // `search` has three calls and no failures; `book` has two and both fail.
-    // By raw count of errors they are close, by rate they are not.
-    const { tools } = await body<{ tools: { toolName: string; errorRate: number }[] }>(
-      '/v1/dashboard/tools?sort=errors',
-    );
+    // A busy tool with more failures than `book` but a far lower rate: by
+    // count it would lead, by rate `book`, two calls and both failed, does.
+    await seedEvents(server.serverId, [
+      ...Array.from({ length: 3 }, () => ({
+        toolName: 'busy',
+        success: false,
+        errorSource: 'exception',
+        occurredAt: minutesAgo(5),
+      })),
+      ...Array.from({ length: 17 }, () => ({ toolName: 'busy', occurredAt: minutesAgo(5) })),
+    ]);
 
-    expect(tools[0]?.errorRate).toBe(1);
+    const { tools } = await body<{ tools: { toolName: string }[] }>('/v1/dashboard/tools?sort=errors');
+
+    expect(tools.map((tool) => tool.toolName)).toEqual(['book', 'busy', 'search']);
   });
 
   it('leads with the slowest when asked', async () => {

@@ -76,7 +76,7 @@ describe('starting without a signing secret', () => {
 
 describe('starting with a port that is not one', () => {
   it.each([
-    ['not a number', 'http'],
+    ['not a number', 'eighty'],
     ['zero', '0'],
     ['above the range', '70000'],
   ])('stops when PORT is %s', async (_label, port) => {
@@ -86,9 +86,11 @@ describe('starting with a port that is not one', () => {
   });
 
   it('repeats back what it was given', async () => {
-    const { output } = await boot({ ...workingEnv, PORT: 'http' });
+    // A word that appears nowhere else in what it prints, so finding it means
+    // the value was repeated rather than an address that happens to match.
+    const { output } = await boot({ ...workingEnv, PORT: 'eighty' });
 
-    expect(output).toContain('http');
+    expect(output).toContain('eighty');
   });
 });
 

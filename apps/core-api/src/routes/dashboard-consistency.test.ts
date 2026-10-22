@@ -26,6 +26,8 @@ const ROUTES = [
   'resources-and-prompts',
   'calls',
   'versions',
+  'listing',
+  'filters',
 ] as const;
 
 let server: TestAccount;

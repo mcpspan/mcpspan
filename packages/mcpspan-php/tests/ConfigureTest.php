@@ -16,10 +16,13 @@ final class ConfigureTest extends TestCase
     public function testTheSameSettingsAgainChangeNothing(): void
     {
         $capture = $this->capture();
+        McpSpan::track('search', static fn (): string => 'ok')();
         McpSpan::configure(['apiKey' => 'mk_test', 'flushInterval' => 3600]);
 
         self::assertTrue(McpSpan::collecting());
+        // Starting over would have stopped first, and stopping delivers what is queued.
         self::assertSame([], $capture->batches, 'no second start');
+        self::assertCount(1, $this->delivered());
     }
 
     public function testAMalformedSettingFallsBackToItsDefaultAndSaysSoWhenAsked(): void

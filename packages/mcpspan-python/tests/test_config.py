@@ -120,8 +120,10 @@ def test_sends_what_is_queued_when_the_process_ends() -> None:
 def test_leaves_the_exit_alone_when_asked() -> None:
     ingest = Ingest()
 
-    run_script(RECORD_AND_LEAVE.format(extra=", flush_on_exit=False"), ingest.url)
+    finished = run_script(RECORD_AND_LEAVE.format(extra=", flush_on_exit=False"), ingest.url)
 
+    # A script that failed would send nothing either; that is not this.
+    assert finished.returncode == 0
     assert all(request["body"]["events"] == [] for request in ingest.requests)
     ingest.server.shutdown()
 

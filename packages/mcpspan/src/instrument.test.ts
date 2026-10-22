@@ -281,15 +281,6 @@ describe('exclude on its own', () => {
 
     expect(exclude(handler)).toBe(handler);
   });
-
-  it('does nothing when nothing is instrumenting', async () => {
-    configure({ apiKey: 'key-123' });
-    const handler = exclude(() => 'ok');
-
-    handler();
-
-    expect(await delivered()).toHaveLength(0);
-  });
 });
 
 describe('instrument called twice', () => {

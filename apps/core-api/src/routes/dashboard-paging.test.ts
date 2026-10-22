@@ -179,7 +179,7 @@ describe('ranked lists', () => {
     expect(second.messagesHaveMore).toBe(false);
   });
 
-  it('refuses an offset that is not a whole number', async () => {
+  it('refuses a negative offset and a page of nothing', async () => {
     await get('/v1/dashboard/tools?offset=-1', 400);
     await get('/v1/dashboard/tools?limit=0', 400);
   });

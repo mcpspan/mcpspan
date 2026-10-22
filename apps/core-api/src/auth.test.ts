@@ -142,7 +142,8 @@ describe('hashApiKey', () => {
     try {
       expect(() => hashApiKey('some-key')).toThrow(/API_KEY_SECRET is not set/);
     } finally {
-      process.env['API_KEY_SECRET'] = saved;
+      if (saved === undefined) delete process.env['API_KEY_SECRET'];
+      else process.env['API_KEY_SECRET'] = saved;
     }
   });
 });

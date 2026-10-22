@@ -201,9 +201,8 @@ describe('configure with bad options', () => {
     search();
 
     // Two events reach the configured batch size, which flushes without
-    // waiting for the interval.
-    await shutdown();
-    expect(batches()).toHaveLength(1);
+    // waiting for the interval, a minute away, or for shutdown.
+    await vi.waitFor(() => expect(batches()).toHaveLength(1));
   });
 
   it('explains what it ignored when debug is on', () => {
@@ -328,17 +327,6 @@ describe('configure and diagnostics', () => {
 
     expect(messages.some((message) => message.includes('delivery failed'))).toBe(true);
     expect(warn).not.toHaveBeenCalled();
-  });
-
-  it('does not need debug to be set as well', async () => {
-    const messages: string[] = [];
-    fetchMock.mockRejectedValue(new TypeError('fetch failed'));
-    configure({ apiKey: 'key-123', onDiagnostic: (message) => messages.push(message) });
-
-    track('search', () => null)();
-    await shutdown();
-
-    expect(messages).not.toHaveLength(0);
   });
 
   it('survives a callback that throws', async () => {

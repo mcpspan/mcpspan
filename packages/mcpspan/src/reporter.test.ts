@@ -70,12 +70,11 @@ describe('EventReporter', () => {
     );
     const reporter = new EventReporter({ ...options, maxBatchSize: 1 });
 
-    // If record awaited delivery, this line could not run while fetch is
-    // still pending.
-    reporter.record(makeEvent());
-    const recordReturned = true;
+    // A full batch starts a delivery that is still waiting on the network,
+    // and record has already handed back nothing to wait for.
+    expect(reporter.record(makeEvent())).toBeUndefined();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
 
-    expect(recordReturned).toBe(true);
     resolveFetch(new Response(null, { status: 202 }));
     await reporter.flush();
   });
@@ -99,9 +98,9 @@ describe('EventReporter', () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     reporter.record(makeEvent());
-    await reporter.flush();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await reporter.stop();
   });
 
   it('flushes a partly filled batch once the interval elapses', async () => {

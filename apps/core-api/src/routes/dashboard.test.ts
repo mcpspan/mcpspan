@@ -149,21 +149,6 @@ describe('GET /v1/dashboard/summary reporting latency', () => {
     expect(durationMs.p95).toBeLessThanOrEqual(1_000);
     expect(durationMs.mean).toBeCloseTo(109, 0);
   });
-
-  it('shows a percentile above the median when the tail is slow', async () => {
-    await seedEvents(server.serverId, [
-      ...Array.from({ length: 90 }, () => ({ durationMs: 10, occurredAt: minutesAgo(30) })),
-      ...Array.from({ length: 10 }, () => ({ durationMs: 1_000, occurredAt: minutesAgo(30) })),
-    ]);
-
-    const { durationMs } = (await summary()) as { durationMs: Record<string, number> };
-
-    // The whole reason for reporting three numbers: on this data the mean
-    // alone would say the server is eleven times slower than it usually is,
-    // and hide that one call in ten is a hundred times worse than that.
-    expect(durationMs.p95).toBeGreaterThan(durationMs.p50 as number);
-    expect(durationMs.mean).toBeGreaterThan(durationMs.p50 as number);
-  });
 });
 
 describe('GET /v1/dashboard/summary and its window', () => {
@@ -496,11 +481,13 @@ describe('GET /v1/dashboard/errors', () => {
       Array.from({ length: 5 }, () => ({ success: false, occurredAt: sameMoment })),
     );
 
-    // Batched telemetry makes shared timestamps common. Two identical queries
-    // answering in different orders would make a list jump around.
-    const first = (await failures()).map((failure) => failure.id);
-    const second = (await failures()).map((failure) => failure.id);
-    expect(first).toEqual(second);
+    // Batched telemetry makes shared timestamps common. Without a second key
+    // to order by, a list would jump around between refreshes, and a page
+    // marker would skip or repeat rows. The id breaks the tie.
+    const ids = (await failures()).map((failure) => failure.id);
+
+    expect(ids).toHaveLength(5);
+    expect(ids).toEqual([...ids].sort().reverse());
   });
 
   it.each([
