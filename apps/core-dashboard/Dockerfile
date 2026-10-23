@@ -5,7 +5,7 @@
 #
 #   docker build -f apps/core-dashboard/Dockerfile .
 
-FROM node:24.21.0-alpine AS deps
+FROM node:24.22.1-alpine AS deps
 
 RUN corepack enable
 
@@ -29,7 +29,7 @@ COPY packages/dashboard-ui/package.json packages/dashboard-ui/
 RUN pnpm install --frozen-lockfile --filter @mcpspan/core-dashboard...
 
 
-FROM node:24.21.0-alpine AS build
+FROM node:24.22.1-alpine AS build
 
 RUN corepack enable
 
@@ -51,7 +51,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @mcpspan/core-dashboard build
 
 
-FROM node:24.21.0-alpine
+FROM node:24.22.1-alpine
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

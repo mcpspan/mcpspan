@@ -11,7 +11,7 @@
 
 # Pinned to a patch. A base image that moves underneath a self-hosted
 # deployment is the kind of change that gets discovered during an incident.
-FROM node:24.21.0-alpine AS deps
+FROM node:24.22.1-alpine AS deps
 
 RUN corepack enable
 
@@ -34,7 +34,7 @@ COPY packages/dashboard-ui/package.json packages/dashboard-ui/
 RUN pnpm install --frozen-lockfile --filter @mcpspan/core-api --prod
 
 
-FROM node:24.21.0-alpine
+FROM node:24.22.1-alpine
 
 ENV NODE_ENV=production
 
