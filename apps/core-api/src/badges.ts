@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import { getSummary } from './analytics.ts';
 import { getPool } from './db.ts';
@@ -173,6 +173,9 @@ export function badgeSvg(badge: Badge): string {
   const left = textWidth(LABEL) + 10;
   const right = textWidth(badge.message) + 10;
   const width = left + right;
+  // Ids of this badge's own, so several pasted into one page do not share one
+  // clip and draw each other's corners.
+  const id = createHash('sha256').update(`${badge.color}${badge.message}`).digest('hex').slice(0, 8);
   const text = (x: number, value: string, w: number) =>
     `<text x="${x * 10}" y="140" transform="scale(.1)" textLength="${(w - 10) * 10}" lengthAdjust="spacingAndGlyphs">${escape(value)}</text>`;
   const shadow = (x: number, value: string, w: number) =>
@@ -180,9 +183,9 @@ export function badgeSvg(badge: Badge): string {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="20" role="img" aria-label="${escape(`${LABEL}: ${badge.message}`)}">
 <title>${escape(`${TITLE}: ${badge.message}`)}</title>
-<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
-<clipPath id="r"><rect width="${width}" height="20" rx="3" fill="#fff"/></clipPath>
-<g clip-path="url(#r)"><rect width="${left}" height="20" fill="#555"/><rect x="${left}" width="${right}" height="20" fill="${badge.color}"/><rect width="${width}" height="20" fill="url(#s)"/></g>
+<linearGradient id="s${id}" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+<clipPath id="r${id}"><rect width="${width}" height="20" rx="3" fill="#fff"/></clipPath>
+<g clip-path="url(#r${id})"><rect width="${left}" height="20" fill="#555"/><rect x="${left}" width="${right}" height="20" fill="${badge.color}"/><rect width="${width}" height="20" fill="url(#s${id})"/></g>
 <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
 ${shadow(left / 2, LABEL, left)}${text(left / 2, LABEL, left)}
 ${shadow(left + right / 2, badge.message, right)}${text(left + right / 2, badge.message, right)}
