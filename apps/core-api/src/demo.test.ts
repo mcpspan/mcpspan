@@ -101,18 +101,18 @@ describe('a public demo', () => {
     const outside = { 'cf-connecting-ip': '203.0.113.7' };
 
     for (let i = 0; i < DEMO_READS_PER_MINUTE; i++) {
-      expect((await demo.request('/health', { headers: outside })).status).toBe(200);
+      expect((await demo.request('/v1/servers', { headers: outside })).status).toBe(200);
     }
 
-    const over = await demo.request('/health', { headers: outside });
+    const over = await demo.request('/v1/servers', { headers: outside });
 
     expect(over.status).toBe(429);
     expect(over.headers.get('retry-after')).toBe('60');
-    expect((await demo.request('/health', { headers: { 'cf-connecting-ip': '203.0.113.8' } })).status).toBe(200);
-    expect((await demo.request('/health')).status).toBe(200);
+    expect((await demo.request('/v1/servers', { headers: { 'cf-connecting-ip': '203.0.113.8' } })).status).toBe(200);
+    expect((await demo.request('/v1/servers')).status).toBe(200);
 
     clock += 60_000;
-    expect((await demo.request('/health', { headers: outside })).status).toBe(200);
+    expect((await demo.request('/v1/servers', { headers: outside })).status).toBe(200);
   });
 
   it('keeps one session for every visitor, and renews it before it runs out', async () => {
@@ -134,5 +134,7 @@ describe('a public demo', () => {
     await resetDatabase();
 
     expect((await demoOnly(createApp()).request('/v1/servers')).status).toBe(503);
+    // Healthy all the same: the account is made after the API is up.
+    expect((await demoOnly(createApp()).request('/health')).status).toBe(200);
   });
 });

@@ -67,6 +67,10 @@ export function demoOnly(app: Hono, now: () => number = Date.now): Hono {
   // The sample data, sent with the demo server's own key like any SDK's.
   gate.post('/v1/events', (c) => app.fetch(c.req.raw));
 
+  // Needs no account: what the container's health check reads, before the
+  // demo's account exists and after.
+  gate.get('/health', (c) => app.fetch(c.req.raw));
+
   gate.on(['GET', 'HEAD'], '*', async (c) => {
     // Counted per visitor for what arrives from outside, through Cloudflare,
     // which names the visitor here and replaces whatever a client sent. The
