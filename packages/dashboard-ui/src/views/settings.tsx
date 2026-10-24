@@ -5,6 +5,7 @@ import { ChangePassword } from '../components/change-password';
 import { ConnectSnippets } from '../components/connect-snippets';
 import { DeleteServerData } from '../components/delete-server-data';
 import { ManageAlerts } from '../components/manage-alerts';
+import { ManageBadges } from '../components/manage-badges';
 import { ManageReadTokens } from '../components/manage-read-tokens';
 import { ManageServers } from '../components/manage-servers';
 import { OffsetPager } from '../components/pager';
@@ -113,6 +114,19 @@ export default async function SettingsPage({
           hasMore={alerts.eventsHaveMore}
           hash="#notifications"
         />
+      </Card>
+
+      <Card id="badges">
+        <CardHeader title="Badges" />
+        <p className="mb-4 text-sm text-ink-muted">
+          Badges for a server&apos;s README: its calls, success rate and median response time over
+          the last week, any or all of them, from what its SDK sent. Off until you switch them on;
+          switching them off or moving them stops the old address at once.
+        </p>
+        <ManageBadges servers={servers} url={ingestUrl()} />
+        {installation.badgeNote() ? (
+          <p className="mt-4 text-sm text-ink-muted">{installation.badgeNote()}</p>
+        ) : null}
       </Card>
 
       <Card id="read-tokens">

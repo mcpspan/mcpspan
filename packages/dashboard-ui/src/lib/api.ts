@@ -84,6 +84,8 @@ export interface ServerRecord {
   createdAt: string;
   /** False once its key has been revoked without a replacement. */
   hasActiveKey: boolean;
+  /** Where its public badge is served, or null while it has none. Absent from servers before 0.10.0. */
+  badgeId?: string | null;
 }
 
 export interface ServerList {

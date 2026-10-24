@@ -25,6 +25,8 @@ export interface InstallationText {
   readTokenUrl(): string | undefined;
   /** Under the read tokens in Settings: anything about reaching this installation that the reader has to act on. */
   readTokenNote(): ReactNode;
+  /** Under the badges in Settings: whether a README elsewhere can reach them, and what to do if not. */
+  badgeNote(): ReactNode;
   /** On Status, when no request has been refused. */
   nothingRefused: string;
   /** What the refusals that come from this installation's own rules mean. */
@@ -68,6 +70,14 @@ export const installation: InstallationText = {
       <code className="font-mono text-xs [overflow-wrap:anywhere]">{ingestUrl()}</code>, the
       address your servers report to (MCPSPAN_INGEST_URL). If it reaches that address over the
       internet, put HTTPS in front of it: the token travels with every question.
+    </>
+  ),
+  badgeNote: () => (
+    <>
+      Badges are served from{' '}
+      <code className="font-mono text-xs [overflow-wrap:anywhere]">{ingestUrl()}</code>. GitHub
+      fetches them from there, so they show in a README only if that address is reachable from the
+      internet.
     </>
   ),
   nothingRefused: 'The API has not refused anything.',
