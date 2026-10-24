@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.name = "mcpspan"
   spec.version = McpSpan::VERSION
   spec.authors = ["Kacper Zatoń"]
-  spec.summary = "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, " \
+  spec.summary = "Open-source analytics for MCP servers: which tools, resources and prompts get used, " \
                  "by which client, how fast, and why they fail."
   spec.description = "Measures the tools of a server built on the official Ruby MCP SDK: which get called, by " \
                      "which client, how long they take and which fail. Parameter values never leave the process."

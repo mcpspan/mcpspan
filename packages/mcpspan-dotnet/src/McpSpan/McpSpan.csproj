@@ -6,7 +6,7 @@
     <PackageId>McpSpan</PackageId>
     <Version>0.8.1</Version>
     <Authors>Kacper Zatoń</Authors>
-    <Description>Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.</Description>
+    <Description>Open-source analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.</Description>
     <PackageTags>mcp;model-context-protocol;analytics;telemetry;observability;monitoring;metrics;mcp-server;tool-calls;ai-agents</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://mcpspan.com</PackageProjectUrl>

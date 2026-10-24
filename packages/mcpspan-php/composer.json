@@ -1,6 +1,6 @@
 {
     "name": "mcpspan/mcpspan",
-    "description": "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.",
+    "description": "Open-source analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.",
     "type": "library",
     "license": "MIT",
     "homepage": "https://mcpspan.com",
