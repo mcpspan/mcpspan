@@ -44,6 +44,9 @@ and nothing ever leaves your machine.
   more than a change to its code.
 - **Alerts** to Slack, Discord or any webhook, when errors climb or a server
   goes quiet, for a whole server or one tool.
+- **Ask your agent.** Claude Code, Cursor or any MCP client answers questions
+  about your servers from these numbers, through
+  [mcpspan-mcp](packages/mcpspan-mcp/README.md) and a token that only reads.
 - **Your data, yours to take.** CSV and NDJSON exports of anything you can
   see, and forwarding to OpenTelemetry for Grafana, Datadog, Honeycomb and the
   like.

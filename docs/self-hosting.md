@@ -83,18 +83,33 @@ keep the two together: with the database and without it, the keys stored in
 the database can no longer be checked. To supply your own secret instead, set
 `API_KEY_SECRET` in `.env` before the first start.
 
+## Asking an AI agent
+
+Claude Code, Cursor or any other MCP client can answer questions about your
+servers from this installation: which tools failed this week and why, how a
+release compares with the one before, what agents ask for that a server does
+not have. It does so through [mcpspan-mcp](../packages/mcpspan-mcp/README.md),
+an MCP server that reads with a token.
+
+1. In the dashboard, Settings, Read tokens: make one. It is shown once, already
+   filled into the command for Claude Code and the settings for other clients.
+2. Paste that into your agent. It points the agent at the address your MCP
+   servers report to (`MCPSPAN_INGEST_URL`), as `MCPSPAN_URL`.
+
+A token reads what you see in the dashboard and changes nothing: not servers,
+keys, alerts or other tokens. Revoke it in the same place and it stops working
+at once. If the agent reaches the API over the internet rather than on your
+own network, put HTTPS in front of it: the token travels with every question.
+
 ## Getting your data out
 
 Every view that lists something has a download link: the tool table as CSV,
 and every call in the current window and filter as CSV or as one JSON object a
-line. The same exports are API endpoints, so a script can take them too:
+line. The same exports are API endpoints, so a script can take them too, with
+a read token from Settings:
 
 ```sh
-curl -c session -H 'content-type: application/json' \
-  -d '{"email":"you@example.com","password":"..."}' \
-  http://localhost:6271/v1/auth/login
-
-curl -b session -o calls.ndjson \
+curl -H "authorization: Bearer $MCPSPAN_READ_TOKEN" -o calls.ndjson \
   'http://localhost:6271/v1/dashboard/export/calls?format=ndjson&from=2026-09-01T00:00:00Z'
 ```
 

@@ -109,7 +109,17 @@ jobs:
       # which trusted publishing needs.
       - run: pnpm pack --out package.tgz
       - run: npm install --global npm@11
-      - run: npm publish package.tgz --provenance --access public
+      # Skipped when this version is on npm already, as the very first one is:
+      # trusted publishing can only be set up for a package that exists, so
+      # that one was published by hand. The registry entry still follows.
+      - name: Publish to npm
+        run: |
+          version="${TAG##*/v}"
+          if npm view "mcpspan-mcp@$version" version > /dev/null 2>&1; then
+            echo "mcpspan-mcp $version is on npm already"
+          else
+            npm publish package.tgz --provenance --access public
+          fi
       # Pinned and checked against the release's own checksums: this step publishes.
       - name: Install mcp-publisher
         run: |
