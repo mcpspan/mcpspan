@@ -101,6 +101,21 @@ keys, alerts or other tokens. Revoke it in the same place and it stops working
 at once. If the agent reaches the API over the internet rather than on your
 own network, put HTTPS in front of it: the token travels with every question.
 
+## Badges
+
+A server can show its figures in its README: calls in the last week, the share
+that succeeded, and the median response time, as badges like the ones for
+builds and downloads. In Settings, Badges: switch them on for a server, tick
+the ones you want, and paste the line shown into the README.
+
+Badges are off until you switch them on, and say nothing but those figures.
+They are served from the address your MCP servers report to
+(`MCPSPAN_INGEST_URL`) and GitHub fetches them from there, so they show in a
+README only if that address is reachable from the internet. Switching them off,
+or giving them a new address, stops the old one at once: it shows "no data".
+
+The figures are what the server's SDK sent, and the badge says so.
+
 ## Getting your data out
 
 Every view that lists something has a download link: the tool table as CSV,

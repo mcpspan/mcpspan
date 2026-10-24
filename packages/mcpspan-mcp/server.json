@@ -9,13 +9,13 @@
     "source": "github",
     "subfolder": "packages/mcpspan-mcp"
   },
-  "version": "0.9.0",
+  "version": "0.10.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcpspan-mcp",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

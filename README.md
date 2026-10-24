@@ -47,6 +47,8 @@ and nothing ever leaves your machine.
 - **Ask your agent.** Claude Code, Cursor or any MCP client answers questions
   about your servers from these numbers, through
   [mcpspan-mcp](packages/mcpspan-mcp/README.md) and a token that only reads.
+- **Badges for your README.** Calls in the last week, success rate and median
+  response time, switched on per server.
 - **Your data, yours to take.** CSV and NDJSON exports of anything you can
   see, and forwarding to OpenTelemetry for Grafana, Datadog, Honeycomb and the
   like.
