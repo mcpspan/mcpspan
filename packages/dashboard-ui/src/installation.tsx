@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { coreApiUrl } from './lib/api';
+import { ingestUrl } from './lib/ingest-url';
 
 /**
  * What the dashboard says where the answer depends on who runs it.
@@ -20,6 +21,10 @@ export interface InstallationText {
   connectFirst: ReactNode;
   /** For a server whose key was issued under an API_KEY_SECRET since replaced. */
   staleKey: string;
+  /** Where the MCP server for agents reads from, as MCPSPAN_URL; undefined where its default is right. */
+  readTokenUrl(): string | undefined;
+  /** Under the read tokens in Settings: anything about reaching this installation that the reader has to act on. */
+  readTokenNote(): ReactNode;
   /** On Status, when no request has been refused. */
   nothingRefused: string;
   /** What the refusals that come from this installation's own rules mean. */
@@ -56,6 +61,15 @@ export const installation: InstallationText = {
   ),
   staleKey:
     'API_KEY_SECRET changed after this key was created, so the key can no longer be verified. Restore the previous .env, or generate a new key in Settings.',
+  readTokenUrl: () => ingestUrl(),
+  readTokenNote: () => (
+    <>
+      The agent reads from{' '}
+      <code className="font-mono text-xs [overflow-wrap:anywhere]">{ingestUrl()}</code>, the
+      address your servers report to (MCPSPAN_INGEST_URL). If it reaches that address over the
+      internet, put HTTPS in front of it: the token travels with every question.
+    </>
+  ),
   nothingRefused: 'The API has not refused anything.',
   refusals: {
     rate_limited:

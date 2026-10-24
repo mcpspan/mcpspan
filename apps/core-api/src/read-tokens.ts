@@ -51,7 +51,7 @@ export async function listReadTokens(userId: string): Promise<ReadTokenRecord[]>
 /** A token's name as given, or why it cannot be one. */
 export function parseTokenName(value: unknown): { name: string } | { error: string } {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    return { error: 'Give the token a name, such as the machine or tool that will use it' };
+    return { error: 'Give the token a name' };
   }
 
   const name = value.trim();

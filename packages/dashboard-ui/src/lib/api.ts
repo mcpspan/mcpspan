@@ -92,6 +92,14 @@ export interface ServerList {
   addRefusal?: string | null;
 }
 
+/** A read token as the API lists it: never the token itself, which is shown once when made. */
+export interface ReadTokenRecord {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
 export interface FilterOptions {
   range: TimeWindow;
   tools: string[];
@@ -667,6 +675,11 @@ export function getFilterOptions(session: Session, query: Query = {}): Promise<F
  */
 export function getServers(session: Session): Promise<ServerList> {
   return request<ServerList>('servers', session, {});
+}
+
+/** The read tokens the account holds, oldest first. */
+export async function getReadTokens(session: Session): Promise<ReadTokenRecord[]> {
+  return (await request<{ tokens: ReadTokenRecord[] }>('tokens', session, {})).tokens;
 }
 
 /** Everything the status page needs to say why a dashboard might be empty. */

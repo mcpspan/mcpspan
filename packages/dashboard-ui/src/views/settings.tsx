@@ -5,11 +5,12 @@ import { ChangePassword } from '../components/change-password';
 import { ConnectSnippets } from '../components/connect-snippets';
 import { DeleteServerData } from '../components/delete-server-data';
 import { ManageAlerts } from '../components/manage-alerts';
+import { ManageReadTokens } from '../components/manage-read-tokens';
 import { ManageServers } from '../components/manage-servers';
 import { OffsetPager } from '../components/pager';
 import { PageHeader } from '../components/page-header';
 import { Card, CardHeader } from '../components/ui/card';
-import { getAlerts, getFilterOptions, getServers } from '../lib/api';
+import { getAlerts, getFilterOptions, getReadTokens, getServers } from '../lib/api';
 import { ingestUrl } from '../lib/ingest-url';
 import { offsetParam } from '../lib/query';
 import { snippets } from '../lib/snippets';
@@ -28,9 +29,10 @@ export default async function SettingsPage({
 }) {
   const params = await searchParams;
   const session = await currentSession();
-  const [{ servers, addRefusal }, alerts] = await Promise.all([
+  const [{ servers, addRefusal }, alerts, readTokens] = await Promise.all([
     getServers(session),
     getAlerts(session, { eventsOffset: offsetParam(params, 'eventsOffset') }),
+    getReadTokens(session),
   ]);
 
   // The tools each server has been called with lately, to pick one for a
@@ -111,6 +113,19 @@ export default async function SettingsPage({
           hasMore={alerts.eventsHaveMore}
           hash="#notifications"
         />
+      </Card>
+
+      <Card id="read-tokens">
+        <CardHeader title="Read tokens" />
+        <p className="mb-4 text-sm text-ink-muted">
+          Ask an AI agent, such as Claude Code or Cursor, about your servers: which tools failed this
+          week, how the last release compares, what clients look for and do not find. A token reads
+          what you see here and changes nothing. It is shown once and stored only as a hash.
+        </p>
+        <ManageReadTokens tokens={readTokens} url={installation.readTokenUrl()} />
+        {installation.readTokenNote() ? (
+          <p className="mt-4 text-sm text-ink-muted">{installation.readTokenNote()}</p>
+        ) : null}
       </Card>
 
       <Card id="password">
