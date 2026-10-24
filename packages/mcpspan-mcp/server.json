@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.mcpspan/mcpspan",
+  "title": "mcpspan",
+  "description": "Ask your agent about your MCP servers: failing tools, releases, clients, sessions.",
+  "websiteUrl": "https://mcpspan.com",
+  "repository": {
+    "url": "https://github.com/mcpspan/mcpspan",
+    "source": "github",
+    "subfolder": "packages/mcpspan-mcp"
+  },
+  "version": "0.9.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "mcpspan-mcp",
+      "version": "0.9.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "MCPSPAN_READ_TOKEN",
+          "description": "A read token, made in mcpspan under Settings → Read tokens.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "MCPSPAN_URL",
+          "description": "Your installation's API, for self-hosted mcpspan. https://api.mcpspan.com when left out.",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

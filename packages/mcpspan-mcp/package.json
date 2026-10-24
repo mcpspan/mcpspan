@@ -10,6 +10,7 @@
     "observability",
     "mcpspan"
   ],
+  "mcpName": "io.github.mcpspan/mcpspan",
   "license": "MIT",
   "author": "Kacper Zatoń",
   "homepage": "https://github.com/mcpspan/mcpspan/tree/main/packages/mcpspan-mcp#readme",

@@ -12,6 +12,7 @@ name: Release
 #   mcpspan-ruby/v0.1.0           RubyGems
 #   sdks/v0.2.0                   all seven at once, approved in one go
 #   all/v0.7.0                    all seven and the server's images (images.yml), one version for all
+#   core/v0.9.0                   the server's images (images.yml) and mcpspan-mcp, npm and the MCP Registry
 #
 # PHP is released from github.com/mcpspan/mcpspan-php, which Packagist reads.
 #
@@ -58,6 +59,65 @@ jobs:
       - run: npm install --global npm@11
       # By the repository's identity, with no token at all.
       - run: npm publish --provenance --access public
+
+  # The MCP server for agents, which reads the API's routes and so goes out
+  # with the server (core/v and all/v), then into the MCP Registry.
+  mcp:
+    if: startsWith(github.event.release.tag_name, 'core/v') || startsWith(github.event.release.tag_name, 'all/v')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      # npm's trusted publishing, and the MCP Registry's login, both by the repository's identity.
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/mcpspan-mcp
+    # Its tests read through the real API, which needs its database.
+    services:
+      db:
+        image: timescale/timescaledb:2.30.1-pg17
+        env:
+          POSTGRES_USER: mcpspan
+          POSTGRES_PASSWORD: mcpspan
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mcpspan"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      MCP_TEST_DATABASE_URL: postgres://mcpspan:mcpspan@localhost:5432/mcpspan_mcp_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+      - name: Version matches the tag
+        run: |
+          version="${TAG##*/v}"
+          test "$(node -p "require('./package.json').version")" = "$version"
+          test "$(node -p "require('./server.json').version")" = "$version"
+          test "$(node -p "require('./server.json').packages[0].version")" = "$version"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      # Packed by pnpm, which writes the workspace's own dependencies out as
+      # versions (npm would publish "workspace:*"), then published by npm,
+      # which trusted publishing needs.
+      - run: pnpm pack --out package.tgz
+      - run: npm install --global npm@11
+      - run: npm publish package.tgz --provenance --access public
+      # Pinned and checked against the release's own checksums: this step publishes.
+      - name: Install mcp-publisher
+        run: |
+          curl -fsSL -o mcp-publisher.tar.gz https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz
+          echo "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc  mcp-publisher.tar.gz" | sha256sum --check
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish
 
   pypi:
     if: startsWith(github.event.release.tag_name, 'mcpspan-python/v') || startsWith(github.event.release.tag_name, 'sdks/v') || startsWith(github.event.release.tag_name, 'all/v')

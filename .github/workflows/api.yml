@@ -91,3 +91,43 @@ jobs:
       # show the right numbers - and that one is already answered by the
       # contract test in the job above.
       - run: pnpm --filter @mcpspan/core-dashboard build
+
+  mcp:
+    # Only where the code is public: the private repository is tested before every export.
+    if: github.repository == 'mcpspan/mcpspan'
+    name: MCP server for agents
+    runs-on: ubuntu-latest
+
+    # It answers from the real API, so it needs the same database.
+    services:
+      db:
+        image: timescale/timescaledb:2.30.1-pg17
+        env:
+          POSTGRES_USER: mcpspan
+          POSTGRES_PASSWORD: mcpspan
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mcpspan"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      MCP_TEST_DATABASE_URL: postgres://mcpspan:mcpspan@localhost:5432/mcpspan_mcp_test
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter mcpspan-mcp typecheck
+      - run: pnpm --filter mcpspan-mcp build
+      - run: pnpm --filter mcpspan-mcp test
