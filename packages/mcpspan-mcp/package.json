@@ -1,0 +1,58 @@
+{
+  "name": "mcpspan-mcp",
+  "version": "0.9.0",
+  "description": "Ask your AI agent about your MCP servers: which tools fail, how a release compares, what clients look for and do not find. Reads from mcpspan with a read token.",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "analytics",
+    "observability",
+    "mcpspan"
+  ],
+  "license": "MIT",
+  "author": "Kacper Zatoń",
+  "homepage": "https://github.com/mcpspan/mcpspan/tree/main/packages/mcpspan-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcpspan/mcpspan.git",
+    "directory": "packages/mcpspan-mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/mcpspan/mcpspan/issues"
+  },
+  "type": "module",
+  "bin": {
+    "mcpspan-mcp": "./dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm build && pnpm typecheck && pnpm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@mcpspan/core-api": "workspace:*",
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@types/node": "^20.19.0",
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.0",
+    "tsdown": "^0.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "4.1.11"
+  }
+}
