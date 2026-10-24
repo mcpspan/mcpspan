@@ -34,8 +34,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/mcpspan/mcpspan"
-Documentation = "https://github.com/mcpspan/mcpspan/tree/main/packages/mcpspan-python#readme"
+Homepage = "https://mcpspan.com"
+Documentation = "https://mcpspan.com/docs/python/"
 Repository = "https://github.com/mcpspan/mcpspan"
 Issues = "https://github.com/mcpspan/mcpspan/issues"
 [dependency-groups]

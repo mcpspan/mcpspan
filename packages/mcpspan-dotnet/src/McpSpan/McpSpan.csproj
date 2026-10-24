@@ -9,7 +9,7 @@
     <Description>Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.</Description>
     <PackageTags>mcp;model-context-protocol;analytics;telemetry;observability;monitoring;metrics;mcp-server;tool-calls;ai-agents</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/mcpspan/mcpspan</PackageProjectUrl>
+    <PackageProjectUrl>https://mcpspan.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/mcpspan/mcpspan</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>

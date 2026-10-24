@@ -3,9 +3,10 @@
     "description": "Self-hosted analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.",
     "type": "library",
     "license": "MIT",
-    "homepage": "https://github.com/mcpspan/mcpspan",
+    "homepage": "https://mcpspan.com",
     "support": {
         "issues": "https://github.com/mcpspan/mcpspan/issues",
+        "docs": "https://mcpspan.com/docs/php/",
         "source": "https://github.com/mcpspan/mcpspan-php"
     },
     "keywords": ["mcp", "analytics", "telemetry", "observability", "laravel"],

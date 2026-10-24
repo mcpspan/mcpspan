@@ -17,7 +17,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # No runtime dependencies: the standard library delivers, and the MCP SDK is the server's own.
-  spec.homepage = "https://github.com/mcpspan/mcpspan"
+  spec.homepage = "https://mcpspan.com"
+  spec.metadata["documentation_uri"] = "https://mcpspan.com/docs/ruby/"
   spec.metadata["source_code_uri"] = "https://github.com/mcpspan/mcpspan/tree/main/packages/mcpspan-ruby"
   spec.metadata["bug_tracker_uri"] = "https://github.com/mcpspan/mcpspan/issues"
   spec.metadata["rubygems_mfa_required"] = "true"

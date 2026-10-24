@@ -51,7 +51,7 @@ subprojects {
                 pom {
                     name.set(project.name)
                     description.set(provider { project.description })
-                    url.set("https://github.com/mcpspan/mcpspan")
+                    url.set("https://mcpspan.com")
                     licenses {
                         license {
                             name.set("MIT")
