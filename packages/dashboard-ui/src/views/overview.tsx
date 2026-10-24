@@ -198,7 +198,7 @@ export default async function OverviewPage({
           ) : null}
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 lg:flex lg:flex-col">
               {timeseries instanceof ApiError ? (
                 <>
                   <CardHeader title="Calls over time" />
@@ -214,6 +214,7 @@ export default async function OverviewPage({
                     points={timeseries.points}
                     bucketSeconds={timeseries.bucketSeconds}
                     versions={versions?.versions ?? []}
+                    fill
                   />
                 </>
               )}

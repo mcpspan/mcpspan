@@ -43,6 +43,7 @@ export function CallsChart({
   bucketSeconds,
   versions = [],
   definitionChanges = [],
+  fill = false,
 }: {
   points: ChartPoint[];
   /** How wide each point is, which decides what the axis labels say. */
@@ -54,6 +55,12 @@ export function CallsChart({
    * these: on a whole server's chart, every tool's edits would bury the line.
    */
   definitionChanges?: { at: string }[];
+  /**
+   * Grow to the height of the card it is in, on wide screens, where that card
+   * shares a row with a taller one: the chart takes the room instead of
+   * leaving it empty under itself.
+   */
+  fill?: boolean;
 }) {
   const format = (value: string): string => formatTime(value, bucketSeconds);
   const axis = timeAxis(points, bucketSeconds);
@@ -75,10 +82,10 @@ export function CallsChart({
   const releases = labelled(markersFor(axis, versions), axis, width);
 
   return (
-    <figure className="m-0">
+    <figure className={fill ? 'm-0 lg:flex lg:flex-1 lg:flex-col' : 'm-0'}>
       <Legend edited={edits.length > 0} />
 
-      <div ref={frame} className="h-64 w-full">
+      <div ref={frame} className={fill ? 'h-64 w-full lg:h-auto lg:min-h-64 lg:flex-1' : 'h-64 w-full'}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
             {/* A fill fading to nothing under each line: the volume reads as an
