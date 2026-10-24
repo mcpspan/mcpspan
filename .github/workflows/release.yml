@@ -126,6 +126,17 @@ jobs:
           curl -fsSL -o mcp-publisher.tar.gz https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz
           echo "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc  mcp-publisher.tar.gz" | sha256sum --check
           tar xzf mcp-publisher.tar.gz mcp-publisher
+      # npm takes a few minutes to show a version it has just accepted, and
+      # the registry checks npm for it, so it is asked only once npm answers.
+      - name: Wait for npm to show the version
+        run: |
+          version="${TAG##*/v}"
+          for attempt in $(seq 1 90); do
+            if npm view "mcpspan-mcp@$version" version > /dev/null 2>&1; then exit 0; fi
+            sleep 10
+          done
+          echo "mcpspan-mcp $version did not appear on npm within 15 minutes"
+          exit 1
       - run: ./mcp-publisher login github-oidc
       - run: ./mcp-publisher publish
 
