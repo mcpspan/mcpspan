@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 
 import type { Session } from './api';
+import { DEMO_SESSION, isDemo } from './demo';
 
 /** The cookie the Core API issues when somebody signs in. */
 const SESSION_COOKIE = 'mcpspan_session';
@@ -16,5 +17,7 @@ const SESSION_COOKIE = 'mcpspan_session';
 export async function currentSession(): Promise<Session> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
 
-  return token === undefined ? undefined : `${SESSION_COOKIE}=${token}`;
+  if (token === undefined) return isDemo() ? DEMO_SESSION : undefined;
+
+  return `${SESSION_COOKIE}=${token}`;
 }

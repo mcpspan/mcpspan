@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { coreApiUrl } from './api';
+import { DEMO_SESSION, isDemo } from './demo';
 
 /**
  * Passes a browser's request through to the Core API.
@@ -18,7 +19,7 @@ async function proxyToApi(
   base: string,
   path: string[] | undefined,
 ): Promise<NextResponse> {
-  const cookie = request.headers.get('cookie');
+  const cookie = request.headers.get('cookie') ?? (isDemo() ? DEMO_SESSION : null);
 
   if (cookie === null) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 

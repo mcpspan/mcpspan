@@ -6,6 +6,7 @@ import { MobileMenu, Nav } from '../components/nav';
 import { ServerSwitcher } from '../components/server-switcher';
 import { SignOut } from '../components/sign-out';
 import { ApiError, getServers } from '../lib/api';
+import { isDemo } from '../lib/demo';
 import { currentSession } from '../lib/session';
 
 /**
@@ -37,8 +38,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       return [];
     });
 
+  const demo = isDemo();
+
   return (
     <div className="min-h-screen">
+      {demo ? <DemoBanner /> : null}
       <header className="relative border-b border-border bg-raised">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-x-6 px-6 py-3">
           <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
@@ -49,17 +53,38 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <div className="hidden items-center gap-2 md:flex">
             <ServerSwitcher servers={servers} />
             <Nav />
-            <SignOut />
+            {demo ? null : <SignOut />}
           </div>
 
           <MobileMenu>
             <ServerSwitcher servers={servers} />
-            <SignOut />
+            {demo ? null : <SignOut />}
           </MobileMenu>
         </div>
       </header>
 
       {children}
+    </div>
+  );
+}
+
+/** Above everything in the public demo: what this is, and where the real thing is. */
+function DemoBanner() {
+  const link = 'font-medium text-ink underline underline-offset-2';
+
+  return (
+    <div className="border-b border-border bg-surface">
+      <p className="mx-auto max-w-6xl px-6 py-2 text-sm text-ink-muted">
+        A live demo with sample data: look around, nothing can be changed.{' '}
+        <a href="https://app.mcpspan.com/signup" className={link}>
+          Start a free trial
+        </a>{' '}
+        or{' '}
+        <a href="https://github.com/mcpspan/mcpspan" className={link}>
+          self-host it
+        </a>
+        .
+      </p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { coreApiUrl } from '../lib/api';
+import { DEMO_SESSION, isDemo } from '../lib/demo';
 
 /** What an export may be, so this route cannot be turned into a way to reach any API path. */
 const EXPORTS = new Set(['calls', 'tools']);
@@ -17,7 +18,7 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> },
 ): Promise<Response> {
-  const cookie = request.headers.get('cookie');
+  const cookie = request.headers.get('cookie') ?? (isDemo() ? DEMO_SESSION : null);
 
   if (cookie === null) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
