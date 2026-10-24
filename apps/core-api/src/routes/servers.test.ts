@@ -89,6 +89,8 @@ describe('listing servers', () => {
           name: 'Flights',
           createdAt: expect.any(String),
           hasActiveKey: true,
+          // No badge until its owner switches one on.
+          badgeId: null,
         },
       ],
       // A self-hosted installation never refuses another server.

@@ -11,6 +11,8 @@ export interface ServerRecord {
   createdAt: string;
   /** Whether a key exists that can still write to it. */
   hasActiveKey: boolean;
+  /** Where its public badge is served, or null while it has none. */
+  badgeId: string | null;
 }
 
 interface ServerRow {
@@ -18,6 +20,7 @@ interface ServerRow {
   name: string;
   created_at: Date;
   has_active_key: boolean;
+  badge_id: string | null;
 }
 
 /**
@@ -30,7 +33,7 @@ interface ServerRow {
  */
 export async function listServers(serverIds: readonly string[]): Promise<ServerRecord[]> {
   const result = await getPool().query<ServerRow>(
-    `SELECT s.id, s.name, s.created_at,
+    `SELECT s.id, s.name, s.created_at, s.badge_id,
             EXISTS (
               SELECT 1 FROM api_keys k
               WHERE k.server_id = s.id AND k.revoked_at IS NULL
@@ -46,6 +49,7 @@ export async function listServers(serverIds: readonly string[]): Promise<ServerR
     name: row.name,
     createdAt: row.created_at.toISOString(),
     hasActiveKey: row.has_active_key,
+    badgeId: row.badge_id,
   }));
 }
 

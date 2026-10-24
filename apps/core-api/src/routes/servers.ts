@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 
 import { type AccountStore, selfHostedAccounts } from '../accounts.ts';
 import { issueApiKey } from '../api-key.ts';
+import { disableBadge, enableBadge } from '../badges.ts';
 import { getPool } from '../db.ts';
 import { requireSession, type SessionVariables } from '../session.ts';
 import {
@@ -139,6 +140,21 @@ export function createServerRoutes(accounts: AccountStore = selfHostedAccounts) 
     if (calls === undefined) return c.json({ error: 'No such server' }, 404);
 
     return c.json({ calls, deleted: !dryRun });
+  });
+
+  /** Switches the server's public badge on, or moves it to a new address. */
+  app.post('/:serverId/badge', async (c) => {
+    const badgeId = await enableBadge(c.get('session').serverIds, c.req.param('serverId'));
+
+    if (badgeId === undefined) return c.json({ error: 'No such server' }, 404);
+
+    return c.json({ badgeId });
+  });
+
+  app.delete('/:serverId/badge', async (c) => {
+    const disabled = await disableBadge(c.get('session').serverIds, c.req.param('serverId'));
+
+    return disabled ? c.body(null, 204) : c.json({ error: 'No such server' }, 404);
   });
 
   app.patch('/:serverId', async (c) => {

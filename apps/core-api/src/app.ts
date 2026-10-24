@@ -6,6 +6,7 @@ import { type AlertMailer, sendWebhook, type WebhookSender } from './alerts.ts';
 import { isDatabaseUnavailable } from './db.ts';
 import { createAlertRoutes } from './routes/alerts.ts';
 import { createAuthRoutes } from './routes/auth.ts';
+import { createBadgeRoutes } from './routes/badges.ts';
 import { createDashboardRoutes } from './routes/dashboard.ts';
 import { createDiagnosticsRoutes } from './routes/diagnostics.ts';
 import { createEventRoutes } from './routes/events.ts';
@@ -79,6 +80,11 @@ export function createApp({
 
   // Why a dashboard might be empty, for the person running the installation.
   app.route('/v1/diagnostics', createDiagnosticsRoutes(undefined, accounts));
+
+  // Badges for a server's README, switched on by its owner. Public, and
+  // outside /v1 like /health: an image address in somebody's README has to
+  // keep working however the API's versions move.
+  app.route('/badge', createBadgeRoutes());
 
   // Tokens that read the dashboard's numbers without a browser, such as for
   // an MCP server answering questions about them.
