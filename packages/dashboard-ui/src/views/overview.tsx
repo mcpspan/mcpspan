@@ -1,6 +1,7 @@
 import { CallsChart } from '../components/calls-chart';
 import { ClientDonut } from '../components/client-donut';
-import { ClientsOverTime } from '../components/clients-over-time';
+import { ClientsOverTime, perBucket } from '../components/clients-over-time';
+import { clientColors } from '../lib/client-colors';
 import { DownloadLinks } from '../components/download-links';
 import { FilterBar } from '../components/filter-bar';
 import { LatencyChart } from '../components/latency-chart';
@@ -280,8 +281,15 @@ export default async function OverviewPage({
                 <div className="mb-6 border-b border-border pb-6">
                   <ClientDonut clients={summary.clients} total={summary.totalCalls} />
                 </div>
-                <p className="mb-1 text-xs text-ink-muted">Over time, each row scaled to its own busiest hour</p>
-                <ClientsOverTime data={clients} totalCalls={summary.totalCalls} />
+                <p className="mb-1 text-xs text-ink-muted">
+                  Over time, in the colours above. Each row has its own scale: its tallest column is its busiest{' '}
+                  {perBucket(clients.bucketSeconds).replace(/^(an|a|per) /, '')}.
+                </p>
+                <ClientsOverTime
+                  data={clients}
+                  totalCalls={summary.totalCalls}
+                  colors={clientColors(summary.clients)}
+                />
                 <OffsetPager
                   params={params}
                   name="clientsOffset"

@@ -1,5 +1,6 @@
 import type { ClientsOverTime as Clients } from '../lib/api';
 import { ago } from '../lib/diagnosis';
+import { OTHER_CLIENTS } from '../lib/client-colors';
 import { clientLabel, formatCount } from '../lib/format';
 import { LocalTime } from './local-time';
 
@@ -24,10 +25,13 @@ const BADGE = 'rounded-md bg-surface px-1.5 py-0.5 text-[11px] font-medium text-
 export function ClientsOverTime({
   data,
   totalCalls,
+  colors = {},
 }: {
   data: Clients;
   /** Every call in the window, so a share is of all of them and not of this page. */
   totalCalls: number;
+  /** Each client's colour on the ring above, so its row is drawn in the same one. */
+  colors?: Record<string, string>;
 }) {
   if (data.clients.length === 0) {
     return <p className="text-sm text-ink-muted">No calls in this window.</p>;
@@ -39,8 +43,12 @@ export function ClientsOverTime({
   // Quiet for more than a quarter of the window is worth saying; less than
   // that is a client that is simply not busy at every hour.
   const quietAfter = Date.now() - windowMs / 4;
+  const per = perBucket(data.bucketSeconds);
+  const middle = data.times[Math.floor(data.times.length / 2)];
+  const end = new Date(windowStart + windowMs).toISOString();
 
   return (
+    <>
     <ul className="divide-y divide-border">
       {data.clients.map((client) => {
         const isNew = Date.parse(client.firstSeenAt) >= windowStart;
@@ -69,6 +77,8 @@ export function ClientsOverTime({
                   : isNew
                     ? null
                     : 'Active'}
+                {/* What the tallest column stands for: every row has a scale of its own. */}
+                {` · up to ${formatCount(Math.max(...client.points, 0))} ${per}`}
               </p>
             </div>
 
@@ -76,6 +86,8 @@ export function ClientsOverTime({
               points={client.points}
               times={data.times}
               label={clientLabel(client.clientType)}
+              // A client the ring folds into its grey is grey here too; with no ring at all, the calls colour.
+              color={colors[client.clientType] ?? (Object.keys(colors).length > 0 ? OTHER_CLIENTS : 'var(--color-series-calls)')}
             />
 
             <p className="text-right tabular-nums">
@@ -88,7 +100,33 @@ export function ClientsOverTime({
         );
       })}
     </ul>
+
+    {/* One time axis for every row: where the window starts, its middle and its end. Not on a phone,
+        where the rows are too narrow for three times to fit under them. */}
+    <div className={`${ROW} hidden pt-1 pb-0 text-[11px] text-ink-muted sm:grid`} aria-hidden>
+      <span />
+      <span className="flex justify-between gap-2">
+        <LocalTime iso={data.times[0] ?? end} />
+        {middle === undefined ? null : (
+          <span className="hidden sm:inline">
+            <LocalTime iso={middle} />
+          </span>
+        )}
+        <LocalTime iso={end} />
+      </span>
+      <span />
+    </div>
+    </>
   );
+}
+
+/** How long one column is, as said after a count: "an hour", "per 6 hours", "a day". */
+export function perBucket(bucketSeconds: number): string {
+  if (bucketSeconds === 3600) return 'an hour';
+  if (bucketSeconds === 86_400) return 'a day';
+  if (bucketSeconds < 3600) return `per ${Math.round(bucketSeconds / 60)} minutes`;
+
+  return `per ${Math.round(bucketSeconds / 3600)} hours`;
 }
 
 /** One client's calls per bucket. Hovering a column names its time and count. */
@@ -96,10 +134,12 @@ function Sparkline({
   points,
   times,
   label,
+  color,
 }: {
   points: number[];
   times: string[];
   label: string;
+  color: string;
 }) {
   const highest = Math.max(1, ...points);
   const step = 10;
@@ -131,7 +171,7 @@ function Sparkline({
             width={step - 2}
             y={height - Math.max(2, (value / highest) * height)}
             height={Math.max(2, (value / highest) * height)}
-            fill="var(--color-series-calls)"
+            fill={color}
           >
             <title>{describeColumn(times[index], value)}</title>
           </rect>

@@ -2,11 +2,11 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
+import { CLIENT_HUES as HUES, OTHER_CLIENTS } from '../lib/client-colors';
 import { clientLabel, formatCount } from '../lib/format';
 
-/** Distinguishable hues, in order of share. Past these, clients are folded into the grey. */
-const HUES = ['#2a78d6', '#1f9d8a', '#d9a441', '#8a63d2', '#d0668f'];
-const REST = 'var(--color-border)';
+// The same grey as their rows below.
+const REST = OTHER_CLIENTS;
 
 /**
  * Who calls, as shares of one ring: the answer at a glance, where the rows
