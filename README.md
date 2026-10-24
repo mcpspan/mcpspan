@@ -13,6 +13,9 @@
 Add one line to your MCP server, run the dashboard with `docker compose up`,
 and nothing ever leaves your machine.
 
+**[See the live demo](https://demo.mcpspan.com)**, with sample data: nothing to
+install.
+
 ![mcpspan overview: calls over time with release markers, tools by calls and errors, versions compared](https://raw.githubusercontent.com/mcpspan/.github/main/assets/screenshot-overview.png)
 
 ## Features

@@ -12,6 +12,20 @@ client answers from your mcpspan numbers:
 It reads with a token that sees what you see in the dashboard and changes
 nothing. It sends nothing anywhere but your mcpspan.
 
+## Try it on the demo
+
+No account needed: the [live demo](https://demo.mcpspan.com) answers any
+token. In Claude Code:
+
+```sh
+claude mcp add mcpspan-demo \
+  -e MCPSPAN_READ_TOKEN=demo \
+  -e MCPSPAN_URL=https://demo-api.mcpspan.com \
+  -- npx -y mcpspan-mcp
+```
+
+Then ask about the demo's server, Flights: *what went wrong in the last day?*
+
 ## Get a token
 
 In mcpspan, open **Settings → Read tokens** and make one. It is shown once,
