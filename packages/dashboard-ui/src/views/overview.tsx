@@ -1,6 +1,7 @@
 import { CallsChart } from '../components/calls-chart';
 import { ClientDonut } from '../components/client-donut';
-import { ClientsOverTime, perBucket } from '../components/clients-over-time';
+import { ClientsChart } from '../components/clients-chart';
+import { ClientsOverTime } from '../components/clients-over-time';
 import { clientColors } from '../lib/client-colors';
 import { DownloadLinks } from '../components/download-links';
 import { FilterBar } from '../components/filter-bar';
@@ -273,7 +274,7 @@ export default async function OverviewPage({
           </Card>
 
           <Card className="mt-6" id="clients">
-            <CardHeader title="Clients" hint="Shares of the window, then each client over time" />
+            <CardHeader title="Clients" hint="Who called, and when" />
             {clients instanceof ApiError ? (
               <p className="text-sm text-ink-muted">{clients.message}</p>
             ) : (
@@ -281,15 +282,19 @@ export default async function OverviewPage({
                 <div className="mb-6 border-b border-border pb-6">
                   <ClientDonut clients={summary.clients} total={summary.totalCalls} />
                 </div>
-                <p className="mb-1 text-xs text-ink-muted">
-                  Over time, in the colours above. Each row has its own scale: its tallest column is its busiest{' '}
-                  {perBucket(clients.bucketSeconds).replace(/^(an|a|per) /, '')}.
-                </p>
-                <ClientsOverTime
-                  data={clients}
-                  totalCalls={summary.totalCalls}
-                  colors={clientColors(summary.clients)}
+                <ClientsChart
+                  times={clients.times}
+                  bucketSeconds={clients.bucketSeconds}
+                  clients={clients.clients}
+                  colors={clientColors(summary.clients, clients.clients)}
                 />
+                <div className="mt-6">
+                  <ClientsOverTime
+                    data={clients}
+                    totalCalls={summary.totalCalls}
+                    colors={clientColors(summary.clients, clients.clients)}
+                  />
+                </div>
                 <OffsetPager
                   params={params}
                   name="clientsOffset"

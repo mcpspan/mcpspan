@@ -67,7 +67,7 @@ export function CallsChart({
   const edits = editMarkersFor(points, bucketSeconds, definitionChanges);
   // Each bucket at its middle, so a mark at the moment something changed falls between the buckets before and after.
   const data = points.map((point) => ({ ...point, at: Date.parse(point.time) + axis.half }));
-  const formatAt = (at: number): string => format(new Date(at - axis.half).toISOString());
+  const formatAt = (at: number): string => formatMoment(new Date(at - axis.half).toISOString(), bucketSeconds);
 
   // How wide the plot is, so a version's label is left out where it would run into the one before it.
   const frame = useRef<HTMLDivElement>(null);
@@ -329,7 +329,7 @@ const DAY = 24 * HOUR;
  * itself for the whole axis. The bucket width is the only thing that decides
  * which is right.
  */
-function formatTime(value: string, bucketSeconds: number): string {
+export function formatTime(value: string, bucketSeconds: number): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
 
@@ -341,5 +341,27 @@ function formatTime(value: string, bucketSeconds: number): string {
     return parsed.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit' });
   }
 
-  return parsed.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  // With the day: a window of hours crosses midnight, and a time alone does not say which side of it.
+  return parsed.toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    ...(bucketSeconds < HOUR ? { minute: '2-digit' } : {}),
+  });
+}
+
+/**
+ * One bucket in full, for what hovering a column says: the weekday and date
+ * always, and the time unless the bucket is a whole day.
+ */
+export function formatMoment(value: string, bucketSeconds: number): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  return parsed.toLocaleString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    ...(bucketSeconds >= DAY ? {} : { hour: 'numeric', minute: '2-digit' }),
+  });
 }
