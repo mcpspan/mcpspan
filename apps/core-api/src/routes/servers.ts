@@ -24,7 +24,7 @@ import {
 export function createServerRoutes(accounts: AccountStore = selfHostedAccounts) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
-  app.use('*', requireSession(accounts));
+  app.use('*', requireSession(accounts, { readTokens: true }));
 
   /**
    * What exists. Never what a key says: only its hash is stored. Also why

@@ -46,6 +46,8 @@ export function createAlertRoutes(
 ) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
+  // Browser only, no read tokens: a webhook's address is itself a secret,
+  // anyone holding a Slack or Discord one can post to that channel.
   app.use('*', requireSession(accounts));
 
   app.get('/', async (c) => {

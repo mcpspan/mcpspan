@@ -41,7 +41,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function createDashboardRoutes(accounts: AccountStore = selfHostedAccounts) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
-  app.use('*', requireSession(accounts));
+  app.use('*', requireSession(accounts, { readTokens: true }));
 
   app.get('/summary', async (c) => {
     const scope = resolveScope(c);

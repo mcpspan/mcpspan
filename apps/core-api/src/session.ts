@@ -2,6 +2,8 @@ import type { Context, MiddlewareHandler } from 'hono';
 import { getCookie } from 'hono/cookie';
 
 import { type AccountStore, selfHostedAccounts, SESSION_COOKIE, userForSession } from './accounts.ts';
+import { bearerToken } from './auth.ts';
+import { userForReadToken } from './read-tokens.ts';
 
 /**
  * What a signed-in developer is allowed to look at.
@@ -29,6 +31,10 @@ export interface SessionVariables {
  * it. Giving them one mechanism would mean an API key leaked from a server's
  * environment also opened the dashboard.
  *
+ * Where a branch allows it, a read token stands in for the browser: the same
+ * person, the same servers, for reading only. Every endpoint behind it then
+ * answers a token exactly as it answers the dashboard.
+ *
  * This replaced a shared token read from the environment, which existed only
  * until accounts did. Nothing downstream noticed the change, which was the
  * point of giving it this shape in the first place.
@@ -36,8 +42,43 @@ export interface SessionVariables {
 export function requireSession(
   /** Decides which servers the session reaches. */
   accounts: AccountStore = selfHostedAccounts,
+  {
+    readTokens = false,
+  }: {
+    /**
+     * Whether a read token (Authorization: Bearer mcpspan_read_...) also
+     * gets in, for reading only. Off unless a branch asks: tokens are for the
+     * numbers a dashboard shows, not for an account's settings, its billing
+     * or where its alerts are sent.
+     */
+    readTokens?: boolean;
+  } = {},
 ): MiddlewareHandler<{ Variables: SessionVariables }> {
   return async (c, next) => {
+    const bearer = readTokens ? bearerToken(c.req.header('authorization')) : undefined;
+
+    if (bearer !== undefined) {
+      const owner = await userForReadToken(bearer);
+
+      if (owner === undefined) return c.json({ error: 'Invalid or revoked read token' }, 401);
+
+      // Checked after the token, so a request with a token that does not
+      // work is told that first, whatever it was trying to do.
+      if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+        return c.json({ error: 'A read token can only read. Make this change in the dashboard.' }, 403);
+      }
+
+      c.set('session', {
+        userId: owner.id,
+        email: owner.email,
+        serverIds: await accounts.serverIdsFor(owner.id),
+      });
+
+      await next();
+
+      return;
+    }
+
     const token = getCookie(c, SESSION_COOKIE);
     const user = token === undefined ? undefined : await userForSession(token);
 

@@ -110,7 +110,7 @@ async function findKey(
 }
 
 /** Pulls the credential out of an Authorization header, whatever its casing. */
-function bearerToken(header: string | undefined): string | undefined {
+export function bearerToken(header: string | undefined): string | undefined {
   const match = header?.match(/^Bearer\s+(.+)$/i);
   const token = match?.[1]?.trim();
 

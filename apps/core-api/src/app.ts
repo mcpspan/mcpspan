@@ -10,6 +10,7 @@ import { createDashboardRoutes } from './routes/dashboard.ts';
 import { createDiagnosticsRoutes } from './routes/diagnostics.ts';
 import { createEventRoutes } from './routes/events.ts';
 import { createServerRoutes } from './routes/servers.ts';
+import { createTokenRoutes } from './routes/tokens.ts';
 
 /**
  * The points where another installation can differ from a self-hosted one.
@@ -78,6 +79,10 @@ export function createApp({
 
   // Why a dashboard might be empty, for the person running the installation.
   app.route('/v1/diagnostics', createDiagnosticsRoutes(undefined, accounts));
+
+  // Tokens that read the dashboard's numbers without a browser, such as for
+  // an MCP server answering questions about them.
+  app.route('/v1/tokens', createTokenRoutes(accounts));
 
   // Every answer this API gives is JSON, including the ones nobody planned.
   // A developer working out why their integration is quiet should not have to

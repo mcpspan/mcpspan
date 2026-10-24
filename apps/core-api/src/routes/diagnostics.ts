@@ -19,7 +19,7 @@ export function createDiagnosticsRoutes(
 ) {
   const app = new Hono<{ Variables: SessionVariables }>();
 
-  app.use('*', requireSession(accounts));
+  app.use('*', requireSession(accounts, { readTokens: true }));
 
   app.get('/', async (c) => {
     const { userId, serverIds } = c.get('session');
