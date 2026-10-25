@@ -1,0 +1,54 @@
+{
+  "name": "mcpspan-lint",
+  "version": "0.11.0",
+  "description": "Check an MCP server's tool definitions for what breaks clients or confuses agents. No account needed.",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "lint",
+    "linter",
+    "tools",
+    "mcpspan"
+  ],
+  "license": "MIT",
+  "author": "Kacper Zato\u0144",
+  "homepage": "https://mcpspan.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcpspan/mcpspan.git",
+    "directory": "packages/mcpspan-lint"
+  },
+  "bugs": {
+    "url": "https://github.com/mcpspan/mcpspan/issues"
+  },
+  "type": "module",
+  "bin": {
+    "mcpspan-lint": "./dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm build && pnpm typecheck && pnpm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "tsdown": "^0.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "4.1.11"
+  }
+}
