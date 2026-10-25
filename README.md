@@ -47,14 +47,6 @@ install.
   more than a change to its code.
 - **Alerts** to Slack, Discord or any webhook, when errors climb or a server
   goes quiet, for a whole server or one tool.
-- **Ask your agent.** Claude Code, Cursor or any MCP client answers questions
-  about your servers from these numbers, through
-  [mcpspan-mcp](packages/mcpspan-mcp/README.md) and a token that only reads.
-- **Badges for your README.** Calls in the last week, success rate and median
-  response time, switched on per server.
-- **A linter for tool definitions.** `npx mcpspan-lint` lists what makes a
-  client refuse a tool or an agent pick the wrong one, before you ship, with
-  no account: [mcpspan-lint](packages/mcpspan-lint/README.md).
 - **Your data, yours to take.** CSV and NDJSON exports of anything you can
   see, and forwarding to OpenTelemetry for Grafana, Datadog, Honeycomb and the
   like.
@@ -72,6 +64,35 @@ install.
     <td><strong>One call</strong>, and everything recorded about it<br><img src="https://raw.githubusercontent.com/mcpspan/.github/main/assets/screenshot-call.png" alt="A failed call in detail"></td>
   </tr>
 </table>
+
+## Ask your agent
+
+Claude Code, Cursor or any other MCP client can answer from your mcpspan
+numbers: *which tools failed most this week, and why?*, *how does 1.4.1
+compare with 1.4.0?* Make a read token in Settings and add
+[mcpspan-mcp](packages/mcpspan-mcp/README.md) to your agent. It only reads.
+
+## Badges
+
+Show in your server's README how much it is used and how well it answers:
+
+![mcpspan: 12.4k calls/week](https://mcpspan.com/img/badges/calls.svg)
+![mcpspan: 99.2% success](https://mcpspan.com/img/badges/success.svg)
+![mcpspan: p50 84 ms](https://mcpspan.com/img/badges/latency.svg)
+
+Calls, success rate and median response time over the last week, switched on
+per server in Settings. [How they work](docs/badges.md).
+
+## Lint your tool definitions
+
+Before you ship, check what makes a client refuse a tool or an agent pick the
+wrong one. No account needed:
+
+```sh
+npx mcpspan-lint -- node dist/server.js
+```
+
+[What it checks](packages/mcpspan-lint/README.md).
 
 ## Quick start
 

@@ -114,7 +114,8 @@ They are served from the address your MCP servers report to
 README only if that address is reachable from the internet. Switching them off,
 or giving them a new address, stops the old one at once: it shows "no data".
 
-The figures are what the server's SDK sent, and the badge says so.
+The figures are what the server's SDK sent, and the badge says so. More, with
+examples and the shields.io format, in [Badges](badges.md).
 
 ## Getting your data out
 
