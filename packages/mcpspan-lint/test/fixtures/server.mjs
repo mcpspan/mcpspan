@@ -23,7 +23,7 @@ createInterface({ input: process.stdin }).on('line', (line) => {
       result: {
         protocolVersion: message.params.protocolVersion,
         capabilities: mode === 'no-tools' ? {} : { tools: {} },
-        serverInfo: { name: 'fixture', version: '1.0.0' },
+        serverInfo: { name: process.env.FIXTURE_NAME ?? 'fixture', version: process.env.FIXTURE_VERSION ?? '1.0.0' },
       },
     });
   } else if (message.method === 'tools/list') {

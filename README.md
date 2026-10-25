@@ -52,6 +52,9 @@ install.
   [mcpspan-mcp](packages/mcpspan-mcp/README.md) and a token that only reads.
 - **Badges for your README.** Calls in the last week, success rate and median
   response time, switched on per server.
+- **A linter for tool definitions.** `npx mcpspan-lint` lists what makes a
+  client refuse a tool or an agent pick the wrong one, before you ship, with
+  no account: [mcpspan-lint](packages/mcpspan-lint/README.md).
 - **Your data, yours to take.** CSV and NDJSON exports of anything you can
   see, and forwarding to OpenTelemetry for Grafana, Datadog, Honeycomb and the
   like.
