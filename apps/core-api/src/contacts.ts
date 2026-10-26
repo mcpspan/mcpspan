@@ -11,9 +11,18 @@ const WRITE_EVERY_MS = 60_000;
 
 /**
  * An SDK names itself in the User-Agent as `mcpspan/<version> (<language>)`,
- * the language being optional. See docs/sdk-contract.md.
+ * the language being optional. See docs/sdk-contract.md. mcpspan-proxy names
+ * itself the same way, with `proxy` for the language, and is written down as
+ * `proxy <version>`, as its events name it: its version is not an SDK's.
  */
-const SDK_AGENT = /^mcpspan\/([\w.+-]{1,50})(?:\s|$)/;
+const SDK_AGENT = /^mcpspan\/([\w.+-]{1,50})(?:\s+\((\w{1,30})\))?(?:\s|$)/;
+
+/** The version an SDK's User-Agent gives, or the proxy's, named as one. */
+function sdkVersion(userAgent: string | undefined): string | null {
+  const match = userAgent?.match(SDK_AGENT);
+  if (match?.[1] === undefined) return null;
+  return match[2] === 'proxy' ? `proxy ${match[1]}` : match[1];
+}
 
 interface Written {
   at: number;
@@ -48,7 +57,7 @@ export class ContactLog {
    */
   touch(serverId: string, userAgent: string | undefined): Promise<void> {
     const at = this.now();
-    const version = userAgent?.match(SDK_AGENT)?.[1] ?? null;
+    const version = sdkVersion(userAgent);
     const previous = this.written.get(serverId);
 
     // A new version is written at once, even inside the minute: a redeploy is

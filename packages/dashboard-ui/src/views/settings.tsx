@@ -60,8 +60,8 @@ export default async function SettingsPage({
       <Card>
         <CardHeader title="Connecting a server" />
         <p className="mb-3 text-sm text-ink-muted">
-          One line at startup, in the language the server is written in. Nothing about how its
-          tools are written changes.
+          One line at startup, in the language the server is written in, or none at all behind
+          the proxy. Nothing about how its tools are written changes.
         </p>
         <ConnectSnippets languages={snippets(ingestUrl())} />
       </Card>

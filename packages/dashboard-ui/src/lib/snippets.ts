@@ -176,5 +176,39 @@ MCPSPAN_ENDPOINT=${endpoint}`,
         },
       ],
     },
+    {
+      id: 'proxy',
+      label: 'Proxy',
+      variants: [
+        {
+          id: 'stdio',
+          label: 'Over stdio',
+          code: `MCPSPAN_API_KEY=your-key \\
+MCPSPAN_ENDPOINT=${endpoint} \\
+npx mcpspan-proxy -- node dist/server.js`,
+          note: "In your client's MCP settings, in front of the server's own command. Any language.",
+        },
+        {
+          id: 'http',
+          label: 'Over HTTP',
+          code: `docker run -p 6273:6273 \\
+  -e MCPSPAN_API_KEY=your-key \\
+  -e MCPSPAN_ENDPOINT=${endpoint} \\
+  ghcr.io/mcpspan/proxy http://your-server:3000/mcp`,
+          note: local(endpoint)
+            ? 'Clients then connect to port 6273. Inside a container localhost is the container itself: give an address of this installation the container can reach.'
+            : 'Clients then connect to port 6273 instead of the server.',
+        },
+      ],
+    },
   ];
+}
+
+/** Whether an address only works on the machine it names. */
+function local(endpoint: string): boolean {
+  try {
+    return ['localhost', '127.0.0.1', '[::1]'].includes(new URL(endpoint).hostname);
+  } catch {
+    return false;
+  }
 }

@@ -34,6 +34,18 @@ describe('ContactLog', () => {
     expect(await stored(serverId)).toEqual({ at: new Date(clock), version: '0.1.0' });
   });
 
+  it('names the proxy as such, and reads the version past any language', async () => {
+    const proxied = await createApiKey();
+    const sdk = await createApiKey();
+    const log = new ContactLog(() => clock);
+
+    await log.touch(proxied.serverId, 'mcpspan/0.11.0 (proxy)');
+    await log.touch(sdk.serverId, 'mcpspan/0.8.1 (python)');
+
+    expect(await stored(proxied.serverId)).toMatchObject({ version: 'proxy 0.11.0' });
+    expect(await stored(sdk.serverId)).toMatchObject({ version: '0.8.1' });
+  });
+
   it('writes at most once a minute for the same version', async () => {
     const { serverId } = await createApiKey();
     const log = new ContactLog(() => clock);

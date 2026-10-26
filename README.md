@@ -144,6 +144,23 @@ Eight languages, the same features in each:
 Every SDK behaves the same way, set out in [one contract](docs/sdk-contract.md)
 and checked by [one test suite](conformance/README.md) in every language.
 
+### Without changing your code
+
+Any MCP server, in any language, can run behind the proxy instead. In your
+client's MCP settings, in front of the server's own command:
+
+```sh
+npx mcpspan-proxy -- node dist/server.js
+```
+
+Or in front of a server over HTTP, with clients pointed at the proxy:
+
+```sh
+docker run -p 6273:6273 -e MCPSPAN_API_KEY -e MCPSPAN_ENDPOINT ghcr.io/mcpspan/proxy http://flights:3000/mcp
+```
+
+It sees nearly all an SDK does; [what it does not](packages/mcpspan-proxy/README.md#what-it-sees).
+
 ## Running it
 
 Settings are optional: copy `.env.example` to `.env` to change ports, how long
