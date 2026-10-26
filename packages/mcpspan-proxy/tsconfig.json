@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The proxy is built from the TypeScript SDK's own sources (../mcpspan/src), bundled in.
+    "rootDir": "..",
+    "outDir": "./dist",
+    "types": ["node"],
+    "declarationMap": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src/**/*", "test/**/*"]
+}

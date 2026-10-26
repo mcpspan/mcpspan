@@ -1,0 +1,44 @@
+{
+  "name": "mcpspan-proxy",
+  "version": "0.11.0",
+  "description": "mcpspan analytics for any MCP server, without changing its code: runs in front of it, over stdio or HTTP.",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "analytics",
+    "observability",
+    "proxy",
+    "mcpspan"
+  ],
+  "license": "MIT",
+  "author": "Kacper Zatoń",
+  "homepage": "https://mcpspan.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcpspan/mcpspan.git",
+    "directory": "packages/mcpspan-proxy"
+  },
+  "bugs": {
+    "url": "https://github.com/mcpspan/mcpspan/issues"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "typescript": "^6.0.3",
+    "vitest": "4.1.11"
+  }
+}
