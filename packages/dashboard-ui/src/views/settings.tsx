@@ -23,10 +23,13 @@ const TOOL_LOOKBACK_DAYS = 30;
 export default async function SettingsPage({
   searchParams,
   first,
+  signIn,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
   /** A card of the installation's own, above the shared ones: the hosted service's plan. */
   first?: ReactNode;
+  /** In place of the Password card, where an installation signs in more than one way. */
+  signIn?: ReactNode;
 }) {
   const params = await searchParams;
   const session = await currentSession();
@@ -142,11 +145,13 @@ export default async function SettingsPage({
         ) : null}
       </Card>
 
-      <Card id="password">
-        <CardHeader title="Password" />
-        <p className="mb-4 text-sm text-ink-muted">{installation.forgottenPassword}</p>
-        <ChangePassword />
-      </Card>
+      {signIn ?? (
+        <Card id="password">
+          <CardHeader title="Password" />
+          <p className="mb-4 text-sm text-ink-muted">{installation.forgottenPassword}</p>
+          <ChangePassword />
+        </Card>
+      )}
     </main>
   );
 }

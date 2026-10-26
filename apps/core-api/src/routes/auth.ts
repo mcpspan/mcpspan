@@ -156,7 +156,12 @@ function tooManyTries(c: Context, seconds: number) {
   return c.json({ error: `Too many wrong passwords. Try again in ${seconds} seconds.` }, 429);
 }
 
-async function startSession(c: Context, userId: string): Promise<void> {
+/**
+ * Signs the browser in: a new session, in the cookie the rest of the API
+ * reads. Exported for a sign-in that does not go through a password, such as
+ * the hosted service's sign-in with GitHub.
+ */
+export async function startSession(c: Context, userId: string): Promise<void> {
   const { token, expiresAt } = await createSession(userId);
 
   setCookie(c, SESSION_COOKIE, token, {
@@ -174,7 +179,7 @@ async function startSession(c: Context, userId: string): Promise<void> {
   });
 }
 
-function isSecureRequest(request: Request): boolean {
+export function isSecureRequest(request: Request): boolean {
   const forwarded = request.headers.get('x-forwarded-proto');
 
   return forwarded === 'https' || new URL(request.url).protocol === 'https:';
