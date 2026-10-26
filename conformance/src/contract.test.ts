@@ -9,6 +9,7 @@ import {
   type Connection,
   eventually,
   EXCEPTION_TYPE,
+  FROM_OUTSIDE,
   type McpClient,
   SERVER_VERSION,
 } from './adapter.ts';
@@ -27,6 +28,12 @@ import { FakeIngest } from './ingest.ts';
 const KEY = 'mcps_conformance_key';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LONG_TOOL = `long_${'x'.repeat(295)}`;
+
+/** How a thrown error is recorded: an exception of its type, or from outside its type unknown (see FROM_OUTSIDE). */
+const THROWN = FROM_OUTSIDE ? { errorSource: 'exception' } : { errorSource: 'exception', errorType: EXCEPTION_TYPE };
+
+/** How a tool that throws is recorded: from outside, as the error result the client got. */
+const TOOL_THROWN = FROM_OUTSIDE ? { errorSource: 'result' } : THROWN;
 
 const EVENT_FIELDS = new Set([
   'id',
@@ -174,12 +181,7 @@ describe('3.1 Tool calls that reach a handler', () => {
     await run(connection, []);
 
     expect(toldOfError).toBe(true);
-    expect(only('throws')).toMatchObject({
-      success: false,
-      errorSource: 'exception',
-      errorType: EXCEPTION_TYPE,
-      errorMessage: 'boom',
-    });
+    expect(only('throws')).toMatchObject({ success: false, ...TOOL_THROWN, errorMessage: 'boom' });
   });
 });
 
@@ -278,13 +280,7 @@ describe('3.5 Resources and prompts', () => {
   it('records a resource that throws as an exception', async () => {
     await act(await start(), (client) => client.readResource({ uri: 'broken://status' }));
 
-    expect(only('broken://status')).toMatchObject({
-      kind: 'resource',
-      success: false,
-      errorSource: 'exception',
-      errorType: EXCEPTION_TYPE,
-      errorMessage: 'boom',
-    });
+    expect(only('broken://status')).toMatchObject({ kind: 'resource', success: false, ...THROWN, errorMessage: 'boom' });
   });
 
   it('records a prompt got, with its arguments named and typed when asked, never their values', async () => {
@@ -327,13 +323,7 @@ describe('3.5 Resources and prompts', () => {
   it('records a prompt that throws as an exception', async () => {
     await act(await start(), (client) => client.getPrompt({ name: 'broken_prompt' }));
 
-    expect(only('broken_prompt')).toMatchObject({
-      kind: 'prompt',
-      success: false,
-      errorSource: 'exception',
-      errorType: EXCEPTION_TYPE,
-      errorMessage: 'boom',
-    });
+    expect(only('broken_prompt')).toMatchObject({ kind: 'prompt', success: false, ...THROWN, errorMessage: 'boom' });
   });
 
   it('records no listing, and marks a tool call as a tool or not at all', async () => {
@@ -406,7 +396,10 @@ describe('3.7 Response size', () => {
       { name: 'no_such_tool' },
     ]);
 
-    for (const name of ['throws', 'typed', 'no_such_tool']) expect(only(name)).not.toHaveProperty('responseBytes');
+    // From outside, a tool that threw sent back an error result, and that is measured.
+    for (const name of FROM_OUTSIDE ? ['typed', 'no_such_tool'] : ['throws', 'typed', 'no_such_tool']) {
+      expect(only(name)).not.toHaveProperty('responseBytes');
+    }
   });
 
   it('measures what a resource read and a prompt get answered too', async () => {
@@ -652,7 +645,7 @@ describe('5. Privacy', () => {
     await run(connection, [{ name: 'reported_error' }, { name: 'throws' }]);
 
     expect(only('reported_error')).toMatchObject({ success: false, errorSource: 'result' });
-    expect(only('throws')).toMatchObject({ success: false, errorSource: 'exception', errorType: EXCEPTION_TYPE });
+    expect(only('throws')).toMatchObject({ success: false, ...TOOL_THROWN });
     expect(only('broken://status')).toMatchObject({ success: false, errorSource: 'exception' });
     for (const event of events()) expect(event).not.toHaveProperty('errorMessage');
     expect(ingest.requests.some((request) => /No flights found|boom/.test(request.raw))).toBe(false);

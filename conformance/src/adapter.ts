@@ -46,6 +46,20 @@ const PROTOCOL = process.env['CONFORMANCE_PROTOCOL'] === '2026' ? '2026' : '2025
 export const EXCEPTION_TYPE = process.env['CONFORMANCE_EXCEPTION_TYPE'] ?? 'ConformanceError';
 
 /**
+ * Set (CONFORMANCE_PROXY=1) for mcpspan-proxy, which measures from outside the
+ * server, from its messages alone. Two things differ, both because the
+ * messages do not say them:
+ *
+ * - A tool that throws reaches the client as the error result the MCP SDK
+ *   makes of it, so it is recorded as one (`result`), and nothing carries an
+ *   exception's type.
+ * - What a server has is learnt from its lists, so the client lists its
+ *   resources, templates and prompts first, as a client does before reading
+ *   or getting them. Without that a read is named by its scheme alone.
+ */
+export const FROM_OUTSIDE = process.env['CONFORMANCE_PROXY'] === '1';
+
+/**
  * The v2 stdio transport, made to probe the protocol version in place.
  *
  * On its own base transport, a v2 client asks `server/discover` of a
@@ -75,6 +89,7 @@ export interface McpClient {
   getPrompt(params: { name: string; arguments?: Record<string, string> }): Promise<unknown>;
   listTools(): Promise<{ tools: Record<string, unknown>[] }>;
   listResources(): Promise<unknown>;
+  listResourceTemplates(): Promise<unknown>;
   listPrompts(): Promise<unknown>;
   close(): Promise<void>;
 }
@@ -139,6 +154,12 @@ export async function connect(options: {
     const legacy = new Client(identity);
     await legacy.connect(transport);
     client = legacy as unknown as McpClient;
+  }
+
+  if (FROM_OUTSIDE) {
+    await client.listResources();
+    await client.listResourceTemplates();
+    await client.listPrompts();
   }
 
   return {

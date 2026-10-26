@@ -344,14 +344,16 @@ export class Connection {
     }
 
     const tools = this.observer.catalog.tools;
-    if (tools.known && !tools.has(name)) {
+    const said = failureText(outcome);
+    const unknown = tools.known ? !tools.has(name) : NOT_FOUND.test(said);
+    if (unknown) {
       this.observer.emit(pending, this.sessionId, { ...common, success: false, errorSource: 'unknown_tool' });
       return;
     }
 
     // A refusal carries no message: a validator's can quote the value sent (contract, 3.2).
     const refused = invalidArguments(schemaOf(name), args).map((argument) => truncate(argument, MAX_NAME_LENGTH));
-    if (refused.length > 0 || outcome.error?.code === INVALID_PARAMS) {
+    if (refused.length > 0 || outcome.error?.code === INVALID_PARAMS || (!tools.known && REFUSED_ARGUMENTS.test(said))) {
       this.observer.emit(pending, this.sessionId, {
         ...common,
         success: false,
@@ -391,7 +393,8 @@ export class Connection {
       return;
     }
 
-    if (outcome.error.code === RESOURCE_NOT_FOUND || resolved.exists === false) {
+    const lacking = resolved.exists === undefined ? NOT_FOUND.test(failureText(outcome)) : !resolved.exists;
+    if (outcome.error.code === RESOURCE_NOT_FOUND || lacking) {
       // Named by its scheme alone: the address a client asked for can hold a user's data (contract, 3.5).
       this.observer.emit(pending, this.sessionId, { kind: 'resource', toolName: schemeOf(uri), success: false, errorSource: 'unknown_resource' });
       return;
@@ -419,7 +422,7 @@ export class Connection {
 
     const prompts = this.observer.catalog.prompts;
     let errorSource: ErrorSource | undefined;
-    if (prompts.known && !prompts.has(name)) errorSource = 'unknown_prompt';
+    if (prompts.known ? !prompts.has(name) : NOT_FOUND.test(failureText(outcome))) errorSource = 'unknown_prompt';
     else if (outcome.error.code === INVALID_PARAMS) errorSource = 'arguments';
 
     this.observer.emit(pending, this.sessionId, {
@@ -428,6 +431,23 @@ export class Connection {
       ...(errorSource === undefined ? protocolError(outcome.error) : { errorSource }),
     });
   }
+}
+
+/**
+ * How the official MCP SDKs word a call to something the server does not
+ * have, and a refusal of arguments. Read only while the server has not yet
+ * listed what it has, which is what decides otherwise: a proxy has no other
+ * way to tell, as the Go and Rust SDKs have none (contract, 3.2). Wording
+ * this does not know leaves a failure as `result` or `exception`, never
+ * called something it was not.
+ */
+const NOT_FOUND = /\b(not found|unknown (tool|resource|prompt)|no such (tool|resource|prompt)|is disabled)\b/i;
+const REFUSED_ARGUMENTS = /input validation error|invalid arguments for (tool|prompt)/i;
+
+/** The text of a failure, from a protocol error or an error result, for the patterns above. */
+function failureText(outcome: Outcome): string {
+  if (outcome.error !== undefined) return typeof outcome.error.message === 'string' ? outcome.error.message : '';
+  return describeErrorResult(outcome.result) ?? '';
 }
 
 /** Which page of a list an answer is: the first has no cursor in its request, the last none in its answer. */

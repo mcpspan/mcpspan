@@ -149,6 +149,15 @@ so the long-named tool overrides `name_value`.
 `["adapters/rust/target/release/adapter"]`. A Rust server's tools are part of
 it before it can be wrapped at all, so `early` is no different from the rest.
 
+[adapters/proxy](adapters/proxy/run.mjs) runs `mcpspan-proxy` over stdio in
+front of the TypeScript v2 adapter, whose own SDK then collects nothing, since
+the proxy keeps the key from it. Build the proxy first
+(`pnpm --filter mcpspan-proxy build`) and run the suite with
+`CONFORMANCE_PROXY=1`: a proxy sees the messages and not the server, so a tool
+that throws is recorded as the error result the client got, no event carries
+an exception's type, and the client lists resources, templates and prompts
+before using them, as a real client does.
+
 Where the MCP SDK builds the server lazily or once per request, as v2's
 `serveStdio` and `createMcpHandler` do, configure mcpspan when the process
 starts, not in the code that builds the server. The suite expects the

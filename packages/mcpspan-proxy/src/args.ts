@@ -11,6 +11,8 @@ export interface Options {
   exclude: string[];
   captureParameterNames: boolean;
   captureErrorMessages: boolean;
+  /** How long a partly filled batch waits before it is sent anyway; the SDK's default when absent. */
+  flushIntervalMs?: number;
   debug: boolean;
 }
 
@@ -36,6 +38,7 @@ Options:
   --exclude <tool>       leave this tool out of the numbers (repeatable)
   --parameter-names      record the names and types of arguments, never their values
   --no-error-messages    leave out the text of failures
+  --flush-interval <s>   how long a partly filled batch waits before it is sent (default 5)
   --debug                write delivery diagnostics to stderr
   -h, --help             show this
   -v, --version          show the version`;
@@ -58,6 +61,7 @@ export function parse(argv: readonly string[], env: NodeJS.ProcessEnv = {}): Par
         exclude: { type: 'string', multiple: true },
         'parameter-names': { type: 'boolean' },
         'no-error-messages': { type: 'boolean' },
+        'flush-interval': { type: 'string' },
         debug: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
@@ -71,6 +75,11 @@ export function parse(argv: readonly string[], env: NodeJS.ProcessEnv = {}): Par
   if (values.version) return { ok: false, version: true };
 
   const fail = (error: string): Parsed => ({ ok: false, help: false, error });
+
+  const flush = values['flush-interval'] === undefined ? undefined : Number(values['flush-interval']);
+  if (flush !== undefined && !(Number.isFinite(flush) && flush > 0)) {
+    return fail(`--flush-interval takes a number of seconds, not "${values['flush-interval']}".`);
+  }
 
   const [program, ...args] = command;
   // A command given without the --: say how to give it.
@@ -105,6 +114,7 @@ export function parse(argv: readonly string[], env: NodeJS.ProcessEnv = {}): Par
       exclude: values.exclude ?? [],
       captureParameterNames: values['parameter-names'] === true,
       captureErrorMessages: values['no-error-messages'] !== true,
+      ...(flush !== undefined && { flushIntervalMs: Math.max(1, Math.round(flush * 1000)) }),
       debug: values.debug === true,
     },
   };

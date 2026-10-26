@@ -7,6 +7,7 @@ export interface ReportingOptions {
   exclude: readonly string[];
   captureParameterNames: boolean;
   captureErrorMessages: boolean;
+  flushIntervalMs?: number | undefined;
   debug: boolean;
   env: NodeJS.ProcessEnv;
   /** Where diagnostics go: stderr, never stdout, which carries the protocol. */
@@ -43,6 +44,7 @@ export function startReporting(options: ReportingOptions): Reporting | undefined
     debug: options.debug,
     onDiagnostic: options.say,
     userAgent: `mcpspan/${VERSION} (proxy)`,
+    ...(options.flushIntervalMs !== undefined && { flushIntervalMs: options.flushIntervalMs }),
   });
   const observer = new Observer({
     record: (event) => reporter.record(event),

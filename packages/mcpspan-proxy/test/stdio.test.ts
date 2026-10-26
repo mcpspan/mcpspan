@@ -164,7 +164,10 @@ describe('the command line', () => {
         debug: false,
       },
     });
-    expect(parse(['--no-error-messages', '--', 'node', 's.js'])).toMatchObject({ ok: true, options: { captureErrorMessages: false } });
+    expect(parse(['--no-error-messages', '--flush-interval', '0.2', '--', 'node', 's.js'])).toMatchObject({
+      ok: true,
+      options: { captureErrorMessages: false, flushIntervalMs: 200 },
+    });
   });
 
   it('takes a URL, where to listen, and the address from the environment', () => {
@@ -185,6 +188,7 @@ describe('the command line', () => {
     [['http://a.example', 'http://b.example'], 'one server at a time'],
     [['http://a.example', '--', 'node'], 'one server at a time'],
     [['--port', 'x', 'http://a.example'], 'port number'],
+    [['--flush-interval', '0', '--', 'node'], 'number of seconds'],
     [['--port', '1', '--', 'node'], 'for a server over HTTP'],
     [['--nope', '--', 'node'], "Unknown option '--nope'"],
   ])('refuses %j', async (argv, message) => {

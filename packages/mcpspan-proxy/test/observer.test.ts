@@ -369,3 +369,33 @@ describe('resources and prompts', () => {
     expect(events[3]?.errorMessage).toBe('Model unavailable');
   });
 });
+
+describe('before the server has listed anything', () => {
+  it("tells a refusal by the official MCP SDKs' own words, and leaves other failures as they are", () => {
+    const connection = observe().connection('session-1');
+    call(connection, 'cancel_flight', {}, protocolError(-32602, 'MCP error -32602: Tool cancel_flight not found'));
+    call(connection, 'cancel_flight', {}, failed('Tool cancel_flight is disabled'));
+    call(connection, 'book_flight', {}, failed('Input validation error: Invalid arguments for tool book_flight'));
+    call(connection, 'book_flight', {}, protocolError(-32602, 'Invalid params'));
+    call(connection, 'book_flight', {}, failed('Flight not available.'));
+    exchange(connection, 'resources/read', { uri: 'db://customers/1' }, protocolError(-32602, 'Resource db://customers/1 not found'));
+    exchange(connection, 'prompts/get', { name: 'translate' }, protocolError(-32602, 'Prompt translate not found'));
+
+    expect(events.map((event) => [event.toolName, event.errorSource])).toEqual([
+      ['cancel_flight', 'unknown_tool'],
+      ['cancel_flight', 'unknown_tool'],
+      ['book_flight', 'arguments'],
+      ['book_flight', 'arguments'],
+      ['book_flight', 'result'],
+      ['db://', 'unknown_resource'],
+      ['translate', 'unknown_prompt'],
+    ]);
+  });
+
+  it('goes by the list, not the words, once there is one', () => {
+    const connection = started(observe());
+    call(connection, 'book_flight', {}, failed('Seat not found.'));
+
+    expect(events[0]?.errorSource).toBe('result');
+  });
+});
