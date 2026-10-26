@@ -98,6 +98,7 @@ export class EventReporter {
       endpoint: options.endpoint,
       apiKey: options.apiKey,
       ...(options.timeoutMs !== undefined && { timeoutMs: options.timeoutMs }),
+      ...(options.userAgent !== undefined && { userAgent: options.userAgent }),
     };
     this.flushIntervalMs = options.flushIntervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;
     this.maxBatchSize = options.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE;

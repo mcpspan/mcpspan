@@ -16,6 +16,9 @@ export interface TransportConfig {
 
   /** Overrides {@link DEFAULT_TIMEOUT_MS}. */
   timeoutMs?: number;
+
+  /** Overrides how the SDK names itself; the proxy, built from these sources, names itself. */
+  userAgent?: string;
 }
 
 /**
@@ -86,7 +89,7 @@ export async function sendEvents(
         authorization: `Bearer ${config.apiKey}`,
         // The language in brackets, as the contract asks, so an installation
         // with servers in several can tell their SDKs apart.
-        'user-agent': `mcpspan/${SDK_VERSION} (typescript)`,
+        'user-agent': config.userAgent ?? `mcpspan/${SDK_VERSION} (typescript)`,
       },
       body: JSON.stringify({ events }),
       signal: AbortSignal.timeout(timeoutMs),

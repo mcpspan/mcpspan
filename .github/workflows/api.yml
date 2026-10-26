@@ -173,4 +173,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter mcpspan-proxy typecheck
+      - run: pnpm --filter mcpspan-proxy build
       - run: pnpm --filter mcpspan-proxy test
