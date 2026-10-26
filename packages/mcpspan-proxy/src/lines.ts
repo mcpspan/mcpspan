@@ -20,6 +20,8 @@ export class LineSplitter {
   constructor(
     private readonly onLine: (line: string) => void,
     private readonly maxBytes = MAX_LINE_BYTES,
+    /** Pass on empty lines too, as an event stream needs; a stdio connection has no use for them. */
+    private readonly keepEmpty = false,
   ) {}
 
   push(chunk: Buffer): void {
@@ -50,7 +52,13 @@ export class LineSplitter {
   }
 
   private emit(): void {
-    const line = Buffer.concat(this.parts, this.length).toString('utf8').trim();
+    let line = Buffer.concat(this.parts, this.length).toString('utf8');
+    if (line.endsWith('\r')) line = line.slice(0, -1);
+    if (this.keepEmpty) {
+      this.onLine(line);
+      return;
+    }
+    line = line.trim();
     if (line.length > 0) this.onLine(line);
   }
 }

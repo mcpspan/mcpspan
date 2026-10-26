@@ -1,9 +1,12 @@
 import { parseArgs } from 'node:util';
 
+/** The server: one started here and spoken to over stdio, or one already listening over HTTP. */
+export type Target =
+  | { kind: 'stdio'; command: string; args: string[] }
+  | { kind: 'http'; upstream: URL; host: string; port: number };
+
 export interface Options {
-  /** The server, started here and spoken to over stdio. */
-  command: string;
-  args: string[];
+  target: Target;
   /** Tools left out of the numbers (contract, 3.3). */
   exclude: string[];
   captureParameterNames: boolean;
@@ -17,13 +20,19 @@ export type Parsed =
   | { ok: false; version: true }
   | { ok: false; help: false; error: string };
 
+/** Where the HTTP proxy listens when not told: 6270 is the dashboard, 6271 the API, 6272 the database. */
+export const DEFAULT_PORT = 6273;
+
 export const USAGE = `Usage:
   mcpspan-proxy [options] -- <command> [args...]   run a stdio MCP server and report its calls to mcpspan
+  mcpspan-proxy [options] <url>                    stand in front of an MCP server over HTTP and report its calls
 
 Reads MCPSPAN_API_KEY, MCPSPAN_ENDPOINT and, if set, MCPSPAN_SERVER_VERSION from the environment.
 Without an API key it passes everything through and reports nothing.
 
 Options:
+  --port <port>          HTTP: where to listen (default ${DEFAULT_PORT})
+  --host <address>       HTTP: which address to listen on (default 127.0.0.1, or MCPSPAN_PROXY_HOST)
   --exclude <tool>       leave this tool out of the numbers (repeatable)
   --parameter-names      record the names and types of arguments, never their values
   --no-error-messages    leave out the text of failures
@@ -32,7 +41,7 @@ Options:
   -v, --version          show the version`;
 
 /** The command line, split at the first "--": the proxy's options before it, the server's command after. */
-export function parse(argv: readonly string[]): Parsed {
+export function parse(argv: readonly string[], env: NodeJS.ProcessEnv = {}): Parsed {
   const split = argv.indexOf('--');
   const own = split === -1 ? argv : argv.slice(0, split);
   const command = split === -1 ? [] : argv.slice(split + 1);
@@ -44,6 +53,8 @@ export function parse(argv: readonly string[]): Parsed {
       args: [...own],
       allowPositionals: true,
       options: {
+        port: { type: 'string' },
+        host: { type: 'string' },
         exclude: { type: 'string', multiple: true },
         'parameter-names': { type: 'boolean' },
         'no-error-messages': { type: 'boolean' },
@@ -61,15 +72,36 @@ export function parse(argv: readonly string[]): Parsed {
 
   const fail = (error: string): Parsed => ({ ok: false, help: false, error });
 
-  if (positionals.length > 0) return fail(`Put the server's command after --, as in: mcpspan-proxy -- ${positionals.join(' ')}`);
   const [program, ...args] = command;
-  if (program === undefined) return fail("Say which server to run: its command after --.");
+  // A command given without the --: say how to give it.
+  if (positionals.some((positional) => !URL.canParse(positional))) {
+    return fail(`A server over stdio goes after --, as in: mcpspan-proxy -- ${positionals.join(' ')}`);
+  }
+  if (program !== undefined && positionals.length > 0) return fail('Proxy one server at a time: a command after --, or a URL.');
+  if (positionals.length > 1) return fail('Proxy one server at a time: a command after --, or a URL.');
+
+  let target: Target;
+  const [url] = positionals;
+  if (url !== undefined) {
+    const upstream = new URL(url);
+    if (upstream.protocol !== 'http:' && upstream.protocol !== 'https:') return fail(`"${url}" is not an http or https URL.`);
+
+    const port = values.port === undefined ? DEFAULT_PORT : Number(values.port);
+    if (!Number.isInteger(port) || port < 0 || port > 65_535) return fail(`--port takes a port number, not "${values.port}".`);
+    const host = values.host ?? (env['MCPSPAN_PROXY_HOST']?.trim() || '127.0.0.1');
+
+    target = { kind: 'http', upstream, host, port };
+  } else if (program !== undefined) {
+    if (values.port !== undefined || values.host !== undefined) return fail('--port and --host are for a server over HTTP, not one run over stdio.');
+    target = { kind: 'stdio', command: program, args };
+  } else {
+    return fail('Say which server to proxy: its command after --, or its URL.');
+  }
 
   return {
     ok: true,
     options: {
-      command: program,
-      args,
+      target,
       exclude: values.exclude ?? [],
       captureParameterNames: values['parameter-names'] === true,
       captureErrorMessages: values['no-error-messages'] !== true,

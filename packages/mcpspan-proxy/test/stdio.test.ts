@@ -156,15 +156,36 @@ describe('the command line', () => {
   it('takes the options before -- and the command after it', () => {
     expect(parse(['--exclude', 'health', '--parameter-names', '--', 'uv', 'run', 'server.py', '--exclude', 'x'])).toEqual({
       ok: true,
-      options: { command: 'uv', args: ['run', 'server.py', '--exclude', 'x'], exclude: ['health'], captureParameterNames: true, captureErrorMessages: true, debug: false },
+      options: {
+        target: { kind: 'stdio', command: 'uv', args: ['run', 'server.py', '--exclude', 'x'] },
+        exclude: ['health'],
+        captureParameterNames: true,
+        captureErrorMessages: true,
+        debug: false,
+      },
     });
     expect(parse(['--no-error-messages', '--', 'node', 's.js'])).toMatchObject({ ok: true, options: { captureErrorMessages: false } });
   });
 
+  it('takes a URL, where to listen, and the address from the environment', () => {
+    expect(parse(['http://localhost:3000/mcp'])).toMatchObject({ ok: true, options: { target: { kind: 'http', host: '127.0.0.1', port: 6273 } } });
+    expect(parse(['--port', '8080', 'https://example.com/mcp'], { MCPSPAN_PROXY_HOST: '0.0.0.0' })).toMatchObject({
+      ok: true,
+      options: { target: { kind: 'http', host: '0.0.0.0', port: 8080 } },
+    });
+    expect(parse(['--host', '::1', 'http://a.example'], { MCPSPAN_PROXY_HOST: '0.0.0.0' })).toMatchObject({ ok: true, options: { target: { host: '::1' } } });
+  });
+
   it.each([
-    [[], 'its command after --'],
-    [['--'], 'its command after --'],
-    [['node', 'server.js'], 'mcpspan-proxy -- node server.js'],
+    [[], 'its command after --, or its URL'],
+    [['--'], 'its command after --, or its URL'],
+    [['node', 'server.js'], 'mcpspan-proxy -- node'],
+    [['server.js'], 'mcpspan-proxy -- server.js'],
+    [['ftp://a.example'], 'not an http or https URL'],
+    [['http://a.example', 'http://b.example'], 'one server at a time'],
+    [['http://a.example', '--', 'node'], 'one server at a time'],
+    [['--port', 'x', 'http://a.example'], 'port number'],
+    [['--port', '1', '--', 'node'], 'for a server over HTTP'],
     [['--nope', '--', 'node'], "Unknown option '--nope'"],
   ])('refuses %j', async (argv, message) => {
     const said: string[] = [];

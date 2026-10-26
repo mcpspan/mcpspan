@@ -64,6 +64,9 @@ const MAX_VERSION_LENGTH = 100;
 /** Where a request on the 2026-07-28 protocol names its client. */
 const CLIENT_INFO_META_KEY = 'io.modelcontextprotocol/clientInfo';
 
+/** Where a result on the 2026-07-28 protocol names its server. */
+const SERVER_INFO_META_KEY = 'io.modelcontextprotocol/serverInfo';
+
 /** JSON-RPC's code for invalid params: how MCP SDKs refuse arguments, and some of them unknown tools. */
 const INVALID_PARAMS = -32602;
 
@@ -117,9 +120,15 @@ export class Observer {
     return new Connection(this, sessionId);
   }
 
-  /** @internal */
+  /**
+   * @internal The version the server gives itself: in the answer to
+   * `initialize`, or on the 2026-07-28 protocol in a result's `_meta`.
+   */
   noteServerInfo(result: unknown): void {
-    const version = (result as { serverInfo?: { version?: unknown } } | null)?.serverInfo?.version;
+    if (!isObject(result)) return;
+    const meta = isObject(result['_meta']) ? result['_meta'] : {};
+    const info = isObject(result['serverInfo']) ? result['serverInfo'] : meta[SERVER_INFO_META_KEY];
+    const version = isObject(info) ? info['version'] : undefined;
     if (typeof version === 'string' && version.trim().length > 0) this.announcedVersion = version.trim();
   }
 
@@ -173,7 +182,8 @@ export class Connection {
 
   constructor(
     private readonly observer: Observer,
-    readonly sessionId: string | undefined,
+    /** Settable: over HTTP a connection gets its session only when the server answers the handshake with one. */
+    public sessionId: string | undefined,
   ) {}
 
   /** A message (or a batch of them) the client sent to the server. */
@@ -257,11 +267,9 @@ export class Connection {
       ? { error: message['error'] }
       : { result: message['result'] };
 
+    this.observer.noteServerInfo(outcome.result);
+
     switch (pending.method) {
-      case 'initialize':
-      case 'server/discover':
-        this.observer.noteServerInfo(outcome.result);
-        return;
       case 'tools/list':
         this.listing(pending, outcome.result);
         return;
