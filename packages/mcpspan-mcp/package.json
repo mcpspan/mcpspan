@@ -1,6 +1,6 @@
 {
   "name": "mcpspan-mcp",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Ask your AI agent about your MCP servers: which tools fail, how a release compares, what clients look for and do not find. Reads from mcpspan with a read token.",
   "keywords": [
     "mcp",

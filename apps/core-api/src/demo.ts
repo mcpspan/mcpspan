@@ -1,4 +1,7 @@
+import { createMcpHandler } from '@modelcontextprotocol/server';
 import { Hono } from 'hono';
+import { createApi } from 'mcpspan-mcp/src/api.ts';
+import { buildServer } from 'mcpspan-mcp/src/server.ts';
 
 import { createSession, SESSION_COOKIE } from './accounts.ts';
 import { getPool } from './db.ts';
@@ -70,6 +73,31 @@ export function demoOnly(app: Hono, now: () => number = Date.now): Hono {
   // Needs no account: what the container's health check reads, before the
   // demo's account exists and after.
   gate.get('/health', (c) => app.fetch(c.req.raw));
+
+  // mcpspan's MCP server, open to anybody as the rest of the demo is: its
+  // tools read through this same gate, as the demo account, whatever token
+  // the agent sends. Each request from outside counts as a read.
+  const mcp = createMcpHandler(() =>
+    buildServer(
+      createApi({
+        token: 'demo',
+        url: 'http://mcpspan.internal',
+        fetch: async (input, init) => gate.fetch(new Request(input, init)),
+      }),
+    ),
+  );
+
+  gate.all('/mcp', async (c) => {
+    const visitor = c.req.header('cf-connecting-ip');
+    const wait = visitor === undefined ? 0 : take(visitor);
+
+    if (wait > 0) {
+      c.header('retry-after', String(wait));
+      return c.json({ error: `This demo is answering too many requests from you. Try again in ${wait} seconds.` }, 429);
+    }
+
+    return mcp.fetch(c.req.raw);
+  });
 
   gate.on(['GET', 'HEAD'], '*', async (c) => {
     // Counted per visitor for what arrives from outside, through Cloudflare,

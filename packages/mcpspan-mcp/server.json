@@ -9,13 +9,13 @@
     "source": "github",
     "subfolder": "packages/mcpspan-mcp"
   },
-  "version": "0.12.0",
+  "version": "0.13.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "mcpspan-mcp",
-      "version": "0.12.0",
+      "version": "0.13.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
@@ -35,6 +35,12 @@
           "format": "string"
         }
       ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.mcpspan.com/mcp"
     }
   ]
 }

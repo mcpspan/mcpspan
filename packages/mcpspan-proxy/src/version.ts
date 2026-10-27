@@ -1,5 +1,5 @@
 /** This package's version, kept in step with package.json by the release script. */
-export const VERSION = '0.12.0';
+export const VERSION = '0.13.0';
 
 /** What events say produced them (`sdkVersion`): the proxy, not an SDK inside the server. */
 export const SDK_VERSION = `proxy ${VERSION}`;

@@ -9,8 +9,11 @@ client answers from your mcpspan numbers:
 - *Does Cursor fail more often than Claude?*
 - *Which tools are agents shown but never call?*
 
-It reads with a token that sees what you see in the dashboard and changes
-nothing. It sends nothing anywhere but your mcpspan.
+It sees what you see in the dashboard and changes nothing. It sends nothing
+anywhere but your mcpspan.
+
+There are two ways to add it: by address, which needs nothing installed, or
+as a command your agent starts.
 
 ## Try it on the demo
 
@@ -18,20 +21,64 @@ No account needed: the [live demo](https://demo.mcpspan.com) answers any
 token. In Claude Code:
 
 ```sh
-claude mcp add mcpspan-demo \
-  -e MCPSPAN_READ_TOKEN=demo \
-  -e MCPSPAN_URL=https://demo-api.mcpspan.com \
-  -- npx -y mcpspan-mcp
+claude mcp add --transport http mcpspan-demo https://demo-api.mcpspan.com/mcp \
+  --header "Authorization: Bearer demo"
 ```
 
 Then ask about the demo's server, Flights: *what went wrong in the last day?*
 
-## Get a token
+## By address
+
+The MCP server runs inside mcpspan itself, at `/mcp` on its API. Add that
+address to your agent, and the first time it connects it opens mcpspan in your
+browser: sign in, check which app is asking, and allow it. Nothing to copy.
+
+### mcpspan Cloud
+
+The address is `https://api.mcpspan.com/mcp`.
+
+| Agent | How |
+|---|---|
+| claude.ai, Claude Desktop, the Claude apps | Settings → Connectors → Add custom connector, with the address. Then Connect. |
+| ChatGPT | In its connector settings (developer mode), a new connector with the address, signing in with OAuth. |
+| Claude Code | `claude mcp add --transport http mcpspan https://api.mcpspan.com/mcp`, then `/mcp` in Claude Code to sign in. |
+| Cursor | In `mcp.json`: `{"mcpServers": {"mcpspan": {"url": "https://api.mcpspan.com/mcp"}}}` |
+| VS Code | In `.vscode/mcp.json`: `{"servers": {"mcpspan": {"type": "http", "url": "https://api.mcpspan.com/mcp"}}}` |
+| Others | Whatever they call a remote, HTTP or Streamable HTTP server, with the address. |
+
+The apps you allowed are listed in **Settings → Connected apps**, where one
+click disconnects an app and ends its access at once.
+
+An agent that cannot sign in with OAuth can send a read token instead (see
+[Get a token](#get-a-token)), as a header:
+
+```sh
+claude mcp add --transport http mcpspan https://api.mcpspan.com/mcp \
+  --header "Authorization: Bearer mcpspan_read_..."
+```
+
+### Self-hosted
+
+The address is your API's, the one your MCP servers report to, with `/mcp`:
+`http://localhost:6271/mcp` on the machine itself. Agents on that machine, such
+as Claude Code or Cursor, connect as above.
+
+An app that connects from elsewhere, such as claude.ai or ChatGPT, needs that
+address on HTTPS and reachable from the internet, and the API told where people
+open your dashboard, since that is where it sends them to allow it: set
+`MCPSPAN_DASHBOARD_URL` in `.env`, for instance `https://mcpspan.example.com`.
+
+Needs mcpspan 0.13.0 or newer.
+
+## As a command
+
+The same tools, started by your agent with `npx`, reading with a read token.
+For agents that only start commands, or to keep it on your machine.
+
+### Get a token
 
 In mcpspan, open **Settings → Read tokens** and make one. It is shown once,
 already filled into the lines below, ready to copy.
-
-## Add it to your agent
 
 ### mcpspan Cloud
 
@@ -84,7 +131,7 @@ claude mcp add mcpspan \
 Needs mcpspan 0.9.0 or newer. If the agent reaches your installation over the
 internet, put HTTPS in front of it: the token travels with every question.
 
-## Settings
+### Settings
 
 | Variable | |
 |---|---|
@@ -113,8 +160,8 @@ account has one) and a window: `days` back from now (7 when left out), or
 | `list_sessions` | Recent sessions, with failures and repeated calls. |
 | `get_session` | One session's calls, in order. |
 
-A token can be revoked at any time under **Settings → Read tokens**; the agent
-loses access at once.
+A token can be revoked at any time under **Settings → Read tokens**, and an app
+disconnected under **Settings → Connected apps**; either loses access at once.
 
 ## Licence
 

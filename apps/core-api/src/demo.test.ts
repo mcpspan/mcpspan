@@ -1,3 +1,4 @@
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createAccount, resetDatabase, seedEvents, type TestAccount } from '../test/fixtures.ts';
@@ -43,6 +44,24 @@ describe('a public demo', () => {
 
   it('opens what a token never could, for reading: the account is sample data', async () => {
     expect((await demo.request('/v1/alerts')).status).toBe(200);
+  });
+
+  it('answers an MCP client at /mcp, with any token or none, as the demo account', async () => {
+    for (const headers of [{}, { authorization: 'Bearer demo' }] as Record<string, string>[]) {
+      const client = new Client({ name: 'claude-code', version: '2.1.4' });
+
+      await client.connect(
+        new StreamableHTTPClientTransport(new URL('https://demo-api.test/mcp'), {
+          fetch: async (input, init) => demo.request(String(input), init),
+          requestInit: { headers },
+        }),
+      );
+
+      const result = await client.callTool({ name: 'list_servers', arguments: {} });
+
+      expect((result.content as { text: string }[])[0]?.text).toContain('Flights');
+      await client.close();
+    }
   });
 
   it('changes nothing', async () => {

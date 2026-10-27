@@ -1,2 +1,2 @@
 /** This package's version, as the linter names itself to the server it checks. Kept in step by the release script. */
-export const VERSION = '0.12.0';
+export const VERSION = '0.13.0';

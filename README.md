@@ -67,10 +67,12 @@ install.
 
 ## Ask your agent
 
-Claude Code, Cursor or any other MCP client can answer from your mcpspan
-numbers: *which tools failed most this week, and why?*, *how does 1.4.1
-compare with 1.4.0?* Make a read token in Settings and add
-[mcpspan-mcp](packages/mcpspan-mcp/README.md) to your agent. It only reads.
+Claude, Claude Code, Cursor, ChatGPT or any other MCP client can answer from
+your mcpspan numbers: *which tools failed most this week, and why?*, *how does
+1.4.1 compare with 1.4.0?* The API is an MCP server itself: add
+`http://localhost:6271/mcp` to your agent, sign in when it asks, and allow it.
+It only reads. Other ways in are on
+[the MCP server's page](packages/mcpspan-mcp/README.md).
 
 ## Badges
 

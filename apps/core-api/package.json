@@ -1,6 +1,6 @@
 {
   "name": "@mcpspan/core-api",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "private": true,
   "description": "Ingest and aggregation API for mcpspan",
   "license": "MIT",

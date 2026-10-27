@@ -81,7 +81,7 @@ export function createOAuthRoutes({ dashboardUrl, fetchClientDocument }: OAuthOp
     scopes_supported: [SCOPE],
     bearer_methods_supported: ['header'],
     resource_name: 'mcpspan',
-    resource_documentation: 'https://mcpspan.com/docs/mcp-server/',
+    resource_documentation: 'https://mcpspan.com/docs/mcp/',
   });
 
   app.get('/.well-known/oauth-protected-resource/mcp', (c) => c.json(protectedResource(c.req.raw)));
@@ -106,7 +106,7 @@ export function createOAuthRoutes({ dashboardUrl, fetchClientDocument }: OAuthOp
       revocation_endpoint_auth_methods_supported: authMethods,
       code_challenge_methods_supported: ['S256'],
       client_id_metadata_document_supported: true,
-      service_documentation: 'https://mcpspan.com/docs/mcp-server/',
+      service_documentation: 'https://mcpspan.com/docs/mcp/',
     });
   });
 

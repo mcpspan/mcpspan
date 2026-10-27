@@ -53,6 +53,7 @@ setting by setting. The ones that matter:
 |---|---|
 | `API_KEY_SECRET` | Signs API keys. Made by the API on first start when empty; set it only to supply your own, and never change it after issuing keys. |
 | `MCPSPAN_INGEST_URL` | The address of the Core API as the outside world reaches it. Leave it unset while everything is on one machine. Set it once the stack is somewhere else, and the setup snippet in the dashboard follows. |
+| `MCPSPAN_DASHBOARD_URL` | The dashboard as people open it in a browser. MCP clients that sign in to `/mcp` send people there to allow them. `http://localhost:6270` by default; set it to the public address when the dashboard has one. |
 | `MCPSPAN_RETENTION_DAYS` | How long raw events are kept. 90 by default, and not settable below 8. |
 | `MCPSPAN_BIND_ADDRESS` | Where the dashboard and the API listen. Every interface by default, so MCP servers elsewhere can reach the API; `127.0.0.1` keeps both to this machine. |
 | `MCPSPAN_INGEST_EVENTS_PER_SECOND` | How fast one server may write. 100 by default, which is ten times a busy one. |
@@ -85,21 +86,31 @@ the database can no longer be checked. To supply your own secret instead, set
 
 ## Asking an AI agent
 
-Claude Code, Cursor or any other MCP client can answer questions about your
-servers from this installation: which tools failed this week and why, how a
-release compares with the one before, what agents ask for that a server does
-not have. It does so through [mcpspan-mcp](../packages/mcpspan-mcp/README.md),
-an MCP server that reads with a token.
+Claude Code, Cursor, Claude, ChatGPT or any other MCP client can answer
+questions about your servers from this installation: which tools failed this
+week and why, how a release compares with the one before, what agents ask for
+that a server does not have.
 
-1. In the dashboard, Settings, Read tokens: make one. It is shown once, already
-   filled into the command for Claude Code and the settings for other clients.
-2. Paste that into your agent. It points the agent at the address your MCP
-   servers report to (`MCPSPAN_INGEST_URL`), as `MCPSPAN_URL`.
+The API is an MCP server itself, at `/mcp`: `http://localhost:6271/mcp` on
+this machine, or your `MCPSPAN_INGEST_URL` with `/mcp`. Add that address to
+your agent as a remote (HTTP) MCP server. The first time it connects it opens
+the dashboard in your browser: sign in, check which app is asking, and allow
+it. Settings, Connected apps lists the apps you allowed, and disconnects one at
+once.
 
-A token reads what you see in the dashboard and changes nothing: not servers,
-keys, alerts or other tokens. Revoke it in the same place and it stops working
-at once. If the agent reaches the API over the internet rather than on your
-own network, put HTTPS in front of it: the token travels with every question.
+An app that connects from elsewhere, such as claude.ai or ChatGPT, needs that
+address on HTTPS and reachable from the internet, and `MCPSPAN_DASHBOARD_URL`
+set to where people open the dashboard, since that is where it sends them.
+
+Agents that cannot sign in that way read with a token instead: in Settings,
+Read tokens, make one, shown once and already filled into the settings for
+Claude Code and other clients, as a header for `/mcp` or for
+[mcpspan-mcp](../packages/mcpspan-mcp/README.md) run as a command.
+
+Either way it reads what you see in the dashboard and changes nothing: not
+servers, keys, alerts or tokens. Revoking a token or disconnecting an app
+stops it at once. Over the internet rather than your own network, put HTTPS in
+front of the API: the token travels with every question.
 
 ## Badges
 
