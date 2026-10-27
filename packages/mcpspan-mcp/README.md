@@ -39,7 +39,7 @@ The address is `https://api.mcpspan.com/mcp`.
 
 | Agent | How |
 |---|---|
-| claude.ai, Claude Desktop, the Claude apps | Settings → Connectors → Add custom connector, with the address. Then Connect. |
+| claude.ai, Claude Desktop, the Claude apps | Settings → Connectors → Browse connectors, find mcpspan, and Connect. Or Add custom connector, with the address. |
 | ChatGPT | In its connector settings (developer mode), a new connector with the address, signing in with OAuth. |
 | Claude Code | `claude mcp add --transport http mcpspan https://api.mcpspan.com/mcp`, then `/mcp` in Claude Code to sign in. |
 | Cursor | In `mcp.json`: `{"mcpServers": {"mcpspan": {"url": "https://api.mcpspan.com/mcp"}}}` |
