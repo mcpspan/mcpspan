@@ -182,9 +182,15 @@ importers:
       '@mcpspan/client-types':
         specifier: workspace:*
         version: link:../../packages/client-types
+      '@modelcontextprotocol/server':
+        specifier: ^2.3.1
+        version: 2.3.1
       hono:
         specifier: ^4.13.8
         version: 4.13.8
+      mcpspan-mcp:
+        specifier: workspace:*
+        version: link:../../packages/mcpspan-mcp
       node-pg-migrate:
         specifier: ^9.0.0
         version: 9.0.0(@types/pg@8.23.1)(pg@8.23.0)
@@ -195,6 +201,9 @@ importers:
         specifier: 4.6.6
         version: 4.6.6
     devDependencies:
+      '@modelcontextprotocol/client':
+        specifier: ^2.3.1
+        version: 2.3.1
       '@types/node':
         specifier: ^22.20.3
         version: 22.20.3
@@ -375,9 +384,6 @@ importers:
         specifier: ^4.6.5
         version: 4.6.6
     devDependencies:
-      '@mcpspan/core-api':
-        specifier: workspace:*
-        version: link:../../apps/core-api
       '@modelcontextprotocol/client':
         specifier: ^2.3.1
         version: 2.3.1

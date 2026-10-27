@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
-import { type Api, ApiError, type Query } from './api.js';
+import { type Api, ApiError, type Query } from './api.ts';
 
 interface ServerRecord {
   id: string;

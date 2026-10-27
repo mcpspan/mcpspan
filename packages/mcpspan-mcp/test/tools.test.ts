@@ -1,6 +1,6 @@
-import { createApp } from '@mcpspan/core-api/src/app.ts';
-import { closePool } from '@mcpspan/core-api/src/db.ts';
-import { createAccount, resetDatabase, seedEvents, type TestAccount } from '@mcpspan/core-api/test/fixtures.ts';
+import { createApp } from '../../../apps/core-api/src/app.ts';
+import { closePool } from '../../../apps/core-api/src/db.ts';
+import { createAccount, resetDatabase, seedEvents, type TestAccount } from '../../../apps/core-api/test/fixtures.ts';
 import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport } from '@modelcontextprotocol/server';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';

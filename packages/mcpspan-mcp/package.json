@@ -47,7 +47,6 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@mcpspan/core-api": "workspace:*",
     "@modelcontextprotocol/client": "^2.3.1",
     "@types/node": "^20.19.0",
     "@types/pg": "^8.23.1",

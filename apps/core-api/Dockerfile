@@ -26,12 +26,13 @@ COPY apps/core-api/package.json apps/core-api/
 COPY apps/core-dashboard/package.json apps/core-dashboard/
 COPY packages/mcpspan/package.json packages/mcpspan/
 COPY packages/client-types/package.json packages/client-types/
+COPY packages/mcpspan-mcp/package.json packages/mcpspan-mcp/
 COPY packages/dashboard-ui/package.json packages/dashboard-ui/
 
 # --prod leaves out vitest and the compiler. They are needed to develop this
 # app and not to run it, and an unused dependency in a deployed image is
 # attack surface that earns nothing.
-RUN pnpm install --frozen-lockfile --filter @mcpspan/core-api --prod
+RUN pnpm install --frozen-lockfile --filter @mcpspan/core-api... --prod
 
 
 FROM node:24.22.1-alpine
@@ -45,9 +46,13 @@ WORKDIR /app
 # the two only resolve when their relative positions are preserved.
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/core-api/node_modules ./apps/core-api/node_modules
+COPY --from=deps /app/packages/mcpspan-mcp/node_modules ./packages/mcpspan-mcp/node_modules
 COPY apps/core-api ./apps/core-api
 # The client-type table, linked from the API's node_modules to here.
 COPY packages/client-types ./packages/client-types
+# The tools behind /mcp, the same source the npm package mcpspan-mcp is built from.
+COPY packages/mcpspan-mcp/package.json ./packages/mcpspan-mcp/
+COPY packages/mcpspan-mcp/src ./packages/mcpspan-mcp/src
 
 # Where the API keeps the signing secret it makes on first start, when none is
 # given. Owned by the unprivileged user, and copied that way into the volume

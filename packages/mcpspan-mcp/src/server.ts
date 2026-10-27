@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/server';
 
-import type { Api } from './api.js';
-import { registerTools } from './tools.js';
-import { VERSION } from './version.js';
+import type { Api } from './api.ts';
+import { registerTools } from './tools.ts';
+import { VERSION } from './version.ts';
 
 /** The MCP server, answering from one mcpspan account through its read token. */
 export function buildServer(api: Api): McpServer {

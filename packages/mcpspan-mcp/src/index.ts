@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 
-import { createApi, DEFAULT_URL } from './api.js';
-import { buildServer } from './server.js';
+import { createApi, DEFAULT_URL } from './api.ts';
+import { buildServer } from './server.ts';
 
 const token = process.env['MCPSPAN_READ_TOKEN'];
 const url = process.env['MCPSPAN_URL']?.trim() || DEFAULT_URL;
