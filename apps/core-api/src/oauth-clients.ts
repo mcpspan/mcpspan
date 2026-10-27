@@ -67,7 +67,12 @@ export async function findClient(
 
   const metadata = parseClientMetadata(document, { forDocument: true });
 
-  if (isFailure(metadata)) return { error: 'invalid_client', description: metadata.description };
+  if (isFailure(metadata)) {
+    // Said in the log too: an app that cannot sign in is worth knowing about.
+    console.warn(`mcpspan core-api: client document ${clientId} refused: ${metadata.description}`);
+
+    return { error: 'invalid_client', description: metadata.description };
+  }
 
   return rememberClientDocument(clientId, metadata);
 }

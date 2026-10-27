@@ -167,15 +167,18 @@ export function parseClientMetadata(
   const grants = fields['grant_types'] ?? ['authorization_code'];
   const responses = fields['response_types'] ?? ['code'];
 
+  // An app may list more ways in than this server offers (Claude's own
+  // document does); what counts is that the one offered here is among them.
+  // The rest are simply never granted.
   if (
     !Array.isArray(grants) ||
-    !grants.every((grant) => grant === 'authorization_code' || grant === 'refresh_token') ||
+    !grants.includes('authorization_code') ||
     !Array.isArray(responses) ||
-    !responses.every((response) => response === 'code')
+    !responses.includes('code')
   ) {
     return fail(
       'invalid_client_metadata',
-      'Only the authorization_code and refresh_token grants, and the code response, are offered.',
+      'The app must be able to sign in with the authorization_code grant and the code response, the way offered here.',
     );
   }
 
@@ -459,8 +462,18 @@ export async function exchangeCode(request: {
 }
 
 /**
- * A refresh token swapped for new tokens. It works once: presented again, it
- * was copied, and the whole grant ends (RFC 9700, 4.14.2).
+ * How long after a refresh token is swapped it still works, once more each
+ * time it is presented: an app that sent two refreshes at once, or lost the
+ * answer to the first and asked again, keeps its connection. Later than this,
+ * a second use is a copied token (below). The same allowance Auth0 and Okta
+ * call a reuse interval.
+ */
+const REFRESH_REUSE_SECONDS = 60;
+
+/**
+ * A refresh token swapped for new tokens. It works once: presented again after
+ * the brief allowance above, it was copied, and the whole grant ends (RFC
+ * 9700, 4.14.2).
  */
 export async function refreshTokens(client: OAuthClient, refreshToken: string): Promise<IssuedTokens | OAuthFailure> {
   const pool = getPool();
@@ -468,18 +481,28 @@ export async function refreshTokens(client: OAuthClient, refreshToken: string): 
 
   if (!refreshToken.startsWith(REFRESH_TOKEN_PREFIX)) return invalid;
 
-  const result = await pool.query<{ grant_id: string; client_id: string; expired: boolean; used: boolean; revoked: boolean }>(
+  const result = await pool.query<{
+    grant_id: string;
+    client_id: string;
+    expired: boolean;
+    used: boolean;
+    recently_used: boolean;
+    revoked: boolean;
+  }>(
     `SELECT t.grant_id, g.client_id, t.expires_at < now() AS expired, t.used_at IS NOT NULL AS used,
+            t.used_at > now() - make_interval(secs => $2) AS recently_used,
             g.revoked_at IS NOT NULL AS revoked
      FROM oauth_tokens t JOIN oauth_grants g ON g.id = t.grant_id
      WHERE t.token_hash = $1 AND t.kind = 'refresh'`,
-    [hash(refreshToken)],
+    [hash(refreshToken), REFRESH_REUSE_SECONDS],
   );
   const row = result.rows[0];
 
   if (row === undefined || row.client_id !== client.id || row.revoked || row.expired) return invalid;
 
   if (row.used) {
+    if (row.recently_used) return issueTokens(row.grant_id);
+
     await endGrant(row.grant_id);
 
     return invalid;
@@ -490,7 +513,8 @@ export async function refreshTokens(client: OAuthClient, refreshToken: string): 
     [hash(refreshToken)],
   );
 
-  if (swapped.rowCount !== 1) return invalid;
+  // Another request swapped it a moment ago: within the allowance, so this one gets tokens too.
+  if (swapped.rowCount !== 1) return issueTokens(row.grant_id);
 
   // Tokens that can no longer be used, cleared as new ones are made.
   await pool.query(

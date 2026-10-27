@@ -5,7 +5,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createAccount, resetDatabase, seedEvents, type TestAccount } from '../../test/fixtures.ts';
 import { createApp } from '../app.ts';
-import { closePool } from '../db.ts';
+import { closePool, getPool } from '../db.ts';
 import { isPublicAddress } from '../oauth-clients.ts';
 import { acceptableRedirectUri } from '../oauth.ts';
 
@@ -226,7 +226,7 @@ describe('signing in, start to finish', () => {
     expect(back.searchParams.get('code')).toBeNull();
   });
 
-  it('refreshes, and ends everything when a refresh token is used twice', async () => {
+  it('refreshes, forgives an app retrying a refresh at once, and ends everything when one is used again later', async () => {
     const { client_id: clientId } = await register();
     const first = await tokens(clientId as string);
     const refresh = (token: unknown) =>
@@ -237,7 +237,12 @@ describe('signing in, start to finish', () => {
     expect(second['access_token']).toMatch(/^mcpspan_oauth_/);
     expect(second['refresh_token']).not.toBe(first['refresh_token']);
 
-    // The first refresh token again: copied, so the grant ends, new tokens and all.
+    // The first refresh token again at once: an app retrying, so it still works.
+    expect((await refresh(first['refresh_token'])).status).toBe(200);
+
+    // Later than the allowance: copied, so the grant ends, new tokens and all.
+    await getPool().query(`UPDATE oauth_tokens SET used_at = now() - interval '5 minutes' WHERE used_at IS NOT NULL`);
+
     expect((await refresh(first['refresh_token'])).status).toBe(400);
     expect((await refresh(second['refresh_token'])).status).toBe(400);
 
@@ -283,6 +288,31 @@ describe('signing in, start to finish', () => {
     const issued = await tokens(clientId);
 
     expect(String(issued['access_token'])).toMatch(/^mcpspan_oauth_/);
+  });
+
+  it("takes an app that lists more ways in than are offered, as Claude's document does", async () => {
+    const clientId = 'https://claude.example/oauth/client.json';
+
+    documents.set(clientId, {
+      client_id: clientId,
+      client_name: 'Claude',
+      redirect_uris: [REDIRECT],
+      grant_types: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:jwt-bearer'],
+      response_types: ['code', 'id_token'],
+      token_endpoint_auth_method: 'none',
+    });
+
+    expect(String((await tokens(clientId))['access_token'])).toMatch(/^mcpspan_oauth_/);
+  });
+
+  it('turns away an app that cannot sign in the way offered here', async () => {
+    const clientId = 'https://implicit.example/client.json';
+
+    documents.set(clientId, { client_id: clientId, redirect_uris: [REDIRECT], grant_types: ['implicit'], response_types: ['token'] });
+
+    const { body } = await consent(authorizeParams(clientId, pkce().challenge));
+
+    expect(body['error']).toBe('invalid_client');
   });
 
   it('makes a confidential app prove itself with its secret', async () => {
