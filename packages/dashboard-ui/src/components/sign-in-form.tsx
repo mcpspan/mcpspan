@@ -25,8 +25,28 @@ interface Errors {
   form?: string;
 }
 
-export function SignInForm({ registrationOpen }: { registrationOpen: boolean | undefined }) {
+export function SignInForm({
+  registrationOpen,
+  next,
+}: {
+  registrationOpen: boolean | undefined;
+  /** Where to go once signed in, when an app is waiting for an answer (lib/next.ts). */
+  next?: string | undefined;
+}) {
   const router = useRouter();
+
+  function onward(): void {
+    // A full load for the app's page: it is rendered for the new session.
+    if (next !== undefined) {
+      window.location.assign(next);
+
+      return;
+    }
+
+    router.push('/');
+    router.refresh();
+  }
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -85,8 +105,7 @@ export function SignInForm({ registrationOpen }: { registrationOpen: boolean | u
         return;
       }
 
-      router.push('/');
-      router.refresh();
+      onward();
     } catch {
       setErrors({ form: 'Could not reach the server. Is it running?' });
     } finally {
@@ -105,10 +124,7 @@ export function SignInForm({ registrationOpen }: { registrationOpen: boolean | u
         <NewKey value={issuedKey} />
 
         <Button
-          onClick={() => {
-            router.push('/');
-            router.refresh();
-          }}
+          onClick={onward}
           className="w-full"
         >
           I have copied it
@@ -126,7 +142,9 @@ export function SignInForm({ registrationOpen }: { registrationOpen: boolean | u
       <p className="mt-1 mb-6 text-sm text-ink-muted">
         {signingUp
           ? 'Nobody has set this installation up yet. Create the account.'
-          : 'Sign in to see your server.'}
+          : next !== undefined
+            ? 'Sign in, then choose whether the app may read your data.'
+            : 'Sign in to see your server.'}
       </p>
 
       {/* The browser's own validation is turned off so the messages read the

@@ -102,6 +102,26 @@ export interface ReadTokenRecord {
   lastUsedAt: string | null;
 }
 
+/** An app somebody let read their data by signing in to /mcp from it (OAuth). */
+export interface ConnectedApp {
+  id: string;
+  name: string;
+  clientUri: string | null;
+  /** Where its sign-in answers go, which tells two apps of one name apart. */
+  redirectHost: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/** What an app asked for, checked by the API, for the page that asks the person. */
+export type AuthorizationCheck =
+  | {
+      client: { name: string; clientUri: string | null; redirectHost: string | null };
+      scope: string;
+      account: { email: string };
+    }
+  | { failure: { error: string; description: string; redirect?: string } };
+
 export interface FilterOptions {
   range: TimeWindow;
   tools: string[];
@@ -682,6 +702,52 @@ export function getServers(session: Session): Promise<ServerList> {
 /** The read tokens the account holds, oldest first. */
 export async function getReadTokens(session: Session): Promise<ReadTokenRecord[]> {
   return (await request<{ tokens: ReadTokenRecord[] }>('tokens', session, {})).tokens;
+}
+
+/**
+ * The apps this account connected, or undefined where the installation does
+ * not offer signing in to /mcp (no MCPSPAN_DASHBOARD_URL, or the demo).
+ */
+export async function getConnectedApps(session: Session): Promise<ConnectedApp[] | undefined> {
+  try {
+    return (await request<{ apps: ConnectedApp[] }>('oauth/apps', session, {})).apps;
+  } catch (error) {
+    if (error instanceof ApiError && error.isUnauthenticated) throw error;
+
+    return undefined;
+  }
+}
+
+/** Asks the API to check an app's authorization request, as the person who will answer it. */
+export async function checkAuthorization(session: Session, query: URLSearchParams): Promise<AuthorizationCheck> {
+  requireServer();
+
+  if (session === undefined || session.trim().length === 0) throw new ApiError(401, 'Not signed in');
+
+  const url = new URL(`/v1/oauth/authorize?${query.toString()}`, coreApiUrl());
+  let response: Response;
+
+  try {
+    response = await fetch(url, { headers: { cookie: session } });
+  } catch (cause) {
+    throw new ApiError(0, 'The dashboard could not reach the mcpspan API.', { cause });
+  }
+
+  if (response.status === 400) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string; description?: string; redirect?: string };
+
+    return {
+      failure: {
+        error: body.error ?? 'invalid_request',
+        description: body.description ?? 'The app sent a request that cannot be answered.',
+        ...(body.redirect === undefined ? {} : { redirect: body.redirect }),
+      },
+    };
+  }
+
+  if (!response.ok) throw new ApiError(response.status, await explain(response));
+
+  return (await response.json()) as AuthorizationCheck;
 }
 
 /** Everything the status page needs to say why a dashboard might be empty. */

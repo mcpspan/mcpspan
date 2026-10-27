@@ -213,6 +213,7 @@ describe('signing in, start to finish', () => {
     expect(await response.json()).toEqual({
       client: { name: 'Claude', clientUri: null, redirectHost: 'claude.ai' },
       scope: 'read',
+      account: { email: account.email },
     });
   });
 

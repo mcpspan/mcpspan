@@ -220,6 +220,8 @@ export function createOAuthAccountRoutes(
         redirectHost: redirectHost(checked.redirectUri),
       },
       scope: SCOPE,
+      // Who is about to say yes, in case it is not who they think.
+      account: { email: c.get('session').email },
     });
   });
 

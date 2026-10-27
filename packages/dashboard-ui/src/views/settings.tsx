@@ -2,6 +2,8 @@ import { installation } from '#installation';
 import type { ReactNode } from 'react';
 
 import { ChangePassword } from '../components/change-password';
+import { ConnectedApps } from '../components/connected-apps';
+import { Copyable } from '../components/copyable';
 import { ConnectSnippets } from '../components/connect-snippets';
 import { DeleteServerData } from '../components/delete-server-data';
 import { ManageAlerts } from '../components/manage-alerts';
@@ -11,7 +13,7 @@ import { ManageServers } from '../components/manage-servers';
 import { OffsetPager } from '../components/pager';
 import { PageHeader } from '../components/page-header';
 import { Card, CardHeader } from '../components/ui/card';
-import { getAlerts, getFilterOptions, getReadTokens, getServers } from '../lib/api';
+import { getAlerts, getConnectedApps, getFilterOptions, getReadTokens, getServers } from '../lib/api';
 import { ingestUrl } from '../lib/ingest-url';
 import { offsetParam } from '../lib/query';
 import { snippets } from '../lib/snippets';
@@ -33,10 +35,11 @@ export default async function SettingsPage({
 }) {
   const params = await searchParams;
   const session = await currentSession();
-  const [{ servers, addRefusal }, alerts, readTokens] = await Promise.all([
+  const [{ servers, addRefusal }, alerts, readTokens, connectedApps] = await Promise.all([
     getServers(session),
     getAlerts(session, { eventsOffset: offsetParam(params, 'eventsOffset') }),
     getReadTokens(session),
+    getConnectedApps(session),
   ]);
 
   // The tools each server has been called with lately, to pick one for a
@@ -144,6 +147,25 @@ export default async function SettingsPage({
           <p className="mt-4 text-sm text-ink-muted">{installation.readTokenNote()}</p>
         ) : null}
       </Card>
+
+      {/* Only where the installation offers signing in to /mcp. */}
+      {connectedApps === undefined ? null : (
+        <Card id="connected-apps">
+          <CardHeader title="Connected apps" />
+          <p className="mb-3 text-sm text-ink-muted">
+            Or skip the token: add mcpspan to claude.ai, ChatGPT, Claude Code, Cursor or another MCP client by this
+            address. The app sends you here to sign in and allow it, and then reads what you see here, changing
+            nothing.
+          </p>
+          <div className="mb-4">
+            <Copyable text={`${ingestUrl()}/mcp`} label="Copy the address of the MCP server" wrap />
+          </div>
+          {installation.connectedAppsNote() ? (
+            <p className="mb-4 text-sm text-ink-muted">{installation.connectedAppsNote()}</p>
+          ) : null}
+          <ConnectedApps apps={connectedApps} />
+        </Card>
+      )}
 
       {signIn ?? (
         <Card id="password">

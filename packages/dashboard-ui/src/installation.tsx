@@ -27,6 +27,10 @@ export interface InstallationText {
   readTokenNote(): ReactNode;
   /** Under the badges in Settings: whether a README elsewhere can reach them, and what to do if not. */
   badgeNote(): ReactNode;
+  /** Under the /mcp address in Settings: who can reach it, and what to do if not. */
+  connectedAppsNote(): ReactNode;
+  /** On the page where somebody lets an MCP client read their data: what it still cannot do. */
+  consentLimits: string;
   /** On Status, when no request has been refused. */
   nothingRefused: string;
   /** What the refusals that come from this installation's own rules mean. */
@@ -80,6 +84,14 @@ export const installation: InstallationText = {
       internet.
     </>
   ),
+  connectedAppsNote: () => (
+    <>
+      An app on this machine can use it as it is. One that connects from elsewhere, such as claude.ai or
+      ChatGPT, needs this address on HTTPS and reachable from the internet, and the API told where people
+      open this dashboard (MCPSPAN_DASHBOARD_URL), since that is where it sends them to say yes.
+    </>
+  ),
+  consentLimits: 'It cannot change anything, see your settings or keys, or send events.',
   nothingRefused: 'The API has not refused anything.',
   refusals: {
     rate_limited:

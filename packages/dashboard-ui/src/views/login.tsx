@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { SignInForm } from '../components/sign-in-form';
 import { coreApiUrl } from '../lib/api';
+import { safeNext } from '../lib/next';
 import { currentSession } from '../lib/session';
 
 /**
@@ -34,17 +35,23 @@ async function authStatus(
   }
 }
 
-export default async function LoginPage() {
-  const status = await authStatus(await currentSession());
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [status, params] = await Promise.all([authStatus(await currentSession()), searchParams]);
+  // An app waiting for this person to say yes (views/authorize), to return to after signing in.
+  const next = safeNext(params['next']);
 
   // Somebody already signed in has no business here. Asked of the API rather
   // than read from the cookie: an expired session still leaves its cookie,
   // and sending its holder back to the dashboard would loop.
-  if (status.signedIn) redirect('/');
+  if (status.signedIn) redirect(next ?? '/');
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <SignInForm registrationOpen={status.registrationOpen} />
+      <SignInForm registrationOpen={status.registrationOpen} next={next} />
     </main>
   );
 }
