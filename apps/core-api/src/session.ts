@@ -3,6 +3,7 @@ import { getCookie } from 'hono/cookie';
 
 import { type AccountStore, selfHostedAccounts, SESSION_COOKIE, userForSession } from './accounts.ts';
 import { bearerToken } from './auth.ts';
+import { ACCESS_TOKEN_PREFIX, userForAccessToken } from './oauth.ts';
 import { userForReadToken } from './read-tokens.ts';
 
 /**
@@ -46,7 +47,8 @@ export function requireSession(
     readTokens = false,
   }: {
     /**
-     * Whether a read token (Authorization: Bearer mcpspan_read_...) also
+     * Whether a read token (Authorization: Bearer mcpspan_read_...), or an
+     * OAuth access token from signing in to /mcp (mcpspan_oauth_...), also
      * gets in, for reading only. Off unless a branch asks: tokens are for the
      * numbers a dashboard shows, not for an account's settings, its billing
      * or where its alerts are sent.
@@ -58,7 +60,11 @@ export function requireSession(
     const bearer = readTokens ? bearerToken(c.req.header('authorization')) : undefined;
 
     if (bearer !== undefined) {
-      const owner = await userForReadToken(bearer);
+      // An OAuth access token reads exactly as a read token does: /mcp's
+      // tools ask these routes with whichever the client holds.
+      const owner = bearer.startsWith(ACCESS_TOKEN_PREFIX)
+        ? await userForAccessToken(bearer)
+        : await userForReadToken(bearer);
 
       if (owner === undefined) return c.json({ error: 'Invalid or revoked read token' }, 401);
 

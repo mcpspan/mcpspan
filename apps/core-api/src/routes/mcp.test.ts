@@ -82,7 +82,7 @@ describe('/mcp', () => {
     });
 
     expect(response.status).toBe(401);
-    expect(response.headers.get('www-authenticate')).toMatch(/^Bearer /);
+    expect(response.headers.get('www-authenticate')).toMatch(/^Bearer\b/);
     expect(((await response.json()) as { error: string }).error).toContain('Settings → Read tokens');
   });
 

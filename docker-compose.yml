@@ -110,6 +110,10 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-}
       OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-}
       OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-}
+      # The dashboard as people open it in a browser. MCP clients that sign in
+      # to /mcp (claude.ai, Claude Code, Cursor...) send people there to say
+      # yes, so set it to the public address when the dashboard has one.
+      MCPSPAN_DASHBOARD_URL: ${MCPSPAN_DASHBOARD_URL:-http://localhost:${CORE_DASHBOARD_PORT:-6270}}
     volumes:
       - mcpspan-api-data:/var/lib/mcpspan
     ports:

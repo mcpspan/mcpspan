@@ -11,6 +11,7 @@ import { createDashboardRoutes } from './routes/dashboard.ts';
 import { createDiagnosticsRoutes } from './routes/diagnostics.ts';
 import { createEventRoutes } from './routes/events.ts';
 import { createMcpRoutes } from './routes/mcp.ts';
+import { createOAuthAccountRoutes, createOAuthRoutes, type OAuthOptions } from './routes/oauth.ts';
 import { createServerRoutes } from './routes/servers.ts';
 import { createTokenRoutes } from './routes/tokens.ts';
 
@@ -31,6 +32,11 @@ export interface AppOptions {
   webhooks?: WebhookSender;
   /** Mails alerts, where the installation can; without it rules send to the webhook only. Give startApi the same one. */
   alertMail?: AlertMailer;
+  /**
+   * Signing in to /mcp with OAuth, from clients such as claude.ai. Without it
+   * /mcp takes read tokens only.
+   */
+  oauth?: OAuthOptions;
 }
 
 /**
@@ -46,6 +52,7 @@ export function createApp({
   usage = meterNothing,
   webhooks = sendWebhook,
   alertMail,
+  oauth,
 }: AppOptions = {}): Hono {
   const app = new Hono();
 
@@ -94,7 +101,14 @@ export function createApp({
   // The same questions as an MCP server at a URL, for clients that connect to
   // one instead of starting mcpspan-mcp. Outside /v1 like /badge: the address
   // goes into people's client settings and has to stay put.
-  app.route('/mcp', createMcpRoutes(() => app));
+  app.route('/mcp', createMcpRoutes(() => app, { oauth: oauth !== undefined }));
+
+  // Signing in to /mcp from an MCP client: metadata, registration and tokens
+  // on the public address, and what the dashboard's consent page asks.
+  if (oauth !== undefined) {
+    app.route('/', createOAuthRoutes(oauth));
+    app.route('/v1/oauth', createOAuthAccountRoutes(accounts, oauth));
+  }
 
   // Every answer this API gives is JSON, including the ones nobody planned.
   // A developer working out why their integration is quiet should not have to
