@@ -1,3 +1,4 @@
+import type { McpServer } from '@modelcontextprotocol/server';
 import { Hono } from 'hono';
 
 import { type AccountStore, selfHostedAccounts } from './accounts.ts';
@@ -37,6 +38,11 @@ export interface AppOptions {
    * /mcp takes read tokens only.
    */
   oauth?: OAuthOptions;
+  /**
+   * Sees each of /mcp's servers before it answers, to instrument it. Self-hosted
+   * leaves it out, and /mcp reports nowhere.
+   */
+  measureMcp?: (server: McpServer) => void;
 }
 
 /**
@@ -53,6 +59,7 @@ export function createApp({
   webhooks = sendWebhook,
   alertMail,
   oauth,
+  measureMcp,
 }: AppOptions = {}): Hono {
   const app = new Hono();
 
@@ -101,7 +108,7 @@ export function createApp({
   // The same questions as an MCP server at a URL, for clients that connect to
   // one instead of starting mcpspan-mcp. Outside /v1 like /badge: the address
   // goes into people's client settings and has to stay put.
-  app.route('/mcp', createMcpRoutes(() => app, { oauth: oauth !== undefined }));
+  app.route('/mcp', createMcpRoutes(() => app, { oauth: oauth !== undefined, ...(measureMcp !== undefined && { measure: measureMcp }) }));
 
   // Signing in to /mcp from an MCP client: metadata, registration and tokens
   // on the public address, and what the dashboard's consent page asks.

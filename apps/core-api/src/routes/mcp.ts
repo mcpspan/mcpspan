@@ -1,4 +1,4 @@
-import { createMcpHandler } from '@modelcontextprotocol/server';
+import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { createApi } from 'mcpspan-mcp/src/api.ts';
@@ -25,17 +25,22 @@ const IN_PROCESS = 'http://mcpspan.internal';
  * signing in through the client (routes/oauth.ts).
  *
  * `api` is the app this is mounted in, given lazily because it is still being
- * built when this is.
+ * built when this is. `measure`, when given, sees each server before it
+ * answers, which is where an installation can instrument it.
  */
 export function createMcpRoutes(
   api: () => { fetch: (request: Request) => Response | Promise<Response> },
-  { oauth = false }: { oauth?: boolean } = {},
+  { oauth = false, measure }: { oauth?: boolean; measure?: (server: McpServer) => void } = {},
 ): Hono {
   const viaApp: typeof fetch = async (input, init) => api().fetch(new Request(input, init));
 
-  const mcp = createMcpHandler(({ authInfo }) =>
-    buildServer(createApi({ token: authInfo?.token, url: IN_PROCESS, fetch: viaApp })),
-  );
+  const mcp = createMcpHandler(({ authInfo }) => {
+    const server = buildServer(createApi({ token: authInfo?.token, url: IN_PROCESS, fetch: viaApp }));
+
+    measure?.(server);
+
+    return server;
+  });
 
   const routes = new Hono();
 
