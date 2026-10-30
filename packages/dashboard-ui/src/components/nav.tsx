@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { cn } from '../lib/cn';
+import { withParams } from '../lib/query';
 
 const LINKS = [
   { href: '/', label: 'Overview' },
@@ -26,9 +27,17 @@ const LINKS = [
  * The current page is marked for assistive technology as well as visually:
  * somebody listening to the page hears which section they are in rather than
  * having to infer it from a colour they cannot see.
+ *
+ * The server and the window go along, as every other link between pages
+ * carries them: somebody looking at one server's last 7 days who opens
+ * Errors means that server's errors over those days. Filters and places in
+ * lists stay behind, since they belong to the page they were set on.
  */
 export function Nav({ vertical = false }: { vertical?: boolean }) {
   const pathname = usePathname();
+  const params = useSearchParams();
+  const carried = withParams({ serverId: params.get('serverId') ?? undefined, range: params.get('range') ?? undefined }, {});
+  const suffix = carried === '?' ? '' : carried;
 
   return (
     <nav aria-label="Sections" className={cn('flex gap-1', vertical && 'flex-col')}>
@@ -38,7 +47,7 @@ export function Nav({ vertical = false }: { vertical?: boolean }) {
         return (
           <Link
             key={link.href}
-            href={link.href}
+            href={`${link.href}${suffix}`}
             aria-current={current ? 'page' : undefined}
             className={cn(
               'rounded-lg px-3 py-1.5 text-sm outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink',
