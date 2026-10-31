@@ -38,7 +38,7 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
 
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
       # Warnings are errors, javadoc included, so this also holds the linter's verdict.
       - run: ./gradlew build
@@ -67,7 +67,7 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
       - run: ../../../packages/mcpspan-jvm/gradlew installDist
         working-directory: conformance/adapters/java
