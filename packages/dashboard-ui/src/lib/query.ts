@@ -39,6 +39,7 @@ export const PAGING_PARAMS = [
   'clientsOffset',
   'sessionsOffset',
   'transitionsOffset',
+  'lostOffset',
   'messagesOffset',
   'parametersOffset',
   'beforeOffset',

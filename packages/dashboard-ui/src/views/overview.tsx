@@ -6,6 +6,7 @@ import { clientColors } from '../lib/client-colors';
 import { DownloadLinks } from '../components/download-links';
 import { FilterBar } from '../components/filter-bar';
 import { LatencyChart } from '../components/latency-chart';
+import { LostAgents } from '../components/lost-agents';
 import { CannotReachApi, NothingConnectedYet } from '../components/notice';
 import { PageHeader } from '../components/page-header';
 import { OffsetPager } from '../components/pager';
@@ -22,6 +23,7 @@ import {
   getClients,
   getFilterOptions,
   getLatency,
+  getLostAgents,
   getSummary,
   getTimeseries,
   getTools,
@@ -77,6 +79,9 @@ function describeBucket(seconds: number): string {
  */
 const TOOLS_PER_PAGE = 10;
 
+/** Tools on one page of where agents get lost. */
+const LOST_PER_PAGE = 5;
+
 /** Names on one page of the tools that do not exist. */
 const UNKNOWN_PER_PAGE = 10;
 
@@ -110,7 +115,7 @@ export default async function OverviewPage({
     { text: 'NDJSON', kind: 'calls' as const, params: { ...query, format: 'ndjson' } },
   ];
 
-  const [summary, previous, timeseries, tools, options, unknownTools, latency, clients, primitives, versions, listing] =
+  const [summary, previous, timeseries, tools, options, unknownTools, latency, clients, primitives, versions, listing, lost] =
     await Promise.all([
       getSummary(session, query).catch(asApiError),
       // The same question about the window before, for the cards to compare
@@ -149,6 +154,15 @@ export default async function OverviewPage({
         ...serverWide,
         ...pick(params, ['clientType', 'listingOrder']),
         listingOffset: offsetParam(params, 'listingOffset'),
+      }).catch(() => undefined),
+      // Narrowed by client only: sessions are whole, and a tool filter would
+      // leave the outcomes about every session and the list about one tool.
+      // Losing it loses the card.
+      getLostAgents(session, {
+        ...serverWide,
+        ...pick(params, ['clientType']),
+        offset: offsetParam(params, 'lostOffset'),
+        limit: LOST_PER_PAGE,
       }).catch(() => undefined),
     ]);
 
@@ -248,6 +262,25 @@ export default async function OverviewPage({
               )}
             </Card>
           </div>
+
+          {lost === undefined ? null : (
+            <div className="mt-6">
+              <LostAgents
+                data={lost}
+                params={params}
+                pager={
+                  <OffsetPager
+                    params={params}
+                    name="lostOffset"
+                    offset={lost.offset}
+                    limit={lost.limit}
+                    hasMore={lost.hasMore}
+                    hash="#lost"
+                  />
+                }
+              />
+            </div>
+          )}
 
           {versions === undefined || versions.versions.length === 0 ? null : (
             <Card className="mt-6" id="versions">

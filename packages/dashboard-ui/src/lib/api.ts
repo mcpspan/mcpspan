@@ -488,6 +488,38 @@ export interface Transitions extends PageInfo {
   sampled: boolean;
 }
 
+/** What became of the sessions in a window, each counted once, by the worst that happened in it. */
+export interface SessionOutcomes {
+  clean: number;
+  recovered: number;
+  wentElsewhere: number;
+  looped: number;
+  endedOnFailure: number;
+  undecided: number;
+}
+
+/** A tool agents got stuck at, and what they did after it failed. */
+export interface LostTool {
+  toolName: string;
+  /** Times stuck: a failure and the retries of the same tool straight after it count once. */
+  failures: number;
+  recovered: number;
+  /** Retries it took, on average, when the tool then succeeded. */
+  meanRetries: number | null;
+  wentElsewhere: number;
+  insteadMostOften: { name: string; kind: CallKind; times: number } | null;
+  endedOnIt: number;
+  looped: number;
+  undecided: number;
+}
+
+export interface LostAgents extends PageInfo {
+  range: TimeWindow;
+  sessions: SessionOutcomes;
+  tools: LostTool[];
+  sampled: boolean;
+}
+
 export interface Failures {
   range: TimeWindow;
   limit: number;
@@ -682,6 +714,10 @@ export function getSessionCalls(
 
 export function getTransitions(session: Session, query: Query = {}): Promise<Transitions> {
   return request<Transitions>('dashboard/transitions', session, query);
+}
+
+export function getLostAgents(session: Session, query: Query = {}): Promise<LostAgents> {
+  return request<LostAgents>('dashboard/lost', session, query);
 }
 
 export function getFilterOptions(session: Session, query: Query = {}): Promise<FilterOptions> {

@@ -22,7 +22,7 @@ import { decodeCursor, parsePage } from '../paging.ts';
 import { csvLine, exportCalls, exportFileName, serverName } from '../export.ts';
 import { type Filters, parseFilters } from '../filters.ts';
 import { requireSession, resolveServerId, type SessionVariables } from '../session.ts';
-import { getSessionCalls, getSessions, getTransitions } from '../sessions.ts';
+import { getLostAgents, getSessionCalls, getSessions, getTransitions } from '../sessions.ts';
 import { getToolDetails } from '../tool-details.ts';
 import { getVersions } from '../versions.ts';
 import { getToolListing, LISTING_ORDERS, type ListingOrder } from '../listings.ts';
@@ -349,6 +349,27 @@ export function createDashboardRoutes(accounts: AccountStore = selfHostedAccount
     return c.json({
       range: describeRange(scope.range),
       ...(await getTransitions(scope.serverId, scope.range, undefined, page, {
+        clientType: scope.filters.clientType,
+        toolName: scope.filters.toolName,
+      })),
+      offset: page.offset,
+      limit: page.limit,
+    });
+  });
+
+  /** Where agents get lost: what became of each session, and the tools they got stuck at. */
+  app.get('/lost', async (c) => {
+    const scope = resolveScope(c);
+
+    if ('error' in scope) return c.json({ error: scope.error }, scope.status);
+
+    const page = parsePage((name) => c.req.query(name), { limit: 10, max: 100 });
+
+    if ('error' in page) return c.json({ error: page.error }, 400);
+
+    return c.json({
+      range: describeRange(scope.range),
+      ...(await getLostAgents(scope.serverId, scope.range, undefined, page, {
         clientType: scope.filters.clientType,
         toolName: scope.filters.toolName,
       })),
