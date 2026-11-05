@@ -14,7 +14,7 @@ tool politely saying no.
 cargo add mcpspan
 ```
 
-For a server built on the official Rust MCP SDK, `rmcp` 3.4 or newer. Needs
+For a server built on the official Rust MCP SDK, `rmcp` 3.9 or newer. Needs
 Rust 1.88 or newer, as rmcp does.
 
 ## Use

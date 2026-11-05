@@ -626,16 +626,6 @@ export async function getLostAgents(
   const allParams: unknown[] = [];
   const allSource = recentCalls(allParams, serverId, range, maxScanned, filters.clientType);
 
-  const toolParams: unknown[] = [];
-  const toolSource = recentCalls(toolParams, serverId, range, maxScanned, filters.clientType);
-  const toolStuck = timesStuck(toolParams, toolSource, range);
-  let onlyTool = '';
-  if (filters.toolName !== undefined) {
-    toolParams.push(filters.toolName);
-    onlyTool = `AND tool_name = $${toolParams.length}`;
-  }
-  toolParams.push(page.limit + 1, page.offset);
-
   const [sessions, stuck, tools, sampled] = await Promise.all([
     getPool().query<{ sessions: string }>(
       `SELECT count(DISTINCT session_id) AS sessions FROM ${allSource}`,
@@ -656,47 +646,7 @@ export async function getLostAgents(
        GROUP BY outcome`,
       sessionParams,
     ),
-    getPool().query<{
-      tool_name: string;
-      failures: string;
-      recovered: string;
-      mean_retries: string | null;
-      elsewhere: string;
-      ended: string;
-      looped: string;
-      undecided: string;
-      instead_name: string | null;
-      instead_kind: CallKind | null;
-      instead_times: string | null;
-    }>(
-      `WITH stuck AS (SELECT * FROM ${toolStuck} WHERE NOT unknown_tool ${onlyTool}),
-       instead AS (
-         SELECT tool_name, next_name, next_kind, count(*) AS times,
-                row_number() OVER (PARTITION BY tool_name ORDER BY count(*) DESC, next_name, next_kind) AS rank
-         FROM stuck
-         WHERE outcome = 'elsewhere'
-         GROUP BY tool_name, next_name, next_kind
-       ),
-       by_tool AS (
-         SELECT tool_name,
-                count(*) AS failures,
-                count(*) FILTER (WHERE outcome = 'recovered') AS recovered,
-                avg(retries) FILTER (WHERE outcome = 'recovered') AS mean_retries,
-                count(*) FILTER (WHERE outcome = 'elsewhere') AS elsewhere,
-                count(*) FILTER (WHERE outcome = 'ended') AS ended,
-                count(*) FILTER (WHERE looped) AS looped,
-                count(*) FILTER (WHERE outcome = 'undecided') AS undecided
-         FROM stuck
-         GROUP BY tool_name
-       )
-       SELECT by_tool.*, instead.next_name AS instead_name, instead.next_kind AS instead_kind,
-              instead.times AS instead_times
-       FROM by_tool
-       LEFT JOIN instead ON instead.tool_name = by_tool.tool_name AND instead.rank = 1
-       ORDER BY by_tool.ended + by_tool.looped DESC, by_tool.failures DESC, by_tool.tool_name
-       LIMIT $${toolParams.length - 1} OFFSET $${toolParams.length}`,
-      toolParams,
-    ),
+    stuckBy('tool_name', serverId, range, maxScanned, filters, page),
     wasSampled(serverId, range, maxScanned),
   ]);
 
@@ -712,25 +662,134 @@ export async function getLostAgents(
   const troubled = stuck.rows.reduce((sum, row) => sum + Number(row.sessions), 0);
   outcomes.clean = Number(sessions.rows[0]?.sessions ?? 0) - troubled;
 
-  const { items, hasMore } = takePage(tools.rows, page);
+  const { items, hasMore } = takePage(tools, page);
 
   return {
     sessions: outcomes,
-    tools: items.map((row) => ({
-      toolName: row.tool_name,
-      failures: Number(row.failures),
-      recovered: Number(row.recovered),
-      meanRetries: row.mean_retries === null ? null : Number(row.mean_retries),
-      wentElsewhere: Number(row.elsewhere),
-      insteadMostOften:
-        row.instead_name === null || row.instead_kind === null
-          ? null
-          : { name: row.instead_name, kind: row.instead_kind, times: Number(row.instead_times) },
-      endedOnIt: Number(row.ended),
-      looped: Number(row.looped),
-      undecided: Number(row.undecided),
-    })),
+    tools: items.map(({ group, ...tool }) => ({ toolName: group, ...tool })),
     sampled,
     hasMore,
   };
+}
+
+/** Clients on the tool page's split, the most stuck first. */
+const MAX_LOST_CLIENTS = 20;
+
+/** What agents did after one tool failed, as a whole and by the client they ran in. */
+export interface ToolAfterFailure {
+  tool: Omit<LostTool, 'toolName'> | null;
+  clients: (Omit<LostTool, 'toolName'> & { clientType: string })[];
+  sampled: boolean;
+}
+
+/**
+ * After one tool fails: the times agents got stuck at it and what came of
+ * them, then the same by client. Clients differ more here than anywhere: one
+ * reads the error and fixes its arguments, another sends them again.
+ */
+export async function getToolAfterFailure(
+  serverId: string,
+  range: TimeRange,
+  toolName: string,
+  /** Lowered by tests, like the ones above. */
+  maxScanned: number = MAX_SCANNED_CALLS,
+): Promise<ToolAfterFailure> {
+  const [whole, clients, sampled] = await Promise.all([
+    stuckBy('tool_name', serverId, range, maxScanned, { toolName }, { offset: 0, limit: 1 }),
+    stuckBy('client_type', serverId, range, maxScanned, { toolName }, { offset: 0, limit: MAX_LOST_CLIENTS }),
+    wasSampled(serverId, range, maxScanned),
+  ]);
+
+  const tool = whole[0];
+
+  return {
+    tool: tool === undefined ? null : withoutGroup(tool),
+    clients: clients.slice(0, MAX_LOST_CLIENTS).map(({ group, ...rest }) => ({ clientType: group, ...rest })),
+    sampled,
+  };
+}
+
+function withoutGroup<T extends { group: unknown }>({ group: _group, ...rest }: T): Omit<T, 'group'> {
+  return rest;
+}
+
+/**
+ * The times stuck, grouped by tool or by client, worst first: the most ended
+ * on or looped at, then the most stuck. One row past the page is fetched, to
+ * tell whether there is more.
+ */
+async function stuckBy(
+  group: 'tool_name' | 'client_type',
+  serverId: string,
+  range: TimeRange,
+  maxScanned: number,
+  filters: Pick<SessionFilters, 'clientType' | 'toolName'>,
+  page: Page,
+): Promise<(Omit<LostTool, 'toolName'> & { group: string })[]> {
+  const params: unknown[] = [];
+  const source = recentCalls(params, serverId, range, maxScanned, filters.clientType);
+  const stuck = timesStuck(params, source, range);
+  let onlyTool = '';
+  if (filters.toolName !== undefined) {
+    params.push(filters.toolName);
+    onlyTool = `AND tool_name = $${params.length}`;
+  }
+  params.push(page.limit + 1, page.offset);
+
+  const result = await getPool().query<{
+    grouped: string;
+    failures: string;
+    recovered: string;
+    mean_retries: string | null;
+    elsewhere: string;
+    ended: string;
+    looped: string;
+    undecided: string;
+    instead_name: string | null;
+    instead_kind: CallKind | null;
+    instead_times: string | null;
+  }>(
+    `WITH stuck AS (SELECT *, ${group} AS grouped FROM ${stuck} WHERE NOT unknown_tool ${onlyTool}),
+     instead AS (
+       SELECT grouped, next_name, next_kind, count(*) AS times,
+              row_number() OVER (PARTITION BY grouped ORDER BY count(*) DESC, next_name, next_kind) AS rank
+       FROM stuck
+       WHERE outcome = 'elsewhere'
+       GROUP BY grouped, next_name, next_kind
+     ),
+     grouped AS (
+       SELECT grouped,
+              count(*) AS failures,
+              count(*) FILTER (WHERE outcome = 'recovered') AS recovered,
+              avg(retries) FILTER (WHERE outcome = 'recovered') AS mean_retries,
+              count(*) FILTER (WHERE outcome = 'elsewhere') AS elsewhere,
+              count(*) FILTER (WHERE outcome = 'ended') AS ended,
+              count(*) FILTER (WHERE looped) AS looped,
+              count(*) FILTER (WHERE outcome = 'undecided') AS undecided
+       FROM stuck
+       GROUP BY grouped
+     )
+     SELECT grouped.*, instead.next_name AS instead_name, instead.next_kind AS instead_kind,
+            instead.times AS instead_times
+     FROM grouped
+     LEFT JOIN instead ON instead.grouped = grouped.grouped AND instead.rank = 1
+     ORDER BY grouped.ended + grouped.looped DESC, grouped.failures DESC, grouped.grouped
+     LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    params,
+  );
+
+  return result.rows.map((row) => ({
+    group: row.grouped,
+    failures: Number(row.failures),
+    recovered: Number(row.recovered),
+    meanRetries: row.mean_retries === null ? null : Number(row.mean_retries),
+    wentElsewhere: Number(row.elsewhere),
+    insteadMostOften:
+      row.instead_name === null || row.instead_kind === null
+        ? null
+        : { name: row.instead_name, kind: row.instead_kind, times: Number(row.instead_times) },
+    endedOnIt: Number(row.ended),
+    looped: Number(row.looped),
+    undecided: Number(row.undecided),
+  }));
 }

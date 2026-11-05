@@ -5,7 +5,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createAccount, resetDatabase, seedEvents, type TestAccount } from '../../test/fixtures.ts';
 import { createApp } from '../app.ts';
 import { closePool } from '../db.ts';
-import { getLostAgents } from '../sessions.ts';
+import { getLostAgents, getToolAfterFailure } from '../sessions.ts';
 
 let account: TestAccount;
 
@@ -201,5 +201,43 @@ describe('/v1/dashboard/lost', () => {
 
     expect((await getLostAgents(account.serverId, range, 15)).sampled).toBe(false);
     expect((await getLostAgents(account.serverId, range, 14)).sampled).toBe(true);
+  });
+});
+
+describe('/v1/dashboard/lost/tool', () => {
+  it('says what came of the times one tool failed, as a whole and by client', async () => {
+    const { tool, clients, sampled } = await get<{
+      tool: Omit<Lost['tools'][number], 'toolName'>;
+      clients: (Omit<Lost['tools'][number], 'toolName'> & { clientType: string })[];
+      sampled: boolean;
+    }>('lost/tool?toolName=book');
+
+    expect(tool).toEqual(expect.objectContaining({ failures: 5, recovered: 2, endedOnIt: 1, looped: 1 }));
+    expect(sampled).toBe(false);
+    expect(clients).toEqual([
+      expect.objectContaining({ clientType: 'claude', failures: 3, recovered: 1, endedOnIt: 1, undecided: 1 }),
+      expect.objectContaining({ clientType: 'claude-code', failures: 1, recovered: 1, meanRetries: 2, looped: 1 }),
+      expect.objectContaining({
+        clientType: 'cursor',
+        failures: 1,
+        wentElsewhere: 1,
+        insteadMostOften: { name: 'search', kind: 'tool', times: 1 },
+      }),
+    ]);
+  });
+
+  it('has nothing to say about a tool that never failed', async () => {
+    const { tool, clients } = await getToolAfterFailure(
+      account.serverId,
+      { from: ago(86_400), to: new Date() },
+      'search',
+    );
+
+    expect(tool).toBeNull();
+    expect(clients).toEqual([]);
+  });
+
+  it('needs the tool named', async () => {
+    await get('lost/tool', 400);
   });
 });

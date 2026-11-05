@@ -910,6 +910,9 @@ rmcp, the official Rust MCP SDK, on both protocol revisions.
   stop the server's own from running; a test reads the trait from the rmcp in
   use and fails if the wrapper misses one, and CI runs it against the newest
   rmcp as well as the locked one.
+  rmcp 3.9.0 added `list_skills`, `get_skill` and `read_resource_directory`
+  (the skills extension); the wrapper passes them on, so it needs rmcp 3.9.0
+  or newer.
 - **Settings are a builder** (`Options::default().api_key(...)`), so a setting
   added later breaks nobody's code.
 - **Exceptions.** A Rust tool fails exceptionally with an `Err(ErrorData)`,

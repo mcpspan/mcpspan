@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { CallsChart } from '../components/calls-chart';
 import { Facts } from '../components/facts';
 import { LatencyChart } from '../components/latency-chart';
+import { AfterItFails } from '../components/lost-agents';
 import { LocalTime } from '../components/local-time';
 import { CannotReachApi } from '../components/notice';
 import { PageHeader } from '../components/page-header';
@@ -21,6 +22,7 @@ import {
   getSummary,
   getTimeseries,
   getToolDetails,
+  getToolAfterFailure,
   getToolListing,
   getVersions,
   type Summary,
@@ -67,7 +69,7 @@ export default async function ToolPage({
     ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }),
   };
 
-  const [summary, previous, timeseries, details, latency, versions, options, listing] = await Promise.all([
+  const [summary, previous, timeseries, details, latency, versions, options, listing, afterFailure] = await Promise.all([
     getSummary(session, query).catch(asApiError),
     getSummary(session, { ...query, ...range.previous }).catch(() => undefined),
     getTimeseries(session, query).catch(asApiError),
@@ -88,6 +90,7 @@ export default async function ToolPage({
     getToolListing(session, { ...range.window, ...(params['serverId'] === undefined ? {} : { serverId: params['serverId'] }) }).catch(
       () => undefined,
     ),
+    getToolAfterFailure(session, query).catch(() => undefined),
   ]);
   const listed = listing?.tools.find((tool) => tool.name === toolName);
 
@@ -177,6 +180,8 @@ export default async function ToolPage({
               </p>
             </Card>
           )}
+
+          {afterFailure === undefined ? null : <AfterItFails data={afterFailure} params={params} />}
 
           {details instanceof ApiError || (details.before.problems === 0 && details.beforeClient === null) ? null : (
             <Card id="before">

@@ -513,6 +513,15 @@ export interface LostTool {
   undecided: number;
 }
 
+/** After one tool fails: what came of it, as a whole and by client. */
+export interface ToolAfterFailure {
+  range: TimeWindow;
+  /** Null when the tool never failed an agent in the window. */
+  tool: Omit<LostTool, 'toolName'> | null;
+  clients: (Omit<LostTool, 'toolName'> & { clientType: string })[];
+  sampled: boolean;
+}
+
 export interface LostAgents extends PageInfo {
   range: TimeWindow;
   sessions: SessionOutcomes;
@@ -718,6 +727,11 @@ export function getTransitions(session: Session, query: Query = {}): Promise<Tra
 
 export function getLostAgents(session: Session, query: Query = {}): Promise<LostAgents> {
   return request<LostAgents>('dashboard/lost', session, query);
+}
+
+/** Needs `toolName`. */
+export function getToolAfterFailure(session: Session, query: Query = {}): Promise<ToolAfterFailure> {
+  return request<ToolAfterFailure>('dashboard/lost/tool', session, query);
 }
 
 export function getFilterOptions(session: Session, query: Query = {}): Promise<FilterOptions> {

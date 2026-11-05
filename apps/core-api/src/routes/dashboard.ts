@@ -22,7 +22,7 @@ import { decodeCursor, parsePage } from '../paging.ts';
 import { csvLine, exportCalls, exportFileName, serverName } from '../export.ts';
 import { type Filters, parseFilters } from '../filters.ts';
 import { requireSession, resolveServerId, type SessionVariables } from '../session.ts';
-import { getLostAgents, getSessionCalls, getSessions, getTransitions } from '../sessions.ts';
+import { getLostAgents, getSessionCalls, getToolAfterFailure, getSessions, getTransitions } from '../sessions.ts';
 import { getToolDetails } from '../tool-details.ts';
 import { getVersions } from '../versions.ts';
 import { getToolListing, LISTING_ORDERS, type ListingOrder } from '../listings.ts';
@@ -375,6 +375,24 @@ export function createDashboardRoutes(accounts: AccountStore = selfHostedAccount
       })),
       offset: page.offset,
       limit: page.limit,
+    });
+  });
+
+  /** What agents did after one tool failed, as a whole and by client. */
+  app.get('/lost/tool', async (c) => {
+    const scope = resolveScope(c);
+
+    if ('error' in scope) return c.json({ error: scope.error }, scope.status);
+
+    const toolName = scope.filters.toolName;
+
+    if (toolName === undefined) {
+      return c.json({ error: "Name the tool with 'toolName'" }, 400);
+    }
+
+    return c.json({
+      range: describeRange(scope.range),
+      ...(await getToolAfterFailure(scope.serverId, scope.range, toolName)),
     });
   });
 

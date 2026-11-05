@@ -1,6 +1,6 @@
 [package]
 name = "mcpspan"
-version = "0.8.1"
+version = "0.8.2"
 edition = "2024"
 # As the MCP SDK it instruments requires.
 rust-version = "1.88"
@@ -22,7 +22,7 @@ tls = ["ureq/rustls"]
 
 [dependencies]
 # The MCP SDK it instruments.
-rmcp = { version = "3.4.1", default-features = false, features = ["server"] }
+rmcp = { version = "3.9.0", default-features = false, features = ["server"] }
 serde_json = "1"
 # Measuring an answer's size (contract, 3.7); already in the tree through rmcp.
 serde = "1"
@@ -36,7 +36,7 @@ uuid = { version = "1", features = ["v4"] }
 http = "1"
 
 [dev-dependencies]
-rmcp = { version = "3.4.1", features = [
+rmcp = { version = "3.9.0", features = [
     "server",
     "client",
     "macros",
