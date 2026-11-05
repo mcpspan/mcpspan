@@ -6,6 +6,10 @@ packages:
 # Patched releases of what Next.js pulls in, ahead of a Next.js release that
 # asks for them: sharp for CVE-2026-96889 (GHSA-wq5f-xc86-pv6w), source-map-js
 # for GHSA-68fv-2mgg-jv7q. Drop each once Next.js depends on a fixed version.
+# glob for node-pg-migrate, which pins ~13 and reads it only with useGlob, which
+# mcpspan never sets: 14.0.2 fixes GHSA alerts on glob and on minimatch under it.
+# Drop once node-pg-migrate depends on glob 14.
 overrides:
   sharp: '>=0.35.5'
   source-map-js: '>=1.2.2'
+  node-pg-migrate>glob: '^14.0.3'

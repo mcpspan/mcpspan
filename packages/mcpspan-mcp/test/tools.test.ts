@@ -96,6 +96,7 @@ describe('the tools', () => {
       'get_session',
       'get_tool',
       'get_tool_listing',
+      'get_where_agents_get_lost',
       'list_clients',
       'list_errors',
       'list_servers',
@@ -188,6 +189,39 @@ describe('the tools', () => {
     const one = await ask('get_session', { session: SESSION });
 
     expect((one.data['calls'] as { toolName: string }[]).map((call) => call.toolName)).toEqual(['search', 'search']);
+  });
+});
+
+describe('where agents get lost', () => {
+  it('says what came of each session, and of each time an agent got stuck at a tool', async () => {
+    const lost = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+    const at = (minutes: number) => new Date(Date.now() - minutes * 60 * 1000);
+    await seedEvents(account.serverId, [
+      { toolName: 'book', clientType: 'cursor', sessionId: lost, occurredAt: at(90), success: false, errorSource: 'arguments' },
+      { toolName: 'book', clientType: 'cursor', sessionId: lost, occurredAt: at(89) },
+      { toolName: 'book', clientType: 'cursor', sessionId: lost, occurredAt: at(88), success: false, errorSource: 'arguments' },
+    ]);
+
+    const all = await ask('get_where_agents_get_lost');
+
+    expect(all.data).toMatchObject({
+      server: 'Flights',
+      sessions: { clean: 1, endedOnFailure: 1 },
+      tools: [expect.objectContaining({ toolName: 'book', failures: 2, recovered: 1, endedOnIt: 1 })],
+      sampled: false,
+    });
+
+    const book = await ask('get_where_agents_get_lost', { tool: 'book' });
+
+    expect(book.data).toMatchObject({
+      toolName: 'book',
+      failures: 2,
+      clients: [expect.objectContaining({ clientType: 'cursor', failures: 2 })],
+    });
+
+    const search = await ask('get_where_agents_get_lost', { tool: 'search' });
+
+    expect(search.data).toMatchObject({ toolName: 'search', note: expect.any(String) });
   });
 });
 

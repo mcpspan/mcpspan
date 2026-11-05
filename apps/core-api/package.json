@@ -20,10 +20,10 @@
     "password:reset": "node --env-file-if-exists=../../.env scripts/reset-password.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.1",
+    "@hono/node-server": "^2.1.6",
     "@mcpspan/client-types": "workspace:*",
     "@modelcontextprotocol/server": "^2.3.1",
-    "hono": "^4.13.8",
+    "hono": "^4.13.16",
     "mcpspan-mcp": "workspace:*",
     "node-pg-migrate": "^9.0.0",
     "pg": "^8.23.0",
@@ -35,6 +35,6 @@
     "@types/pg": "^8.23.1",
     "mcpspan": "workspace:*",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

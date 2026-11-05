@@ -304,6 +304,50 @@ export function registerTools(mcp: McpServer, api: Api): void {
   );
 
   mcp.registerTool(
+    'get_where_agents_get_lost',
+    {
+      title: 'Where agents get lost',
+      description:
+        "Where agents got stuck and what they did about it. A time stuck is a failed tool call and the retries of the same tool straight after it; each ends recovered (the tool then worked, with meanRetries retries on average), wentElsewhere (the agent called something else, insteadMostOften), endedOnIt (the session stopped there, nothing for 30 minutes) or undecided (too recent to tell); looped counts those where a retry repeated the same arguments. Without a tool: every session by the worst that happened in it (clean, recovered, wentElsewhere, looped, endedOnFailure, undecided) and the tools agents got stuck at, worst first. With a tool: that tool's times stuck, as a whole and by client.",
+      inputSchema: z.object({
+        ...scope,
+        client,
+        tool: z.string().optional().describe("Only this tool, split by client. The tool's name, as list_tools gives it."),
+      }),
+      annotations: READ_ONLY,
+    },
+    (args) =>
+      answer(async () => {
+        const at = await locate(api, args);
+
+        if (args.tool !== undefined) {
+          const result = await api.get<{ tool: object | null; clients: unknown[]; sampled: boolean }>(
+            '/v1/dashboard/lost/tool',
+            at.query({ toolName: args.tool }),
+          );
+
+          return at.describe(
+            result.tool === null
+              ? { toolName: args.tool, note: 'Agents never got stuck at this tool in this window.' }
+              : { toolName: args.tool, ...result.tool, clients: result.clients, sampled: result.sampled },
+          );
+        }
+
+        const result = await api.get<{ sessions: object; tools: unknown[]; sampled: boolean; hasMore: boolean }>(
+          '/v1/dashboard/lost',
+          at.query({ clientType: args.client, limit: 20 }),
+        );
+
+        return at.describe({
+          sessions: result.sessions,
+          tools: result.tools,
+          more: result.hasMore,
+          sampled: result.sampled,
+        });
+      }),
+  );
+
+  mcp.registerTool(
     'get_session',
     {
       title: 'Session',
