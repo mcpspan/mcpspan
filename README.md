@@ -40,6 +40,11 @@ install.
   with the calls an agent repeated with the same arguments marked: a loop
   that looks fine one call at a time. A tool's page says which call came
   right before it repeated or failed, by client.
+- **Where agents get lost.** After every failure, what the agent did next:
+  retried until the tool worked, tried something else, repeated the same
+  call, or stopped there. Sessions by the worst that happened in them, the
+  tools agents got stuck at, worst first, and on a tool's page the same by
+  client.
 - **Releases.** Every call carries the version of your server that answered
   it; the charts mark where each release began and compare it with the one
   before. A tool's own chart also marks where its description or input schema

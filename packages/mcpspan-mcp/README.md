@@ -159,6 +159,7 @@ account has one) and a window: `days` back from now (7 when left out), or
 | `get_tool_listing` | What agents were shown: tools never used, and what their definitions cost. |
 | `list_sessions` | Recent sessions, with failures and repeated calls. |
 | `get_session` | One session's calls, in order. |
+| `get_where_agents_get_lost` | What came of each session, the tools agents got stuck at and what they did next; for one tool, by client. |
 
 A token can be revoked at any time under **Settings → Read tokens**, and an app
 disconnected under **Settings → Connected apps**; either loses access at once.
