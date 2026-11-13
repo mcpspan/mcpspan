@@ -488,6 +488,44 @@ export interface Transitions extends PageInfo {
   sampled: boolean;
 }
 
+/** How a release compares with the one before it. */
+export type ReleaseVerdict = 'worse' | 'same' | 'better' | 'too-early' | 'first';
+
+export interface ReleaseSide {
+  calls: number;
+  errors: number;
+  errorRate: number;
+  durationMs: { p50: number | null; p95: number | null };
+}
+
+export interface ReleaseTool {
+  toolName: string;
+  /** Null when that side had no calls to it. */
+  before: (ReleaseSide & { refused: number }) | null;
+  after: (ReleaseSide & { refused: number }) | null;
+  verdict: ReleaseVerdict;
+  definitionChanged: boolean;
+}
+
+/** One server version against the one before it, over periods as long as each other. */
+export interface ReleaseReport {
+  version: string;
+  previous: string | null;
+  releasedAt: string;
+  before: TimeWindow | null;
+  after: TimeWindow;
+  verdict: ReleaseVerdict;
+  overall: { before: ReleaseSide | null; after: ReleaseSide };
+  /** Worst change first. */
+  tools: ReleaseTool[];
+  /** Kinds of failure the previous version did not have. */
+  newFailures: { toolName: string; errorSource: string | null; errorType: string | null; calls: number; firstAt: string }[];
+  agents: { before: SessionOutcomes | null; after: SessionOutcomes };
+  clients: { clientType: string; before: number; after: number }[];
+  clientsShifted: boolean;
+  otherVersionCalls: number;
+}
+
 /** What became of the sessions in a window, each counted once, by the worst that happened in it. */
 export interface SessionOutcomes {
   clean: number;
@@ -595,6 +633,8 @@ export interface Query {
   outcome?: string;
   kind?: string;
   serverVersion?: string;
+  /** The release report only: the version to report on. */
+  version?: string;
 
   /** Paging: an offset into a ranking, or a cursor into a stream of rows. */
   offset?: number;
@@ -727,6 +767,11 @@ export function getTransitions(session: Session, query: Query = {}): Promise<Tra
 
 export function getLostAgents(session: Session, query: Query = {}): Promise<LostAgents> {
   return request<LostAgents>('dashboard/lost', session, query);
+}
+
+/** The newest version unless `version` names one. */
+export function getReleaseReport(session: Session, query: Query = {}): Promise<ReleaseReport> {
+  return request<ReleaseReport>('dashboard/release', session, query);
 }
 
 /** Needs `toolName`. */

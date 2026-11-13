@@ -171,4 +171,9 @@ describe('compare', () => {
     expect(compare(side(1000, 10, 400), side(1000, 10, 600), 50)).toBe('worse');
     expect(compare(side(1000, 10, 40), side(1000, 10, 60), 50)).toBe('same');
   });
+
+  it('does not call faster better when it fails more, even within chance', () => {
+    expect(compare(side(30, 7, 1100), side(30, 11, 850), 20)).toBe('same');
+    expect(compare(side(1000, 10, 600), side(1000, 10, 400), 50)).toBe('better');
+  });
 });

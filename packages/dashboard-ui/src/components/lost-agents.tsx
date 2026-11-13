@@ -8,7 +8,7 @@ import { BreakableName } from './breakable-name';
 import { Card, CardHeader } from './ui/card';
 
 /** The outcomes in the order the bar draws them, best first. */
-const OUTCOMES: { key: keyof SessionOutcomes; label: string; colour: string }[] = [
+export const OUTCOMES: { key: keyof SessionOutcomes; label: string; colour: string }[] = [
   { key: 'clean', label: 'No failures', colour: 'bg-border' },
   { key: 'recovered', label: 'Retried until it worked', colour: 'bg-status-good' },
   { key: 'wentElsewhere', label: 'Tried something else', colour: 'bg-series-calls' },
@@ -136,7 +136,7 @@ export function AfterItFails({ data, params }: { data: ToolAfterFailure; params:
 }
 
 /** Counts by outcome: one bar, then each outcome with its count. */
-function OutcomeBar({
+export function OutcomeBar({
   segments,
   total,
   note,

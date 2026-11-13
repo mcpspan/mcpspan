@@ -178,7 +178,9 @@ export function compare(before: ReleaseSide | null, after: ReleaseSide | null, m
   const [was, now] = [before.durationMs.p95, after.durationMs.p95];
   if (was !== null && now !== null) {
     if (now >= was * SLOWER_RATIO && now - was >= SLOWER_MS) return 'worse';
-    if (was >= now * SLOWER_RATIO && was - now >= SLOWER_MS) return 'better';
+    // Faster is better only when it does not fail more: quicker errors are no improvement.
+    const failsMore = after.errorRate - before.errorRate >= ERROR_RATE_POINTS;
+    if (!failsMore && was >= now * SLOWER_RATIO && was - now >= SLOWER_MS) return 'better';
   }
 
   return 'same';
