@@ -15,7 +15,8 @@ const ELEVATED_ERROR_RATE = 0.05;
  *
  * The question it answers is "did the last release make things worse": the
  * error rate and the times of each version side by side, with when each was
- * first seen. A version opens its calls, which is where to look next.
+ * first seen. A version opens its release report, what changed against the
+ * one before it; its count of calls opens the calls themselves.
  */
 export function VersionsTable({ data, carried }: { data: Versions; carried: Params }) {
   return (
@@ -65,8 +66,9 @@ export function VersionsTable({ data, carried }: { data: Versions; carried: Para
                 <tr key={version.version} className="border-t border-border">
                   <th scope="row" className="py-2 text-left font-normal">
                     <Link
-                      href={`/calls${withParams(carried, { serverVersion: version.version })}`}
+                      href={`/release${withParams({ serverId: carried['serverId'] }, { version: version.version })}`}
                       className="font-mono text-xs underline-offset-2 hover:underline [overflow-wrap:anywhere]"
+                      title="What changed in this release"
                     >
                       {version.version}
                     </Link>
@@ -74,7 +76,14 @@ export function VersionsTable({ data, carried }: { data: Versions; carried: Para
                   <td className="py-2 pl-4 text-xs text-ink-muted">
                     <LocalTime iso={version.firstSeenAt} />
                   </td>
-                  <td className="py-2 pl-4 text-right tabular-nums">{formatCount(version.calls)}</td>
+                  <td className="py-2 pl-4 text-right tabular-nums">
+                    <Link
+                      href={`/calls${withParams(carried, { serverVersion: version.version })}`}
+                      className="underline-offset-2 hover:underline"
+                    >
+                      {formatCount(version.calls)}
+                    </Link>
+                  </td>
                   <td
                     className={`py-2 pl-4 text-right tabular-nums ${
                       version.errorRate > ELEVATED_ERROR_RATE ? 'text-status-critical' : 'text-ink-muted'

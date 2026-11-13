@@ -5,6 +5,7 @@ import { OutcomeBar, OUTCOMES } from '../components/lost-agents';
 import { LocalTime } from '../components/local-time';
 import { CannotReachApi } from '../components/notice';
 import { PageHeader } from '../components/page-header';
+import { duration, VerdictBadge, verdictSentence } from '../components/release-verdict';
 import { ParamSelect } from '../components/param-select';
 import { Card, CardHeader } from '../components/ui/card';
 import {
@@ -13,25 +14,15 @@ import {
   getVersions,
   type ReleaseReport,
   type ReleaseTool,
-  type ReleaseVerdict,
   type SessionOutcomes,
 } from '../lib/api';
-import { clientLabel, errorSourceInfo, formatCount, formatDuration, formatRate } from '../lib/format';
+import { clientLabel, errorSourceInfo, formatCount, formatRate } from '../lib/format';
 import { type Params, withParams } from '../lib/query';
 import { customRangeValue } from '../lib/range';
 import { currentSession } from '../lib/session';
 
 /** As far back as a version is offered in the picker: raw retention, at most. */
 const PICKER_DAYS = 90;
-
-/** The verdict in words, and the colour it is said in. */
-const VERDICTS: Record<ReleaseVerdict, { label: string; tone: string }> = {
-  worse: { label: 'Worse', tone: 'bg-status-critical/10 text-status-critical' },
-  better: { label: 'Better', tone: 'bg-status-good/10 text-status-good' },
-  same: { label: 'About the same', tone: 'bg-border/60 text-ink' },
-  'too-early': { label: 'Too early to tell', tone: 'bg-border/60 text-ink-muted' },
-  first: { label: 'First version', tone: 'bg-border/60 text-ink-muted' },
-};
 
 /**
  * Did a release make things worse: one server version against the one before
@@ -135,9 +126,7 @@ function Report({ report, params }: { report: ReleaseReport; params: Params }) {
     <>
       <Card>
         <div className="flex flex-wrap items-center gap-3">
-          <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${VERDICTS[report.verdict].tone}`}>
-            {VERDICTS[report.verdict].label}
-          </span>
+          <VerdictBadge verdict={report.verdict} />
           <p className="text-sm text-ink">{verdictSentence(report)}</p>
         </div>
         <p className="mt-3 text-xs text-ink-muted">
@@ -269,33 +258,6 @@ function Report({ report, params }: { report: ReleaseReport; params: Params }) {
       )}
     </>
   );
-}
-
-function verdictSentence(report: ReleaseReport): string {
-  const { before, after } = report.overall;
-
-  if (before === null) {
-    return `Nothing to compare it with: no earlier version was seen. ${formatCount(after.calls)} calls so far.`;
-  }
-
-  if (report.verdict === 'too-early') {
-    return `${formatCount(after.calls)} call${after.calls === 1 ? '' : 's'} so far against ${formatCount(before.calls)} before; a verdict needs 50 on each side.`;
-  }
-
-  const errors = `errors ${formatRate(before.errorRate)}% → ${formatRate(after.errorRate)}%`;
-  const slowest = `slowest calls (p95) ${duration(before.durationMs.p95)} → ${duration(after.durationMs.p95)}`;
-  const errorsMoved = Math.abs(after.errorRate - before.errorRate) >= 0.01;
-
-  // The reason first: whichever of the two decided the verdict.
-  if (report.verdict === 'same') return `No clear change: ${errors}, ${slowest}.`;
-
-  return errorsMoved && Math.sign(after.errorRate - before.errorRate) === (report.verdict === 'worse' ? 1 : -1)
-    ? `${capitalise(errors)}; ${slowest}.`
-    : `${capitalise(slowest)}; ${errors}.`;
-}
-
-function capitalise(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function Compared({
@@ -471,12 +433,6 @@ function Sessions({ label, outcomes }: { label: string; outcomes: SessionOutcome
 
 function share(part: number, whole: number): number {
   return whole === 0 ? 0 : part / whole;
-}
-
-function duration(ms: number | null): string {
-  const { value, unit } = formatDuration(ms);
-
-  return `${value}${unit}`;
 }
 
 /** "7 days", "20 hours", "45 minutes": the length of the periods compared. */

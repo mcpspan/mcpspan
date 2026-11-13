@@ -17,6 +17,7 @@ import { ToolsTable } from '../components/tools-table';
 import { hasResourcesOrPrompts, ResourcesAndPrompts } from '../components/resources-and-prompts';
 import { UnknownTools } from '../components/unknown-tools';
 import { VersionsTable } from '../components/versions-table';
+import { isRecentRelease, LatestRelease } from '../components/latest-release';
 import { Card, CardHeader } from '../components/ui/card';
 import {
   ApiError,
@@ -30,6 +31,7 @@ import {
   getResourcesAndPrompts,
   getUnknownTools,
   getToolListing,
+  getReleaseReport,
   getVersions,
 } from '../lib/api';
 import { formatCount } from '../lib/format';
@@ -115,7 +117,7 @@ export default async function OverviewPage({
     { text: 'NDJSON', kind: 'calls' as const, params: { ...query, format: 'ndjson' } },
   ];
 
-  const [summary, previous, timeseries, tools, options, unknownTools, latency, clients, primitives, versions, listing, lost] =
+  const [summary, previous, timeseries, tools, options, unknownTools, latency, clients, primitives, versions, listing, lost, release] =
     await Promise.all([
       getSummary(session, query).catch(asApiError),
       // The same question about the window before, for the cards to compare
@@ -164,6 +166,8 @@ export default async function OverviewPage({
         offset: offsetParam(params, 'lostOffset'),
         limit: LOST_PER_PAGE,
       }).catch(() => undefined),
+      // The newest release against the one before, whatever the window; narrowed by client only. Losing it loses the card.
+      getReleaseReport(session, { ...pick(params, ['serverId', 'clientType']) }).catch(() => undefined),
     ]);
 
   return (
@@ -201,6 +205,12 @@ export default async function OverviewPage({
               comparedTo={range.previousLabel}
             />
           </div>
+
+          {release === undefined || !isRecentRelease(release) ? null : (
+            <div className="mb-6">
+              <LatestRelease report={release} carried={pick(params, ['serverId', 'clientType'])} />
+            </div>
+          )}
 
           {summary.totalCalls === 0 ? (
             // A brand new account has a server and a key but nothing has used
