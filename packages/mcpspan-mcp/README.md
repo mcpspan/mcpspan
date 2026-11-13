@@ -156,6 +156,7 @@ account has one) and a window: `days` back from now (7 when left out), or
 | `list_unknown_tools` | Tools agents asked for that the server lacks, the closest one it has, and what the agent did next. |
 | `list_clients` | Each client's calls, error rate and response times. |
 | `compare_versions` | The server's releases side by side. |
+| `get_release_report` | Did a release make things worse: a version against the one before it, tool by tool. |
 | `get_tool_listing` | What agents were shown: tools never used, and what their definitions cost. |
 | `list_sessions` | Recent sessions, with failures and repeated calls. |
 | `get_session` | One session's calls, in order. |

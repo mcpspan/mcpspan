@@ -396,8 +396,9 @@ function BeforeAfter({
   /** Not better or worse when it rises: a count of calls. */
   plain?: boolean;
 }) {
+  // Equal as shown is no change, whatever the digits past rounding.
   const tone =
-    plain || before === null || after === null || after === before
+    plain || before === null || after === null || format(after) === format(before)
       ? 'text-ink'
       : after > before
         ? 'text-status-critical'

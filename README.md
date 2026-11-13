@@ -46,8 +46,12 @@ install.
   tools agents got stuck at, worst first, and on a tool's page the same by
   client.
 - **Releases.** Every call carries the version of your server that answered
-  it; the charts mark where each release began and compare it with the one
-  before. A tool's own chart also marks where its description or input schema
+  it, and the charts mark where each release began. A release report puts
+  each version against the one before it, over the same length of time
+  either side: a verdict, the tools whose errors or response times changed,
+  kinds of failure that are new, and what became of agents' sessions. The
+  overview shows the newest release for two weeks after it ships. A tool's
+  own chart also marks where its description or input schema
   changed, since rewording a description can change how agents use a tool
   more than a change to its code.
 - **Alerts** to Slack, Discord or any webhook, when errors climb or a server
