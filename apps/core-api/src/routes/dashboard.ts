@@ -24,6 +24,7 @@ import { type Filters, parseFilters } from '../filters.ts';
 import { requireSession, resolveServerId, type SessionVariables } from '../session.ts';
 import { getLostAgents, getSessionCalls, getToolAfterFailure, getSessions, getTransitions } from '../sessions.ts';
 import { getToolDetails } from '../tool-details.ts';
+import { getReleaseReport } from '../release.ts';
 import { getVersions } from '../versions.ts';
 import { getToolListing, LISTING_ORDERS, type ListingOrder } from '../listings.ts';
 import { parseTimeRange, type TimeRange } from '../time-range.ts';
@@ -166,6 +167,30 @@ export function createDashboardRoutes(accounts: AccountStore = selfHostedAccount
       range: describeRange(scope.range),
       ...(await getVersions(scope.serverId, scope.range, scope.filters)),
     });
+  });
+
+  // Did a release make things worse: a version against the one before it, newest unless named. Filtered by client only.
+  app.get('/release', async (c) => {
+    const scope = resolveScope(c);
+
+    if ('error' in scope) return c.json({ error: scope.error }, scope.status);
+
+    const version = c.req.query('version')?.trim() || undefined;
+
+    if (version !== undefined && version.length > 200) {
+      return c.json({ error: "'version' is too long, at most 200 characters" }, 400);
+    }
+
+    const report = await getReleaseReport(scope.serverId, { version, clientType: scope.filters.clientType });
+
+    if (report === null) {
+      return c.json(
+        { error: version === undefined ? 'This server has not reported a version' : `No version ${version} on this server` },
+        404,
+      );
+    }
+
+    return c.json(report);
   });
 
   // What agents were shown and what they used (contract, 3.11). Filtered by client only.
