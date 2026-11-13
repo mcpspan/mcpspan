@@ -60,9 +60,8 @@ jobs:
     runs-on: ubuntu-latest
 
     # The same suite the other SDKs pass, through a real MCP client over
-    # stdio. The official PHP MCP SDK speaks 2026-07-28 over stdio from 0.9;
-    # 0.8, which users may still have, runs on 2025-11-25 alone. Laravel MCP
-    # speaks both.
+    # stdio. The official PHP MCP SDK speaks both from 0.9, the oldest it
+    # takes: 0.8 has a security advisory against it. Laravel MCP speaks both.
     strategy:
       fail-fast: false
       matrix:
@@ -75,11 +74,6 @@ jobs:
             adapter: php-mcpsdk
             protocol: '2026'
             command: '["php", "adapters/php-mcpsdk/server.php"]'
-          - name: official PHP MCP SDK 0.8, protocol 2025-11-25
-            adapter: php-mcpsdk
-            protocol: '2025'
-            command: '["php", "adapters/php-mcpsdk/server.php"]'
-            pin: '--with mcp/sdk:0.8.*'
           - name: Laravel MCP, protocol 2025-11-25
             adapter: php-laravel
             protocol: '2025'

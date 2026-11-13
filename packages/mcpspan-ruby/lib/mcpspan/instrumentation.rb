@@ -39,8 +39,27 @@ module McpSpan
 
       server.singleton_class.prepend(ServerHooks)
       server.singleton_class.prepend(Primitives::ServerHooks) if Primitives.hookable?
+      rebind_handlers(server)
       watch_listings(server)
       server
+    end
+
+    # The gem keeps its handlers as methods bound when the server was built, and from 1.10 tells its own
+    # `resources/read` handler from a developer's by comparing one with `method(:read_resource)`. A singleton class
+    # with modules prepended makes every later `method` a different object, so the comparison fails and the gem calls
+    # its own reader the way it calls a developer's, without the arguments it needs. Binding them again, after the
+    # hooks, keeps them equal to what the gem compares them with.
+    def rebind_handlers(server)
+      handlers = server.instance_variable_get(:@handlers)
+      return unless handlers.is_a?(Hash)
+
+      handlers.each do |name, handler|
+        next unless handler.is_a?(::Method) && handler.receiver.equal?(server)
+
+        handlers[name] = server.method(handler.name)
+      end
+    rescue StandardError
+      nil
     end
 
     # Notes the tools each `tools/list` answer describes (contract, 3.8). The gem binds its handlers when the server

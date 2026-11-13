@@ -985,6 +985,12 @@ protocol revisions. It has no dependencies: delivery uses `Net::HTTP`.
   server's own records, so one answered by a developer's handler is named as
   well as one the gem answers. A gem without these methods leaves resources
   and prompts unrecorded and tools measured.
+- **The server's handlers are bound again after the hooks.** From `mcp` 1.10
+  the gem tells its own `resources/read` handler from a developer's by
+  comparing it with `method(:read_resource)`, and a singleton class with
+  modules prepended makes that a different object: the gem then called its
+  own reader without the arguments it needs, and every read failed. Since
+  0.8.2 the hooks bind the handlers again, so the comparison holds.
 
 Known limits:
 
@@ -998,8 +1004,9 @@ Known limits:
 
 `packages/mcpspan-php` (Composer `mcpspan/mcpspan`, namespace `McpSpan`)
 passes the conformance suite on Laravel MCP and on the official PHP MCP SDK,
-`mcp/sdk` 0.9, on both protocol revisions, and on `mcp/sdk` 0.8 on
-2025-11-25: 0.8 speaks 2026-07-28 over HTTP only, where a test covers it.
+`mcp/sdk` 0.9, on both protocol revisions. 0.9 is the oldest it takes,
+since 0.8.2: a security advisory against `mcp/sdk` 0.8 (its OAuth endpoints
+read request bodies without a limit) keeps Composer from installing it.
 
 - **One package.** PHP loads a class only when it is used, so both
   integrations live in the one package, with the MCP SDKs as suggestions, not
