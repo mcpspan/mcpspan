@@ -93,6 +93,7 @@ describe('the tools', () => {
     expect(tools.map((tool) => tool.name).sort()).toEqual([
       'compare_versions',
       'get_overview',
+      'get_release_report',
       'get_session',
       'get_tool',
       'get_tool_listing',
@@ -222,6 +223,22 @@ describe('where agents get lost', () => {
     const search = await ask('get_where_agents_get_lost', { tool: 'search' });
 
     expect(search.data).toMatchObject({ toolName: 'search', note: expect.any(String) });
+  });
+
+  it('report on the newest release against the one before it', async () => {
+    const { data } = await ask('get_release_report');
+
+    expect(data).toMatchObject({
+      server: 'Flights',
+      version: '1.1.0',
+      previous: '1.0.0',
+      verdict: 'too-early',
+      newFailures: [expect.objectContaining({ toolName: 'book', errorSource: 'exception', errorType: 'TimeoutError' })],
+    });
+
+    const older = await ask('get_release_report', { version: '1.0.0' });
+
+    expect(older.data).toMatchObject({ version: '1.0.0', previous: null, verdict: 'first' });
   });
 });
 

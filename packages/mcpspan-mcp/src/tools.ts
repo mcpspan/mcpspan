@@ -256,6 +256,33 @@ export function registerTools(mcp: McpServer, api: Api): void {
   );
 
   mcp.registerTool(
+    'get_release_report',
+    {
+      title: 'Release report',
+      description:
+        "Did a release make things worse: one server version against the one before it. The new version's calls from its first one (releasedAt), for up to 7 days or until a newer version came, against the previous version's calls over a period as long right before it. verdict is worse, same, better, too-early (under 50 calls on a side) or first (no earlier version); worse means errors rose by more than a point and more than chance, or p95 slowed by a quarter. Also: tools with their numbers either side, worst change first (definitionChanged when the description or schema changed with it; refused counts calls whose arguments the schema refused), newFailures (kinds of failure the previous version did not have), agents (what became of sessions either side), clients (share of calls either side; clientsShifted when the mix moved enough to change the numbers), and otherVersionCalls (calls after the release from another version).",
+      inputSchema: z.object({
+        server,
+        client,
+        version: z.string().optional().describe('The version to report on, as compare_versions gives it. The newest when left out.'),
+      }),
+      annotations: READ_ONLY,
+    },
+    (args) =>
+      answer(async () => {
+        const { servers } = await api.get<{ servers: ServerRecord[] }>('/v1/servers');
+        const chosen = pickServer(servers, args.server);
+        const result = await api.get<Record<string, unknown>>('/v1/dashboard/release', {
+          serverId: chosen.id,
+          clientType: args.client,
+          version: args.version,
+        });
+
+        return { server: chosen.name, ...result };
+      }),
+  );
+
+  mcp.registerTool(
     'get_tool_listing',
     {
       title: 'What agents are shown',

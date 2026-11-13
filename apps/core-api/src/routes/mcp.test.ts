@@ -57,7 +57,7 @@ describe('/mcp', () => {
     const { tools } = await client.listTools();
 
     expect(tools.map((tool) => tool.name)).toContain('list_servers');
-    expect(tools).toHaveLength(12);
+    expect(tools).toHaveLength(13);
     expect(client.getServerVersion()?.name).toBe('mcpspan');
 
     await client.close();
