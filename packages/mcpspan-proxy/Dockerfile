@@ -12,7 +12,7 @@
 #   docker run -p 6273:6273 -e MCPSPAN_API_KEY -e MCPSPAN_ENDPOINT ghcr.io/mcpspan/proxy http://server:3000/mcp
 
 # Pinned to a patch, as the API's image is.
-FROM node:24.22.1-alpine
+FROM node:24.22.3-alpine
 
 ENV NODE_ENV=production
 # In a container the proxy has to listen beyond itself to be reached.
