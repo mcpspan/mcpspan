@@ -15,7 +15,7 @@ dotnet add package McpSpan
 ```
 
 Needs .NET 8 or newer (tested on 8, 9 and 10) and the official MCP C# SDK,
-`ModelContextProtocol` 2.2 or newer. Nothing else.
+`ModelContextProtocol` 2.4 or newer. Nothing else.
 
 ## Use
 

@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>McpSpan</RootNamespace>
     <PackageId>McpSpan</PackageId>
-    <Version>0.8.1</Version>
+    <Version>0.8.2</Version>
     <Authors>Kacper Zatoń</Authors>
     <Description>Open-source analytics for MCP servers: which tools, resources and prompts get used, by which client, how fast, and why they fail.</Description>
     <PackageTags>mcp;model-context-protocol;analytics;telemetry;observability;monitoring;metrics;mcp-server;tool-calls;ai-agents</PackageTags>
@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <!-- The MCP SDK it instruments, and nothing else. -->
-    <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
+    <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
   </ItemGroup>
 
   <ItemGroup>

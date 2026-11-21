@@ -817,6 +817,8 @@ so that leaving it unset keeps the default: `OmitErrorMessages`.
 
 `packages/mcpspan-dotnet` (NuGet `McpSpan`) passes the conformance suite on
 the official MCP C# SDK, `ModelContextProtocol`, on both protocol revisions.
+2.4 is the oldest it takes, since 0.8.2: NuGet installs the lowest version a
+package allows, and 2.3.1 fixed authenticated stateful sessions.
 
 - **Instrumentation** is a call-tool filter, the MCP SDK's public extension
   point, added by `.WithMcpSpan()` on the server builder or
