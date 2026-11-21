@@ -4,8 +4,8 @@ go 1.25.5
 
 require (
 	github.com/mark3labs/mcp-go v1.6.0
-	github.com/mcpspan/mcpspan/packages/mcpspan-go v0.8.1
-	github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpgo v0.8.1
+	github.com/mcpspan/mcpspan/packages/mcpspan-go v0.8.2
+	github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpgo v0.8.2
 )
 
 require (

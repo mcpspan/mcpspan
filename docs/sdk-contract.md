@@ -690,9 +690,12 @@ Known limits:
 
 `packages/mcpspan-go` passes the conformance suite on the official Go SDK
 (`github.com/modelcontextprotocol/go-sdk`) and on mcp-go
-(`github.com/mark3labs/mcp-go`), on both protocol revisions. It is three
-modules: a core with no dependencies, and one per MCP SDK, so a server pulls
-in only the SDK it uses.
+(`github.com/mark3labs/mcp-go`, v1 and v2), on both protocol revisions. It is
+four modules: a core with no dependencies, and one per MCP SDK, so a server
+pulls in only the SDK it uses. mcp-go v2 moved its import path to `/v2` and
+nothing mcpspan reads, so `mcpgo2` is `mcpgo` with the imports moved, made
+from it by a test that fails when the two differ in anything else; everything
+said of mcp-go below holds for both.
 
 - **Delivery** runs on a goroutine, which never keeps a Go program running.
   Go has no hook for a program's end, so the final delivery (6.6) is

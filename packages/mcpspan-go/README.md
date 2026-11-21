@@ -17,11 +17,17 @@ only that SDK; the core has no dependencies at all.
 # The official SDK, github.com/modelcontextprotocol/go-sdk
 go get github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpsdk
 
-# mcp-go, github.com/mark3labs/mcp-go
+# mcp-go v1, github.com/mark3labs/mcp-go
 go get github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpgo
+
+# mcp-go v2, github.com/mark3labs/mcp-go/v2
+go get github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpgo2
 ```
 
-Needs Go 1.25 or newer (1.25.5 for mcp-go), and go-sdk 1.8+ or mcp-go 1.1+.
+Needs Go 1.25 or newer (1.25.5 for mcp-go), and go-sdk 1.8+, mcp-go 1.1+ or
+mcp-go 2.0+. `mcpgo` and `mcpgo2` are the same package for the two major
+versions of mcp-go, which differ in their import path; everything below that
+says `mcpgo` holds for `mcpgo2` as well.
 
 ## Use
 
@@ -54,7 +60,7 @@ func main() {
 }
 ```
 
-On mcp-go it is the same, from the other package:
+On mcp-go it is the same, from the other package (`mcpgo2` on mcp-go v2):
 
 ```go
 s := server.NewMCPServer("flights", "1.0.0", server.WithInputSchemaValidation())
@@ -277,12 +283,14 @@ per request can pass them every time.
 
 ## Developing
 
-Three modules, tied together by `go.work`: the core here, `mcpsdk` and
-`mcpgo`.
+Four modules, tied together by `go.work`: the core here, `mcpsdk`, `mcpgo`
+and `mcpgo2`. `mcpgo2` is made from `mcpgo`, never edited by hand: change
+`mcpgo`, then run `MCPSPAN_REGENERATE=1 go test -run TestGeneratedFromMcpgo .`
+in `mcpgo2`, whose tests fail while it is behind.
 
 ```sh
-go test ./... ./mcpsdk/... ./mcpgo/...
-go vet ./... ./mcpsdk/... ./mcpgo/...
+go test ./... ./mcpsdk/... ./mcpgo/... ./mcpgo2/...
+go vet ./... ./mcpsdk/... ./mcpgo/... ./mcpgo2/...
 ```
 
 The SDK follows [the contract every mcpspan SDK

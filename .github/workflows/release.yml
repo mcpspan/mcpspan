@@ -5,7 +5,7 @@ name: Release
 #
 #   mcpspan/v0.1.0                npm
 #   mcpspan-python/v0.1.0         PyPI
-#   packages/mcpspan-go/v0.1.0    Go (the tag Go itself reads; the mcpsdk and mcpgo modules are tagged with it)
+#   packages/mcpspan-go/v0.1.0    Go (the tag Go itself reads; the mcpsdk, mcpgo and mcpgo2 modules are tagged with it)
 #   mcpspan-dotnet/v0.1.0         NuGet
 #   mcpspan-jvm/v0.1.0            Maven Central
 #   mcpspan-rust/v0.1.0           crates.io
@@ -229,7 +229,7 @@ jobs:
         working-directory: packages/mcpspan-python
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
       - name: Version matches the tag
         run: grep -qx "SDK_VERSION = \"${TAG##*/v}\"" src/mcpspan/_version.py
       - run: uv sync --locked --group mcp2 && uv run --group mcp2 pytest -q
@@ -243,7 +243,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      # To tag the two integration modules alongside the core.
+      # To tag the integration modules alongside the core.
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -253,14 +253,14 @@ jobs:
           grep -qx "const Version = \"${version#v}\"" packages/mcpspan-go/internal/core/event.go
           # The integrations must ask for the core being released, since their
           # local replace means nothing to anybody who installs them.
-          for module in mcpsdk mcpgo; do
+          for module in mcpsdk mcpgo mcpgo2; do
             grep -q "github.com/mcpspan/mcpspan/packages/mcpspan-go ${version}$" "packages/mcpspan-go/$module/go.mod"
           done
       # The tags Go reads: the core's, unless the release was made with it, and the integrations'.
       - name: Tag the modules
         run: |
           version="v${TAG##*/v}"
-          for module in "" /mcpsdk /mcpgo; do
+          for module in "" /mcpsdk /mcpgo /mcpgo2; do
             tag="packages/mcpspan-go${module}/${version}"
             if [ "$tag" != "$TAG" ]; then
               git tag "$tag" "$GITHUB_SHA"
@@ -272,7 +272,7 @@ jobs:
       - name: Announce to the Go proxy
         run: |
           version="v${TAG##*/v}"
-          for module in "" /mcpsdk /mcpgo; do
+          for module in "" /mcpsdk /mcpgo /mcpgo2; do
             path="github.com/mcpspan/mcpspan/packages/mcpspan-go${module}"
             curl --fail --silent --show-error --retry 5 --retry-delay 10 \
               "https://proxy.golang.org/${path}/@v/${version}.info"
@@ -314,7 +314,7 @@ jobs:
         working-directory: packages/mcpspan-jvm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '25'
@@ -394,7 +394,7 @@ jobs:
         working-directory: packages/mcpspan-ruby
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+      - uses: ruby/setup-ruby@20eb24b0d509e2b9ed9b6d42ddfeb992915e0564 # v1.341.0
         with:
           ruby-version: '4.0'
           bundler-cache: true

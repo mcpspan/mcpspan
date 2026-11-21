@@ -145,7 +145,7 @@ Eight languages, the same features in each:
 |---|---|---|---|
 | TypeScript | official SDK, v1 and v2 | `npm install mcpspan` | [packages/mcpspan](packages/mcpspan/README.md) |
 | Python | official SDK, FastMCP | `pip install mcpspan` | [packages/mcpspan-python](packages/mcpspan-python/README.md) |
-| Go | official Go SDK, mcp-go | `go get github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpsdk` | [packages/mcpspan-go](packages/mcpspan-go/README.md) |
+| Go | official Go SDK, mcp-go v1 and v2 | `go get github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpsdk` | [packages/mcpspan-go](packages/mcpspan-go/README.md) |
 | C# / .NET | official C# SDK | `dotnet add package McpSpan` | [packages/mcpspan-dotnet](packages/mcpspan-dotnet/README.md) |
 | Java / Kotlin | official Java SDK | `com.mcpspan:mcpspan-java-sdk` | [packages/mcpspan-jvm](packages/mcpspan-jvm/README.md) |
 | Rust | rmcp | `cargo add mcpspan` | [packages/mcpspan-rust](packages/mcpspan-rust/README.md) |

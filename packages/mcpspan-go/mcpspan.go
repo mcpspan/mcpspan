@@ -9,8 +9,8 @@
 //	defer mcpspan.Shutdown(context.Background())
 //
 // github.com/mcpspan/mcpspan/packages/mcpspan-go/mcpsdk serves the official
-// SDK, github.com/modelcontextprotocol/go-sdk, and .../mcpspan-go/mcpgo serves
-// github.com/mark3labs/mcp-go. Without an API key nothing is collected and
+// SDK, github.com/modelcontextprotocol/go-sdk, .../mcpspan-go/mcpgo serves
+// github.com/mark3labs/mcp-go, and .../mcpspan-go/mcpgo2 its v2. Without an API key nothing is collected and
 // nothing is sent. Parameter values never leave the process.
 package mcpspan
 

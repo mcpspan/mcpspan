@@ -77,8 +77,17 @@ defer mcpspan.Shutdown(context.Background())`,
         },
         {
           id: 'mcp-go',
-          label: 'mcp-go',
+          label: 'mcp-go v1',
           code: `mcpgo.Instrument(s, mcpspan.Config{
+	APIKey:   os.Getenv("MCPSPAN_API_KEY"),
+	Endpoint: "${endpoint}",
+})
+defer mcpspan.Shutdown(context.Background())`,
+        },
+        {
+          id: 'mcp-go-v2',
+          label: 'mcp-go v2',
+          code: `mcpgo2.Instrument(s, mcpspan.Config{
 	APIKey:   os.Getenv("MCPSPAN_API_KEY"),
 	Endpoint: "${endpoint}",
 })

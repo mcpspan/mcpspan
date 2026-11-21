@@ -42,8 +42,8 @@ An SDK should pass on every revision the MCP SDK it builds on speaks. CI runs
 the TypeScript SDK three ways: on v1 of the official MCP SDK, which speaks
 2025-11-25 only, and on v2 over both revisions. It runs the Python SDK five
 ways: on v1 of the official Python MCP SDK, and on v2 and on FastMCP over both
-revisions. It runs the Go SDK four ways: on the official Go SDK and on mcp-go,
-over both revisions, the .NET SDK two ways, on the official C# SDK over
+revisions. It runs the Go SDK six ways: on the official Go SDK and on mcp-go v1 and
+v2, over both revisions, the .NET SDK two ways, on the official C# SDK over
 both, the JVM SDK once, on the official Java SDK over 2025-11-25, the only
 revision it speaks, the Rust SDK two ways, on rmcp over both, the Ruby SDK two ways, on the
 official `mcp` gem over both, and the PHP SDK three ways: on Laravel MCP over
@@ -115,8 +115,9 @@ the same on v2 of the official MCP SDK.
 version of the official Python MCP SDK, and
 [adapters/python-fastmcp/server.py](adapters/python-fastmcp/server.py) on
 FastMCP. [adapters/go-mcpsdk](adapters/go-mcpsdk/main.go) and
-[adapters/go-mcpgo](adapters/go-mcpgo/main.go) are the Go SDK's, on the
-official Go SDK and on mcp-go, and end with `mcpspan.Shutdown`, since Go has
+[adapters/go-mcpgo](adapters/go-mcpgo/main.go) and
+[adapters/go-mcpgo2](adapters/go-mcpgo2/main.go) are the Go SDK's, on the
+official Go SDK and on mcp-go v1 and v2, and end with `mcpspan.Shutdown`, since Go has
 no hook for a program's end. [adapters/dotnet](adapters/dotnet/Program.cs) is
 the .NET SDK's; build it with `dotnet build -c Release -o out` and run
 `["dotnet", "adapters/dotnet/out/Adapter.dll"]`. The MCP C# SDK refuses tool
