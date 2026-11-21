@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace McpSpan\McpSdk;
 
-use Mcp\Capability\RegistryInterface;
 use Mcp\Schema\JsonRpc\Error;
 use Mcp\Schema\JsonRpc\Request;
 use Mcp\Schema\JsonRpc\Response;
@@ -16,6 +15,7 @@ use Mcp\Server\Session\SessionInterface;
 use McpSpan\Core\Collector;
 use McpSpan\Core\Definitions;
 use McpSpan\Core\Event;
+use McpSpan\McpSdk\Sdk\RegistryInterface;
 use McpSpan\McpSpan;
 
 /**

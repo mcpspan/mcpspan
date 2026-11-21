@@ -9,10 +9,10 @@ require __DIR__.'/vendor/autoload.php';
 
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
-use Mcp\Server;
 use Mcp\Server\Transport\StdioTransport;
 use McpSpan\Exclude;
 use McpSpan\McpSdk;
+use McpSpan\McpSdk\Sdk\Server;
 
 final class ConformanceError extends \RuntimeException
 {

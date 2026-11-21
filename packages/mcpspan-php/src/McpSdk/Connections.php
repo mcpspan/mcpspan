@@ -7,9 +7,9 @@ namespace McpSpan\McpSdk;
 use Mcp\Schema\Implementation;
 use Mcp\Server\Builder;
 use Mcp\Server\Session\SessionInterface;
-use Mcp\Server\Stateless\RequestMeta;
 use Mcp\Server\Transport\StdioTransport;
 use McpSpan\Core\Event;
+use McpSpan\McpSdk\Sdk\RequestMeta;
 
 /**
  * Who a request came from, and on which connection: one per instrumented server, so its tool calls, reads and
@@ -38,8 +38,8 @@ final class Connections
      */
     public static function client(SessionInterface $session): array
     {
-        $meta = $session->get(RequestMeta::class);
-        if ($meta instanceof RequestMeta) {
+        $meta = self::meta($session);
+        if (null !== $meta) {
             return [$meta->clientInfo?->name, $meta->clientInfo?->version];
         }
         $info = $session->get('client_info');
@@ -67,7 +67,7 @@ final class Connections
      */
     public function session(SessionInterface $session): ?string
     {
-        if ($session->get(RequestMeta::class) instanceof RequestMeta) {
+        if (null !== self::meta($session)) {
             return $this->overStdio() ? ($this->stdioSession ??= Event::uuid()) : null;
         }
         $key = (string) $session->getId();
@@ -79,6 +79,20 @@ final class Connections
         }
 
         return $this->sessions[$key];
+    }
+
+    /**
+     * What a 2026-07-28 request says of itself, which the SDK keeps in the session under the class's own name: that
+     * of the SDK, not the alias the integration knows it by.
+     */
+    private static function meta(SessionInterface $session): ?RequestMeta
+    {
+        if (!class_exists(RequestMeta::class)) {
+            return null;
+        }
+        $meta = $session->get((new \ReflectionClass(RequestMeta::class))->getName());
+
+        return $meta instanceof RequestMeta ? $meta : null;
     }
 
     /**

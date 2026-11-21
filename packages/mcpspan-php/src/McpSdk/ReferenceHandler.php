@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace McpSpan\McpSdk;
 
-use Mcp\Capability\Registry\ElementReference;
-use Mcp\Capability\Registry\ReferenceHandler as SdkReferenceHandler;
-use Mcp\Capability\Registry\ReferenceHandlerInterface;
 use Mcp\Schema\JsonRpc\Request;
 use Mcp\Server\Builder;
+use McpSpan\McpSdk\Sdk\ElementReference;
+use McpSpan\McpSdk\Sdk\ReferenceHandler as SdkReferenceHandler;
+use McpSpan\McpSdk\Sdk\ReferenceHandlerInterface;
 use Psr\Container\ContainerInterface;
 
 /**

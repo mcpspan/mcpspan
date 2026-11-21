@@ -6,13 +6,13 @@ namespace McpSpan\Tests;
 
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
-use Mcp\Server;
 use Mcp\Server\Builder;
 use Mcp\Server\Session\InMemorySessionStore;
 use Mcp\Server\Transport\StreamableHttpTransport;
 use McpSpan\Exclude;
 use McpSpan\McpSdk;
 use McpSpan\McpSdk\Internals;
+use McpSpan\McpSdk\Sdk\Server;
 use McpSpan\McpSpan;
 use McpSpan\Tests\Support\UsesCapture;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -310,13 +310,13 @@ final class McpSdkTest extends TestCase
         $builder->build();
 
         self::assertIsArray(Internals::parts($builder), 'Builder::$parts');
-        foreach ([Server\Handler\Request\CallToolHandler::class, Server\Handler\Request\ReadResourceHandler::class, Server\Handler\Request\GetPromptHandler::class] as $class) {
+        foreach ([\Mcp\Server\Handler\Request\CallToolHandler::class, \Mcp\Server\Handler\Request\ReadResourceHandler::class, \Mcp\Server\Handler\Request\GetPromptHandler::class] as $class) {
             self::assertNotEmpty(array_filter(
                 Internals::parts($builder)['requestHandlers'],
                 static fn (object $handler): bool => $handler instanceof $class,
             ), $class);
         }
-        self::assertInstanceOf(\Mcp\Capability\RegistryInterface::class, Internals::parts($builder)['registry'] ?? null);
+        self::assertInstanceOf(McpSdk\Sdk\RegistryInterface::class, Internals::parts($builder)['registry'] ?? null);
         self::assertTrue((new \ReflectionClass(Builder::class))->hasProperty('referenceHandler'));
         self::assertTrue((new \ReflectionClass(Builder::class))->hasProperty('container'));
         self::assertTrue((new \ReflectionClass(Builder::class))->hasProperty('serverInfo'));

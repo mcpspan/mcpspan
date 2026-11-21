@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace McpSpan\McpSdk;
 
-use Mcp\Capability\Registry\PromptReference;
-use Mcp\Capability\Registry\ResourceReference;
-use Mcp\Capability\Registry\ResourceTemplateReference;
-use Mcp\Capability\RegistryInterface;
-use Mcp\Exception\MissingRequiredClientCapabilityException;
 use Mcp\Schema\JsonRpc\Error;
 use Mcp\Schema\JsonRpc\Request;
 use Mcp\Schema\JsonRpc\Response;
@@ -24,6 +19,11 @@ use McpSpan\Core\Call;
 use McpSpan\Core\Collector;
 use McpSpan\Core\Event;
 use McpSpan\Core\Text;
+use McpSpan\McpSdk\Sdk\MissingRequiredClientCapabilityException;
+use McpSpan\McpSdk\Sdk\PromptReference;
+use McpSpan\McpSdk\Sdk\RegistryInterface;
+use McpSpan\McpSdk\Sdk\ResourceReference;
+use McpSpan\McpSdk\Sdk\ResourceTemplateReference;
 
 /**
  * Answers `resources/read` and `prompts/get` (contract, 3.5) by handing them to the SDK's own handlers, and records

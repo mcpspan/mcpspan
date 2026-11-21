@@ -11,6 +11,7 @@ use McpSpan\McpSdk\Connections;
 use McpSpan\McpSdk\ListToolsHandler;
 use McpSpan\McpSdk\PrimitiveHandler;
 use McpSpan\McpSdk\ReferenceHandler;
+use McpSpan\McpSdk\Sdk;
 
 /**
  * Measures the tools, resource reads and prompt gets of a server built on the official PHP MCP SDK, `mcp/sdk`.
@@ -50,6 +51,9 @@ final class McpSdk
                 return $builder;
             }
             self::$instrumented[$builder] = true;
+
+            // Defines the names the integration knows the SDK's classes by (src/McpSdk/aliases.php).
+            interface_exists(Sdk\RegistryInterface::class);
 
             $connections = new Connections();
             $builder->setReferenceHandler(new ReferenceHandler($builder));

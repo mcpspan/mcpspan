@@ -17,17 +17,22 @@ jobs:
   test:
     # Only where the code is public: the private repository is tested before every export.
     if: github.repository == 'mcpspan/mcpspan'
-    name: PHP ${{ matrix.php }}
+    name: PHP ${{ matrix.php }}${{ matrix.sdk && format(', mcp/sdk {0}', matrix.sdk) || '' }}
     runs-on: ubuntu-latest
 
     # The oldest PHP the package declares and the newest. No lockfile is kept,
     # so each takes the newest MCP SDKs, Laravel and PHPUnit it can run: the
     # integration reads one private part of the MCP SDK's builder, and a
-    # release that moves it should fail here first.
+    # release that moves it should fail here first. mcp/sdk 0.9 once more on
+    # its own: 0.10 moved the classes the integration names, and both are
+    # taken.
     strategy:
       fail-fast: false
       matrix:
         php: ['8.2', '8.5']
+        include:
+          - php: '8.5'
+            sdk: '0.9'
 
     defaults:
       run:
@@ -41,16 +46,20 @@ jobs:
           php-version: ${{ matrix.php }}
           coverage: none
 
+      - if: matrix.sdk
+        run: composer require --dev --no-update "mcp/sdk:~${{ matrix.sdk }}.0"
+
       - run: composer update --no-interaction --no-progress
 
-      - run: composer validate --strict --no-check-lock
+      - if: '!matrix.sdk'
+        run: composer validate --strict --no-check-lock
 
       - run: vendor/bin/phpunit
 
       - if: matrix.php == '8.5'
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
-      - if: matrix.php == '8.5'
+      - if: matrix.php == '8.5' && !matrix.sdk
         run: vendor/bin/php-cs-fixer check
 
   conformance:
@@ -61,7 +70,8 @@ jobs:
 
     # The same suite the other SDKs pass, through a real MCP client over
     # stdio. The official PHP MCP SDK speaks both from 0.9, the oldest it
-    # takes: 0.8 has a security advisory against it. Laravel MCP speaks both.
+    # takes (0.8 has a security advisory against it), and is run on 0.9 and on
+    # the newest, 0.10 having moved its classes. Laravel MCP speaks both.
     strategy:
       fail-fast: false
       matrix:
@@ -74,6 +84,16 @@ jobs:
             adapter: php-mcpsdk
             protocol: '2026'
             command: '["php", "adapters/php-mcpsdk/server.php"]'
+          - name: official PHP MCP SDK 0.9, protocol 2025-11-25
+            adapter: php-mcpsdk
+            protocol: '2025'
+            command: '["php", "adapters/php-mcpsdk/server.php"]'
+            pin: mcp/sdk:~0.9.0
+          - name: official PHP MCP SDK 0.9, protocol 2026-07-28
+            adapter: php-mcpsdk
+            protocol: '2026'
+            command: '["php", "adapters/php-mcpsdk/server.php"]'
+            pin: mcp/sdk:~0.9.0
           - name: Laravel MCP, protocol 2025-11-25
             adapter: php-laravel
             protocol: '2025'
@@ -100,7 +120,11 @@ jobs:
           php-version: '8.5'
           coverage: none
 
-      - run: composer update --no-interaction --no-progress ${{ matrix.pin }}
+      - if: matrix.pin
+        run: composer require --no-update "${{ matrix.pin }}"
+        working-directory: conformance/adapters/${{ matrix.adapter }}
+
+      - run: composer update --no-interaction --no-progress
         working-directory: conformance/adapters/${{ matrix.adapter }}
 
       - run: pnpm --filter @mcpspan/conformance test

@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace McpSpan\McpSdk;
 
-use Mcp\Capability\Registry\ToolReference;
-use Mcp\Capability\RegistryInterface;
-use Mcp\Exception\MissingRequiredClientCapabilityException;
 use Mcp\Schema\JsonRpc\Error;
 use Mcp\Schema\JsonRpc\Request;
 use Mcp\Schema\JsonRpc\Response;
@@ -19,6 +16,9 @@ use McpSpan\Core\Call;
 use McpSpan\Core\Collector;
 use McpSpan\Core\Event;
 use McpSpan\Core\Text;
+use McpSpan\McpSdk\Sdk\MissingRequiredClientCapabilityException;
+use McpSpan\McpSdk\Sdk\RegistryInterface;
+use McpSpan\McpSdk\Sdk\ToolReference;
 use McpSpan\McpSpan;
 use McpSpan\Measuring;
 

@@ -1009,10 +1009,20 @@ Known limits:
 
 `packages/mcpspan-php` (Composer `mcpspan/mcpspan`, namespace `McpSpan`)
 passes the conformance suite on Laravel MCP and on the official PHP MCP SDK,
-`mcp/sdk` 0.9, on both protocol revisions. 0.9 is the oldest it takes,
+`mcp/sdk` 0.9 and 0.10, on both protocol revisions. 0.9 is the oldest it takes,
 since 0.8.2: a security advisory against `mcp/sdk` 0.8 (its OAuth endpoints
 read request bodies without a limit) keeps Composer from installing it.
 
+- **Two versions of the MCP SDK.** 0.10 moved the classes the integration
+  names (`Mcp\Capability\*` to `Mcp\Server\Capability\*`, the request
+  metadata to `Mcp\Schema`, `Mcp\Server` to `Mcp\Server\Server`) and little
+  else it reads. Since 0.8.3 the integration knows them by names of its own,
+  under `McpSpan\McpSdk\Sdk`, which an autoloader of the package makes
+  aliases of whichever the installed version has. Every one is defined at
+  once, since `instanceof` loads nothing, and nothing in the SDK's namespace
+  is touched. The request metadata is kept in the session under the SDK's own
+  class name, so it is read under that name, not the alias. CI runs the tests
+  and the conformance suite on 0.9 and on the newest.
 - **One package.** PHP loads a class only when it is used, so both
   integrations live in the one package, with the MCP SDKs as suggestions, not
   dependencies: a server pulls in nothing it does not already have, which is
