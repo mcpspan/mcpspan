@@ -208,25 +208,38 @@ export function registerTools(mcp: McpServer, api: Api): void {
     {
       title: 'List clients',
       description:
-        'The clients that called the server (Claude, Claude Code, Cursor, VS Code, ChatGPT and others), each with its calls, error rate and response times.',
+        "The clients that called the server (Claude, Claude Code, Cursor, VS Code, ChatGPT and others), each with its calls, error rate and response times, and its versions newest first: each version's calls, error rate, refused (calls whose arguments the schema refused), when it was first seen (isNew when within the window), and a verdict against the version of the same client before it (previous). The verdict counts only refused arguments, tool by tool, on the server versions both called (comparedOn), so a server release or outage in the same days is not blamed on the client: worse, same, better, too-early (no tool with 10 calls from each) or first. changedTools names the tools that decided it. olderCalls counts calls from versions past the ones named, unversionedCalls those from clients that gave no version.",
       inputSchema: z.object({ ...scope }),
       annotations: READ_ONLY,
     },
     (args) =>
       answer(async () => {
         const at = await locate(api, args);
-        const summary = await api.get<{ clients: { clientType: string; calls: number }[] }>(
-          '/v1/dashboard/summary',
-          at.query(),
-        );
+        const [summary, { clients: versions }] = await Promise.all([
+          api.get<{ clients: { clientType: string; calls: number }[] }>('/v1/dashboard/summary', at.query()),
+          api.get<{ clients: ({ clientType: string; versions: Record<string, unknown>[] } & Record<string, unknown>)[] }>(
+            '/v1/dashboard/client-versions',
+            at.query(),
+          ),
+        ]);
         const clients = await Promise.all(
           summary.clients.slice(0, 15).map(async ({ clientType }) => {
             const one = await api.get<Record<string, unknown>>(
               '/v1/dashboard/summary',
               at.query({ clientType }),
             );
+            const own = versions.find((entry) => entry.clientType === clientType);
 
-            return { clientType, ...pick(one, ['totalCalls', 'failedCalls', 'errorRate', 'durationMs']) };
+            return {
+              clientType,
+              ...pick(one, ['totalCalls', 'failedCalls', 'errorRate', 'durationMs']),
+              ...(own === undefined
+                ? {}
+                : {
+                    versions: own.versions.map((version) => omit(version, ['errors', 'durationMs', 'lastSeenAt'])),
+                    ...pick(own, ['olderCalls', 'unversionedCalls']),
+                  }),
+            };
           }),
         );
 

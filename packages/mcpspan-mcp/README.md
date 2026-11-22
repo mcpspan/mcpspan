@@ -154,7 +154,7 @@ account has one) and a window: `days` back from now (7 when left out), or
 | `get_tool` | One tool: why it failed, refused arguments, answer sizes, definition changes, repeats, and the call before each failure. |
 | `list_errors` | The latest failed calls, with the kind of failure and the message. |
 | `list_unknown_tools` | Tools agents asked for that the server lacks, the closest one it has, and what the agent did next. |
-| `list_clients` | Each client's calls, error rate and response times. |
+| `list_clients` | Each client's calls, error rate and response times, and its versions: which one is new, and whether the newest gets its arguments refused more often than the one before it. |
 | `compare_versions` | The server's releases side by side. |
 | `get_release_report` | Did a release make things worse: a version against the one before it, tool by tool. |
 | `get_tool_listing` | What agents were shown: tools never used, and what their definitions cost. |

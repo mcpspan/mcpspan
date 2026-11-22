@@ -58,8 +58,8 @@ beforeEach(async () => {
   const ago = (minutes: number) => new Date(Date.now() - minutes * 60 * 1000);
 
   await seedEvents(account.serverId, [
-    { toolName: 'search', clientType: 'claude-code', occurredAt: ago(50), sessionId: SESSION, serverVersion: '1.0.0' },
-    { toolName: 'search', clientType: 'claude-code', occurredAt: ago(40), sessionId: SESSION, serverVersion: '1.1.0' },
+    { toolName: 'search', clientType: 'claude-code', clientName: 'claude-code', clientVersion: '2.0.0', occurredAt: ago(50), sessionId: SESSION, serverVersion: '1.0.0' },
+    { toolName: 'search', clientType: 'claude-code', clientName: 'claude-code', clientVersion: '2.1.0', occurredAt: ago(40), sessionId: SESSION, serverVersion: '1.1.0' },
     {
       toolName: 'book',
       clientType: 'cursor',
@@ -167,6 +167,19 @@ describe('the tools', () => {
         expect.objectContaining({ clientType: 'cursor', totalCalls: 1, errorRate: 1 }),
       ]),
     );
+  });
+
+  it("give each client's versions", async () => {
+    const { data } = await ask('list_clients');
+    const clients = data['clients'] as { clientType: string; versions?: Record<string, unknown>[]; unversionedCalls?: number }[];
+    const claudeCode = clients.find((c) => c.clientType === 'claude-code')!;
+
+    expect(claudeCode.versions!.map((v) => [v['version'], v['previous'], v['verdict']])).toEqual([
+      ['2.1.0', '2.0.0', 'too-early'],
+      ['2.0.0', null, 'first'],
+    ]);
+    expect(claudeCode.versions![0]).not.toHaveProperty('lastSeenAt');
+    expect(clients.find((c) => c.clientType === 'cursor')).toMatchObject({ versions: [], unversionedCalls: 1 });
   });
 
   it('compare the versions', async () => {

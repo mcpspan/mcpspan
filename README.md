@@ -54,6 +54,11 @@ install.
   own chart also marks where its description or input schema
   changed, since rewording a description can change how agents use a tool
   more than a change to its code.
+- **Client versions.** Clients update themselves, and nobody tells the
+  server's author. Under each client, its versions: which one is new, and
+  whether the newest gets its arguments refused more often than the one
+  before it, tool by tool, compared only on the releases of your server
+  both called, so a release of yours is not blamed on the client.
 - **Alerts** to Slack, Discord or any webhook, when errors climb or a server
   goes quiet, for a whole server or one tool.
 - **Your data, yours to take.** CSV and NDJSON exports of anything you can
