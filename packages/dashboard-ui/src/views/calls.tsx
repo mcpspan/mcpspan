@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { CallList } from '../components/call-list';
 import { ChoiceLinks } from '../components/choice-links';
 import { DownloadLinks } from '../components/download-links';
@@ -8,6 +10,7 @@ import { CursorPager } from '../components/pager';
 import { RangeLabel, RangePicker } from '../components/range-picker';
 import { Card, CardHeader } from '../components/ui/card';
 import { ApiError, getCalls, getFilterOptions } from '../lib/api';
+import { withParams } from '../lib/query';
 import { resolveRange } from '../lib/range';
 import { currentSession } from '../lib/session';
 
@@ -46,7 +49,17 @@ export default async function CallsPage({
   const [calls, options] = await Promise.all([
     getCalls(session, {
       ...range.window,
-      ...carried(['serverId', 'toolName', 'clientType', 'outcome', 'kind', 'serverVersion', 'before']),
+      ...carried([
+        'serverId',
+        'toolName',
+        'clientType',
+        'outcome',
+        'kind',
+        'serverVersion',
+        'clientName',
+        'clientVersion',
+        'before',
+      ]),
     }).catch(asApiError),
     getFilterOptions(session, { ...range.window, ...carried(['serverId']) }).catch(asApiError),
   ]);
@@ -88,6 +101,8 @@ export default async function CallsPage({
               actions={<DownloadLinks label="Export" links={exportLinks} />}
             />
           )}
+
+          <VersionNotice params={params} />
 
           <div className="mb-4 flex flex-wrap gap-2">
             <ChoiceLinks
@@ -143,5 +158,36 @@ export default async function CallsPage({
         </>
       )}
     </main>
+  );
+}
+
+/**
+ * Says when the list is narrowed to one version, of the server or of a client,
+ * which the filters above do not show: those links come from the versions
+ * table and the clients card. With the way back to every version.
+ */
+function VersionNotice({ params }: { params: Record<string, string | undefined> }) {
+  const client =
+    params['clientName'] !== undefined && params['clientVersion'] !== undefined
+      ? `${params['clientName']} ${params['clientVersion']}`
+      : undefined;
+  const server = params['serverVersion'];
+  if (client === undefined && server === undefined) return null;
+
+  const parts = [
+    ...(client === undefined ? [] : [`from ${client}`]),
+    ...(server === undefined ? [] : [`answered by server version ${server}`]),
+  ];
+
+  return (
+    <p className="mb-4 text-sm text-ink-muted">
+      Only calls {parts.join(', ')}.{' '}
+      <Link
+        href={`/calls${withParams(params, { clientName: undefined, clientVersion: undefined, serverVersion: undefined, before: undefined })}`}
+        className="text-ink underline underline-offset-2"
+      >
+        Every version
+      </Link>
+    </p>
   );
 }

@@ -51,6 +51,7 @@ export async function insertEvents(
   }
 
   await noteVersions(serverId, events);
+  await noteClientVersions(serverId, events);
   await noteDefinitions(serverId, events);
 
   return stored;
@@ -180,6 +181,50 @@ async function noteVersions(serverId: string, events: readonly ToolCallEventInpu
       [...seen.keys()],
       [...seen.values()].map((range) => range.first),
       [...seen.values()].map((range) => range.last),
+    ],
+  );
+}
+
+/**
+ * Keeps when each version of each client was first and last seen, from the
+ * calls in a batch, as noteVersions does for the server's own. By the client's
+ * name: a listing says what was shown, not who called, and is left out.
+ */
+async function noteClientVersions(serverId: string, events: readonly ToolCallEventInput[]): Promise<void> {
+  const seen = new Map<string, { name: string; version: string; first: string; last: string }>();
+
+  for (const event of events) {
+    if (event.kind === 'listing') continue;
+    if (event.clientName === undefined || event.clientName === '') continue;
+    if (event.clientVersion === undefined || event.clientVersion === '') continue;
+    const at = new Date(event.timestamp).toISOString();
+    const key = JSON.stringify([event.clientName, event.clientVersion]);
+    const known = seen.get(key);
+    seen.set(key, {
+      name: event.clientName,
+      version: event.clientVersion,
+      first: known === undefined || at < known.first ? at : known.first,
+      last: known === undefined || at > known.last ? at : known.last,
+    });
+  }
+
+  if (seen.size === 0) return;
+
+  const rows = [...seen.values()];
+  await getPool().query(
+    `INSERT INTO client_versions (server_id, client_name, version, first_seen_at, last_seen_at)
+     SELECT $1::uuid, client_name, version, first_seen_at, last_seen_at
+     FROM unnest($2::text[], $3::text[], $4::timestamptz[], $5::timestamptz[])
+       AS seen (client_name, version, first_seen_at, last_seen_at)
+     ON CONFLICT (server_id, client_name, version) DO UPDATE SET
+       first_seen_at = LEAST(client_versions.first_seen_at, EXCLUDED.first_seen_at),
+       last_seen_at = GREATEST(client_versions.last_seen_at, EXCLUDED.last_seen_at)`,
+    [
+      serverId,
+      rows.map((row) => row.name),
+      rows.map((row) => row.version),
+      rows.map((row) => row.first),
+      rows.map((row) => row.last),
     ],
   );
 }

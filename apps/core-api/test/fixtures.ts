@@ -168,6 +168,16 @@ export async function seedEvents(serverId: string, seeds: readonly EventSeed[]):
         [serverId, seed.serverVersion, seed.occurredAt ?? new Date()],
       );
     }
+    if (seed.clientName !== undefined && seed.clientVersion !== undefined) {
+      await getPool().query(
+        `INSERT INTO client_versions (server_id, client_name, version, first_seen_at, last_seen_at)
+         VALUES ($1, $2, $3, $4, $4)
+         ON CONFLICT (server_id, client_name, version) DO UPDATE SET
+           first_seen_at = LEAST(client_versions.first_seen_at, EXCLUDED.first_seen_at),
+           last_seen_at = GREATEST(client_versions.last_seen_at, EXCLUDED.last_seen_at)`,
+        [serverId, seed.clientName, seed.clientVersion, seed.occurredAt ?? new Date()],
+      );
+    }
   }
 
   await refreshRollup();

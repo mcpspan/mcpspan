@@ -99,6 +99,7 @@ describe('versions at ingest', () => {
       timestamp: at,
       sdkVersion: '0.1.0',
       serverVersion: '2.0.0',
+      clientName: 'cursor-vscode',
       clientVersion: '1.2.3',
     };
     const post = () =>
@@ -111,6 +112,7 @@ describe('versions at ingest', () => {
     await getPool().query('DELETE FROM server_versions');
     expect((await post()).status).toBe(202);
     await getPool().query('DELETE FROM server_versions');
+    await getPool().query('DELETE FROM client_versions');
     // The same batch again, as an SDK resends one whose answer it missed: nothing new is stored, and the version is still noted.
     expect((await post()).status).toBe(202);
 
@@ -118,5 +120,9 @@ describe('versions at ingest', () => {
     expect(call.call).toMatchObject({ serverVersion: '2.0.0', clientVersion: '1.2.3' });
     const noted = await getPool().query('SELECT version FROM server_versions WHERE server_id = $1', [account.serverId]);
     expect(noted.rows.map((row: { version: string }) => row.version)).toEqual(['2.0.0']);
+    const clients = await getPool().query('SELECT client_name, version FROM client_versions WHERE server_id = $1', [
+      account.serverId,
+    ]);
+    expect(clients.rows).toEqual([{ client_name: 'cursor-vscode', version: '1.2.3' }]);
   });
 });

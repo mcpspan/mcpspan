@@ -1,7 +1,9 @@
-import type { ClientsOverTime as Clients } from '../lib/api';
+import type { ClientsOverTime as Clients, ClientVersions } from '../lib/api';
 import { ago } from '../lib/diagnosis';
 import { OTHER_CLIENTS } from '../lib/client-colors';
 import { clientLabel, formatCount } from '../lib/format';
+import type { Params } from '../lib/query';
+import { ClientVersionList } from './client-version-list';
 import { LocalTime } from './local-time';
 
 const ROW = 'grid grid-cols-[1fr_5rem] items-center gap-4 py-3 text-sm sm:grid-cols-[1fr_6rem]';
@@ -17,12 +19,18 @@ export function ClientsOverTime({
   data,
   totalCalls,
   colors = {},
+  versions = [],
+  carried = {},
 }: {
   data: Clients;
   /** Every call in the window, so a share is of all of them and not of this page. */
   totalCalls: number;
   /** Each client's colour on the ring above, so its row is drawn in the same one. */
   colors?: Record<string, string>;
+  /** Each client's versions, shown under its row when it gave any. */
+  versions?: ClientVersions[];
+  /** What a version's link to its calls keeps of the page's address. */
+  carried?: Params;
 }) {
   if (data.clients.length === 0) {
     return <p className="text-sm text-ink-muted">No calls in this window.</p>;
@@ -34,6 +42,7 @@ export function ClientsOverTime({
   // Quiet for more than a quarter of the window is worth saying; less than
   // that is a client that is simply not busy at every hour.
   const quietAfter = Date.now() - windowMs / 4;
+  const byType = new Map(versions.map((entry) => [entry.clientType, entry]));
   return (
     <ul className="divide-y divide-border">
       {data.clients.map((client) => {
@@ -77,6 +86,12 @@ export function ClientsOverTime({
                 {Math.round((client.calls / Math.max(total, 1)) * 100)}%
               </span>
             </p>
+
+            {byType.has(client.clientType) ? (
+              <div className="col-span-2 -mt-1">
+                <ClientVersionList data={byType.get(client.clientType)!} carried={carried} clientIsNew={isNew} />
+              </div>
+            ) : null}
           </li>
         );
       })}

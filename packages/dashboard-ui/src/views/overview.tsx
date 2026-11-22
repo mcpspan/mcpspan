@@ -31,6 +31,7 @@ import {
   getResourcesAndPrompts,
   getUnknownTools,
   getToolListing,
+  getClientVersions,
   getReleaseReport,
   getVersions,
 } from '../lib/api';
@@ -117,7 +118,7 @@ export default async function OverviewPage({
     { text: 'NDJSON', kind: 'calls' as const, params: { ...query, format: 'ndjson' } },
   ];
 
-  const [summary, previous, timeseries, tools, options, unknownTools, latency, clients, primitives, versions, listing, lost, release] =
+  const [summary, previous, timeseries, tools, options, unknownTools, latency, clients, primitives, versions, listing, lost, release, clientVersions] =
     await Promise.all([
       getSummary(session, query).catch(asApiError),
       // The same question about the window before, for the cards to compare
@@ -168,6 +169,8 @@ export default async function OverviewPage({
       }).catch(() => undefined),
       // The newest release against the one before, whatever the window; narrowed by client only. Losing it loses the card.
       getReleaseReport(session, { ...pick(params, ['serverId', 'clientType']) }).catch(() => undefined),
+      // Each client's versions, under its row. Losing it loses the versions, not the card.
+      getClientVersions(session, query).catch(() => undefined),
     ]);
 
   return (
@@ -336,6 +339,8 @@ export default async function OverviewPage({
                     data={clients}
                     totalCalls={summary.totalCalls}
                     colors={clientColors(summary.clients, clients.clients)}
+                    versions={clientVersions ?? []}
+                    carried={pick(params, ['serverId', 'range'])}
                   />
                 </div>
                 <OffsetPager

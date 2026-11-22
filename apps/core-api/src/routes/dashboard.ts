@@ -17,6 +17,7 @@ import {
 import { type AccountStore, selfHostedAccounts } from '../accounts.ts';
 import { chooseBucketSeconds } from '../buckets.ts';
 import { getCall, isCallKind, isOutcome, listCalls } from '../calls.ts';
+import { getClientVersions } from '../client-versions.ts';
 import { getClientsOverTime } from '../clients.ts';
 import { decodeCursor, parsePage } from '../paging.ts';
 import { csvLine, exportCalls, exportFileName, serverName } from '../export.ts';
@@ -166,6 +167,18 @@ export function createDashboardRoutes(accounts: AccountStore = selfHostedAccount
     return c.json({
       range: describeRange(scope.range),
       ...(await getVersions(scope.serverId, scope.range, scope.filters)),
+    });
+  });
+
+  // Tool calls by the version of the client that made them, and whether a client's newest fails more than the one before.
+  app.get('/client-versions', async (c) => {
+    const scope = resolveScope(c);
+
+    if ('error' in scope) return c.json({ error: scope.error }, scope.status);
+
+    return c.json({
+      range: describeRange(scope.range),
+      clients: await getClientVersions(scope.serverId, scope.range, scope.filters),
     });
   });
 
@@ -541,12 +554,19 @@ export function createDashboardRoutes(accounts: AccountStore = selfHostedAccount
     const outcome = c.req.query('outcome') ?? 'all';
     const kind = c.req.query('kind');
     const serverVersion = c.req.query('serverVersion');
+    const clientName = c.req.query('clientName');
+    const clientVersion = c.req.query('clientVersion');
 
     if (before !== undefined && 'error' in before) return c.json({ error: before.error }, 400);
     if ('error' in limit) return c.json({ error: limit.error }, 400);
     if (!isOutcome(outcome)) return c.json({ error: `'outcome' must be all, failed or succeeded` }, 400);
     if (kind !== undefined && !isCallKind(kind)) {
       return c.json({ error: `'kind' must be tool, resource or prompt` }, 400);
+    }
+    for (const [name, value] of Object.entries({ serverVersion, clientName, clientVersion })) {
+      if (value !== undefined && value.length > 200) {
+        return c.json({ error: `'${name}' is too long, at most 200 characters` }, 400);
+      }
     }
 
     return c.json({
@@ -556,6 +576,8 @@ export function createDashboardRoutes(accounts: AccountStore = selfHostedAccount
         outcome,
         ...(kind === undefined ? {} : { kind }),
         ...(serverVersion === undefined ? {} : { serverVersion }),
+        ...(clientName === undefined ? {} : { clientName }),
+        ...(clientVersion === undefined ? {} : { clientVersion }),
       })),
     });
   });

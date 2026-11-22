@@ -88,7 +88,14 @@ export async function listCalls(
   limit: number,
   filters: Filters,
   before: Cursor | undefined,
-  options: { outcome: Outcome; kind?: CallKind; serverVersion?: string },
+  options: {
+    outcome: Outcome;
+    kind?: CallKind;
+    serverVersion?: string;
+    /** A client's version means something only with its name: each client numbers its own. */
+    clientName?: string;
+    clientVersion?: string;
+  },
 ): Promise<{ calls: CallRecord[]; nextCursor: string | null }> {
   const params: unknown[] = [serverId, range.from, range.to];
 
@@ -112,6 +119,14 @@ export async function listCalls(
   if (options.serverVersion !== undefined) {
     params.push(options.serverVersion);
     version = `AND server_version = $${params.length}`;
+  }
+  if (options.clientName !== undefined) {
+    params.push(options.clientName);
+    version += ` AND client_name = $${params.length}`;
+  }
+  if (options.clientVersion !== undefined) {
+    params.push(options.clientVersion);
+    version += ` AND client_version = $${params.length}`;
   }
 
   const kinds = (Object.keys(CALL_TABLES) as CallKind[]).filter(

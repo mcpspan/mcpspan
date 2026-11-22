@@ -186,13 +186,22 @@ export function compare(before: ReleaseSide | null, after: ReleaseSide | null, m
   return 'same';
 }
 
-/** 1 when errors rose beyond chance, -1 when they fell, 0 otherwise: a two-proportion z-test. */
+/** 1 when errors rose beyond chance, -1 when they fell, 0 otherwise. */
 function errorChange(before: ReleaseSide, after: ReleaseSide): number {
-  const difference = after.errorRate - before.errorRate;
+  return rateChange(before.errors, before.calls, after.errors, after.calls);
+}
+
+/**
+ * 1 when a share of calls rose by a point and beyond chance, -1 when it fell
+ * so, 0 otherwise: a two-proportion z-test.
+ */
+export function rateChange(beforeCount: number, beforeCalls: number, afterCount: number, afterCalls: number): number {
+  if (beforeCalls === 0 || afterCalls === 0) return 0;
+  const difference = afterCount / afterCalls - beforeCount / beforeCalls;
   if (Math.abs(difference) < ERROR_RATE_POINTS) return 0;
 
-  const pooled = (before.errors + after.errors) / (before.calls + after.calls);
-  const spread = Math.sqrt(pooled * (1 - pooled) * (1 / before.calls + 1 / after.calls));
+  const pooled = (beforeCount + afterCount) / (beforeCalls + afterCalls);
+  const spread = Math.sqrt(pooled * (1 - pooled) * (1 / beforeCalls + 1 / afterCalls));
   if (spread === 0 || Math.abs(difference) / spread < Z_SCORE) return 0;
 
   return Math.sign(difference);

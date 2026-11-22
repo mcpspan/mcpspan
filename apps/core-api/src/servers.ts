@@ -221,7 +221,7 @@ export async function deleteServerData(
 
     await client.query(`DELETE FROM tool_listings WHERE server_id = $1 AND ${within('occurred_at')}`, params);
 
-    for (const table of ['tool_definitions', 'server_versions']) {
+    for (const table of ['tool_definitions', 'server_versions', 'client_versions']) {
       await client.query(
         `DELETE FROM ${table} WHERE server_id = $1 AND ${within('first_seen_at')} AND ${within('last_seen_at')}`,
         params,

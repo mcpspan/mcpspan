@@ -498,6 +498,34 @@ export interface ReleaseSide {
   durationMs: { p50: number | null; p95: number | null };
 }
 
+/** A version of a client, as it called in the window, against the one of the same client before it. */
+export interface ClientVersion extends ReleaseSide {
+  clientName: string;
+  version: string;
+  refused: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  isNew: boolean;
+  previous: string | null;
+  /** Against the previous version, by the tools whose arguments it gets refused more or less often. */
+  verdict: ReleaseVerdict;
+  changedTools: {
+    toolName: string;
+    change: 'worse' | 'better';
+    before: { calls: number; refused: number };
+    after: { calls: number; refused: number };
+  }[];
+  /** The server versions the two were compared on. */
+  comparedOn: string[];
+}
+
+export interface ClientVersions {
+  clientType: string;
+  versions: ClientVersion[];
+  olderCalls: number;
+  unversionedCalls: number;
+}
+
 export interface ReleaseTool {
   toolName: string;
   /** Null when that side had no calls to it. */
@@ -633,6 +661,9 @@ export interface Query {
   outcome?: string;
   kind?: string;
   serverVersion?: string;
+  /** The calls list only: one version of one client. */
+  clientName?: string;
+  clientVersion?: string;
   /** The release report only: the version to report on. */
   version?: string;
 
@@ -697,6 +728,11 @@ export function getFailures(session: Session, query: Query = {}): Promise<Failur
 /** Tool calls by the version of the server that answered them. */
 export function getVersions(session: Session, query: Query = {}): Promise<Versions> {
   return request<Versions>('dashboard/versions', session, query);
+}
+
+/** Tool calls by client version, each client's newest against the one before it. */
+export async function getClientVersions(session: Session, query: Query = {}): Promise<ClientVersions[]> {
+  return (await request<{ clients: ClientVersions[] }>('dashboard/client-versions', session, query)).clients;
 }
 
 /** What the server listed to sessions in the window, and what they used of it. */
