@@ -25,6 +25,13 @@ export function getPool(): Pool {
       connectionString: requireDatabaseUrl(),
       connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
       idleTimeoutMillis: IDLE_TIMEOUT_MS,
+      // Calls older than two weeks are compressed (migration 1790450000000), and
+      // changing them decompresses them first. TimescaleDB stops a statement
+      // past 100,000 such rows, which deleting a server, deleting a range of its
+      // data or giving calls a new client type all go past on any real
+      // installation. Those are the only statements that change old calls, and
+      // each is meant to reach every row it names.
+      options: '-c timescaledb.max_tuples_decompressed_per_dml_transaction=0',
     });
 
     // A pooled connection sitting idle can still be cut off, by the database

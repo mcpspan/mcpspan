@@ -29,7 +29,7 @@ services:
     # Pinned rather than tracking latest: a database that quietly upgrades
     # itself underneath somebody's production data is not a surprise anyone
     # wants to discover during an outage.
-    image: timescale/timescaledb:2.30.1-pg17
+    image: timescale/timescaledb:2.30.3-pg17
     container_name: mcpspan-db
     restart: unless-stopped
     environment:
@@ -60,7 +60,7 @@ services:
     build:
       context: .
       dockerfile: apps/core-api/Dockerfile
-    image: ghcr.io/mcpspan/core-api:0.16.0
+    image: ghcr.io/mcpspan/core-api:0.17.0
     container_name: mcpspan-migrate
     restart: 'no'
     depends_on:
@@ -74,7 +74,7 @@ services:
     build:
       context: .
       dockerfile: apps/core-api/Dockerfile
-    image: ghcr.io/mcpspan/core-api:0.16.0
+    image: ghcr.io/mcpspan/core-api:0.17.0
     container_name: mcpspan-api
     restart: unless-stopped
     depends_on:
@@ -131,7 +131,7 @@ services:
     build:
       context: .
       dockerfile: apps/core-dashboard/Dockerfile
-    image: ghcr.io/mcpspan/core-dashboard:0.16.0
+    image: ghcr.io/mcpspan/core-dashboard:0.17.0
     container_name: mcpspan-dashboard
     restart: unless-stopped
     depends_on:

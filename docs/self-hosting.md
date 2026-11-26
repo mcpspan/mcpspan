@@ -72,6 +72,11 @@ Raw events are dropped after `MCPSPAN_RETENTION_DAYS`, which starts at 90. The
 summary is kept for two years. Nothing has to be pruned by hand, and nothing
 grows without a bound.
 
+Raw events older than two weeks are compressed, and take around a twelfth of
+the space they did. The dashboard reads them as before. On a TimescaleDB
+without compression, such as the Apache-only build some managed databases
+offer, they are kept uncompressed.
+
 The one thing to know: a percentile over a window longer than an hour is read
 from that histogram rather than sorted out of the raw calls, so it lands inside
 the step containing the call at that rank rather than on its exact duration.
