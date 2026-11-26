@@ -96,6 +96,7 @@ services:
       # in this file would quietly pre-empt.
       MCPSPAN_RETENTION_DAYS: ${MCPSPAN_RETENTION_DAYS:-}
       MCPSPAN_ROLLUP_RETENTION_DAYS: ${MCPSPAN_ROLLUP_RETENTION_DAYS:-}
+      MCPSPAN_COMPRESS_AFTER_DAYS: ${MCPSPAN_COMPRESS_AFTER_DAYS:-}
       # How fast a server may write. Passed through for the same reason as the
       # retention above: the API refuses a value that makes no sense and says
       # so, which a default here would pre-empt.

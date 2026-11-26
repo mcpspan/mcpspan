@@ -55,6 +55,7 @@ setting by setting. The ones that matter:
 | `MCPSPAN_INGEST_URL` | The address of the Core API as the outside world reaches it. Leave it unset while everything is on one machine. Set it once the stack is somewhere else, and the setup snippet in the dashboard follows. |
 | `MCPSPAN_DASHBOARD_URL` | The dashboard as people open it in a browser. MCP clients that sign in to `/mcp` send people there to allow them. `http://localhost:6270` by default; set it to the public address when the dashboard has one. |
 | `MCPSPAN_RETENTION_DAYS` | How long raw events are kept. 90 by default, and not settable below 8. |
+| `MCPSPAN_COMPRESS_AFTER_DAYS` | After how many days raw events are compressed. 14 by default, not settable below 8; 0 turns it off. |
 | `MCPSPAN_BIND_ADDRESS` | Where the dashboard and the API listen. Every interface by default, so MCP servers elsewhere can reach the API; `127.0.0.1` keeps both to this machine. |
 | `MCPSPAN_INGEST_EVENTS_PER_SECOND` | How fast one server may write. 100 by default, which is ten times a busy one. |
 
@@ -73,7 +74,10 @@ summary is kept for two years. Nothing has to be pruned by hand, and nothing
 grows without a bound.
 
 Raw events older than two weeks are compressed, and take around a twelfth of
-the space they did. The dashboard reads them as before. On a TimescaleDB
+the space they did. The dashboard reads them as before. Deleting a server or
+a range of its data takes longer on them, a few seconds for a million calls.
+`MCPSPAN_COMPRESS_AFTER_DAYS` sets the two weeks; 0 stops compressing what
+comes next and leaves what is compressed as it is. On a TimescaleDB
 without compression, such as the Apache-only build some managed databases
 offer, they are kept uncompressed.
 

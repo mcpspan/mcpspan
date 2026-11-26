@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createAccount, resetDatabase, seedEvents, type TestAccount } from '../test/fixtures.ts';
 import { createApp } from './app.ts';
+import { currentCompressAfterDays, DEFAULT_COMPRESS_AFTER_DAYS, reconcileCompression } from './compression.ts';
 import { closePool, getPool } from './db.ts';
 import { deleteServer, deleteServerData } from './servers.ts';
 
@@ -107,5 +108,41 @@ describe('compressed calls', () => {
     );
 
     expect(result.rows[0]?.limit).toBe('0');
+  });
+});
+
+describe('MCPSPAN_COMPRESS_AFTER_DAYS', () => {
+  afterEach(async () => {
+    delete process.env['MCPSPAN_COMPRESS_AFTER_DAYS'];
+    await reconcileCompression();
+  });
+
+  it('moves when calls are compressed', async () => {
+    process.env['MCPSPAN_COMPRESS_AFTER_DAYS'] = '30';
+    await reconcileCompression();
+
+    expect(await currentCompressAfterDays('tool_calls')).toBe(30);
+    expect(await currentCompressAfterDays('tool_listings')).toBe(30);
+  });
+
+  it('turns compression off with 0, leaving what is compressed readable, and back on when unset', async () => {
+    await compressOld('tool_calls');
+    process.env['MCPSPAN_COMPRESS_AFTER_DAYS'] = '0';
+    await reconcileCompression();
+
+    expect(await currentCompressAfterDays('tool_calls')).toBeUndefined();
+    expect(await storedCalls(account.serverId)).toBe(20);
+
+    delete process.env['MCPSPAN_COMPRESS_AFTER_DAYS'];
+    await reconcileCompression();
+
+    expect(await currentCompressAfterDays('tool_calls')).toBe(DEFAULT_COMPRESS_AFTER_DAYS);
+  });
+
+  it('refuses a period that would compress the calls still being counted', async () => {
+    process.env['MCPSPAN_COMPRESS_AFTER_DAYS'] = '3';
+    await reconcileCompression();
+
+    expect(await currentCompressAfterDays('tool_calls')).toBe(DEFAULT_COMPRESS_AFTER_DAYS);
   });
 });

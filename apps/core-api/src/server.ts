@@ -10,6 +10,7 @@ import { startOpenTelemetry } from './otel.ts';
 import { ingestRateLimiter } from './rate-limit.ts';
 import { refusalLog } from './refusals.ts';
 import { reconcileRetention } from './retention.ts';
+import { reconcileCompression } from './compression.ts';
 import { checkSigningSecret } from './secret-check.ts';
 import { loadSigningSecret } from './signing-secret.ts';
 
@@ -69,6 +70,7 @@ export function startApi(
       // rather than a schema change, so it is reconciled here instead of in a
       // migration, where changing it would mean inventing one each time.
       await reconcileRetention();
+      await reconcileCompression();
 
       // Before anything is served, because the answer changes how every refusal
       // from here on should be read.
